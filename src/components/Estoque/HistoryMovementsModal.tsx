@@ -175,6 +175,12 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
                             )}
                           </div>
                         )}
+
+                        {m.tipo === 'saida' && m.valor && (
+                          <div className="text-sm text-gray-600 space-y-1 mt-2">
+                            <div><strong>Valor total da saída:</strong> R$ {(Number(m.valor) * m.quantidade).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+                          </div>
+                        )}
                       </div>
                     </div>
 
