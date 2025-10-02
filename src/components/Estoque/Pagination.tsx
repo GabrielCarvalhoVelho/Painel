@@ -47,14 +47,7 @@ export default function Pagination({
   if (totalPages <= 1) return null;
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 py-3 bg-gray-50 rounded-lg border border-gray-200">
-      <div className="text-sm text-gray-600">
-        Mostrando <span className="font-medium text-gray-900">{startItem}</span> a{' '}
-        <span className="font-medium text-gray-900">{endItem}</span> de{' '}
-        <span className="font-medium text-gray-900">{totalItems}</span> movimentações
-      </div>
-
-      <div className="flex items-center gap-2">
+    <div className="flex items-center justify-center gap-2 px-4 py-3 bg-gray-50 rounded-lg border border-gray-200">
         <button
           onClick={handleFirstPage}
           disabled={currentPage === 1 || isLoading}
@@ -94,7 +87,6 @@ export default function Pagination({
         >
           <ChevronsRight className="w-4 h-4 text-gray-600" />
         </button>
-      </div>
     </div>
   );
 }
