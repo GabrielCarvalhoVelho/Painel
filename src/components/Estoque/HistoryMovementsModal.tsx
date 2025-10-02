@@ -142,17 +142,19 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
                     <div className="flex items-start justify-between">
 
                       <div className="flex-1">
-                        <div className="flex items-center gap-3">
-                          <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
-                            m.tipo === 'entrada'
-                              ? 'bg-[#397738]/10 text-[#397738]'
-                              : 'bg-red-100 text-red-700'
-                          }`}>
-                            {m.tipo === 'entrada' ? 'Entrada' : 'Saída'}
-                          </span>
-                          <span className="font-medium text-gray-900">
-                            {m.quantidade} {m.unidade}
-                          </span>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+                              m.tipo === 'entrada'
+                                ? 'bg-[#397738]/10 text-[#397738]'
+                                : 'bg-red-100 text-red-700'
+                            }`}>
+                              {m.tipo === 'entrada' ? 'Entrada' : 'Saída'}
+                            </span>
+                            <span className="font-medium text-gray-900">
+                              {m.quantidade} {m.unidade}
+                            </span>
+                          </div>
                           <span className="text-gray-500 text-sm">
                             {formatDateTime(m.created_at)}
                           </span>
