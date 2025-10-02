@@ -8,8 +8,7 @@ import {
   Paperclip,
   FileText,
   AlertCircle,
-  CheckCircle,
-  Loader2
+  CheckCircle
 } from 'lucide-react';
 import { AttachmentProductService, AttachmentFile } from '../../services/attachmentProductService';
 

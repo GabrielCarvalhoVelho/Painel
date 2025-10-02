@@ -1,13 +1,12 @@
 // src/components/Estoque/EstoquePanel.tsx
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
-  Package, Minus, Paperclip, Sprout, Hammer, Bug,
+  Package, Sprout, Hammer, Bug,
   Microscope, Droplets, X
 } from 'lucide-react';
 import { AuthService } from '../../services/authService';
 import { EstoqueService, ProdutoEstoque } from '../../services/estoqueService';
 import AttachmentProductModal from './AttachmentProductModal';
-import { AttachmentProductService } from '../../services/attachmentProductService';
 import RemoveQuantityModal from './RemoveQuantityModal';
 import HistoryMovementsModal from './HistoryMovementsModal';
 import FormProdutoModal from './FormProdutoModal';
@@ -25,7 +24,6 @@ export default function EstoquePanel() {
   // 📌 Estados principais
   const [showModal, setShowModal] = useState(false);
   const [produtos, setProdutos] = useState<ProdutoEstoque[]>([]);
-  const [loading, setLoading] = useState(true);
   const [produtosAgrupados, setProdutosAgrupados] = useState<ProdutoAgrupado[]>([]);
 
   // 📌 Estados dos filtros
@@ -36,7 +34,6 @@ export default function EstoquePanel() {
 
   // 📌 Controle de exibição (Ver mais / Ver menos)
   const [mostrarTodos, setMostrarTodos] = useState(false);
-  const [produtosVisiveis, setProdutosVisiveis] = useState<ProdutoEstoque[]>([]);
 
   // 📌 Estados para os modais
   const [removeModal, setRemoveModal] = useState({
@@ -64,7 +61,6 @@ export default function EstoquePanel() {
         const user = authService.getCurrentUser();
         if (!user) {
           console.warn("⚠️ Nenhum usuário autenticado");
-          setLoading(false);
           return;
         }
         const dados = await EstoqueService.getProdutos();
@@ -72,21 +68,10 @@ export default function EstoquePanel() {
         setProdutosAgrupados(agruparProdutos(dados));
       } catch (error) {
         console.error("❌ Erro ao carregar estoque:", error);
-      } finally {
-        setLoading(false);
       }
     };
     carregar();
   }, []);
-
-  // 📌 Função para formatar datas em dd/mm/aaaa
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return '-';
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return dateString;
-    const formatted = date.toLocaleDateString('pt-BR');
-    return formatted === '31/12/1999' ? '-' : formatted;
-  };
 
   // 📌 Ícone por categoria
   const getCategoryIcon = (categoria: string) => {
@@ -110,6 +95,7 @@ export default function EstoquePanel() {
   // 🔎 Aplicação dos filtros e ordenação (useMemo para evitar loops)
   const produtosFiltrados = useMemo(() => {
     return produtos
+      .filter((p) => p.nome_produto && typeof p.nome_produto === 'string')
       .filter((p) => p.nome_produto.toLowerCase().includes(search.toLowerCase()))
       .filter((p) => (categoria ? p.categoria === categoria : true))
       .sort((a, b) => {
@@ -132,15 +118,6 @@ export default function EstoquePanel() {
       });
   }, [produtos, search, categoria, ordem, ordemDirecao]);
 
-  // 👀 Sempre que filtros ou mostrarTodos mudam → atualiza lista visível
-  useEffect(() => {
-    if (mostrarTodos) {
-      setProdutosVisiveis(produtosFiltrados);
-    } else {
-      setProdutosVisiveis(produtosFiltrados.slice(0, INITIAL_ITEM_COUNT));
-    }
-  }, [produtosFiltrados, mostrarTodos]);
-
   return (
     <div className="space-y-6">
       {/* Headers */}
@@ -160,40 +137,40 @@ export default function EstoquePanel() {
       />
 
       {/* Listas */}
-      <ListaProdutosDesktop
+            <ListaProdutosDesktop
         produtos={produtosAgrupados}
-        formatDate={formatDate}
         getCategoryIcon={getCategoryIcon}
         openAttachmentModal={(id, nome) => setAttachmentModal({ isOpen: true, productId: id, productName: nome })}
         setHistoryModal={setHistoryModal}
-        setRemoveModal={({ isOpen, product, quantidade, observacao }) =>
-          setRemoveModal((prev) => ({
+        setRemoveModal={(params) => {
+          const { isOpen, product } = params;
+          setRemoveModal(prev => ({
             ...prev,
             isOpen,
             productGroup: product,
-            selectedProduto: product && product.produtos[0] ? product.produtos[0] : null,
-            quantidade: quantidade ?? 1,
-            observacao: observacao ?? '',
-          }))
-        }
+            selectedProduto: product?.produtos[0] || null,
+            quantidade: 1,
+            observacao: '',
+          }));
+        }}
       />
 
-      <ListaProdutosMobile
+            <ListaProdutosMobile
         produtos={produtosAgrupados}
-        formatDate={formatDate}
         getCategoryIcon={getCategoryIcon}
         openAttachmentModal={(id, nome) => setAttachmentModal({ isOpen: true, productId: id, productName: nome })}
         setHistoryModal={setHistoryModal}
-        setRemoveModal={({ isOpen, product, quantidade, observacao }) =>
-          setRemoveModal((prev) => ({
+        setRemoveModal={(params) => {
+          const { isOpen, product } = params;
+          setRemoveModal(prev => ({
             ...prev,
             isOpen,
             productGroup: product,
-            selectedProduto: product && product.produtos[0] ? product.produtos[0] : null,
-            quantidade: quantidade ?? 1,
-            observacao: observacao ?? '',
-          }))
-        }
+            selectedProduto: product?.produtos[0] || null,
+            quantidade: 1,
+            observacao: '',
+          }));
+        }}
       />
 
       {/* Botões de Ver mais / Ver menos */}
@@ -255,16 +232,26 @@ export default function EstoquePanel() {
         onConfirm={async () => {
           if (!removeModal.selectedProduto) return;
           try {
-            const atualizado = await EstoqueService.removerQuantidade(
+            // Calcula nova quantidade
+            const novaQuantidade = removeModal.selectedProduto.quantidade - removeModal.quantidade;
+            
+            // Atualiza quantidade no banco
+            await EstoqueService.atualizarQuantidade(
               removeModal.selectedProduto.id,
+              novaQuantidade
+            );
+            
+            // Registra movimentação
+            await EstoqueService.registrarMovimentacao(
+              removeModal.selectedProduto.id,
+              'saida',
               removeModal.quantidade,
               removeModal.observacao
             );
-            // Atualiza lista de produtos
-            const produtosAtualizados = produtos.map((p) => p.id === atualizado.id ? atualizado : p);
-            setProdutos(produtosAtualizados);
             
-            // Recalcula agrupamentos
+            // Recarrega produtos
+            const produtosAtualizados = await EstoqueService.getProdutos();
+            setProdutos(produtosAtualizados);
             setProdutosAgrupados(agruparProdutos(produtosAtualizados));
             setRemoveModal({ isOpen: false, productGroup: null, selectedProduto: null, quantidade: 1, observacao: '' });
             alert('✅ Quantidade removida e movimentação registrada!');

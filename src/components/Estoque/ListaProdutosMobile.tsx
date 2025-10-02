@@ -11,7 +11,6 @@ type ModalParams = {
 
 interface Props {
   produtos: ProdutoAgrupado[];
-  formatDate: (dateString: string | null) => string;
   getCategoryIcon: (categoria: string) => JSX.Element;
   openAttachmentModal: (productId: string, productName: string) => void;
   setHistoryModal: (params: ModalParams) => void;
@@ -20,7 +19,6 @@ interface Props {
 
 export default function ListaProdutosMobile({
   produtos,
-  formatDate,
   getCategoryIcon,
   openAttachmentModal,
   setHistoryModal,
@@ -46,12 +44,6 @@ export default function ListaProdutosMobile({
                 <h4 className="text-base font-semibold text-[#092f20] md:text-lg md:font-semibold">
                   {item.nome}
                 </h4>
-                <p className="text-xs text-gray-600">
-                  {item.marcas.join(', ') || "Marca não informada"}
-                </p>
-                <p className="text-xs text-gray-700 font-medium">
-                  {item.fornecedores.map(f => f.fornecedor).join(', ') || "—"}
-                </p>
                 <span className="text-[11px] font-medium text-[#397738]">
                   {item.categorias.join(', ')}
                 </span>
@@ -74,12 +66,6 @@ export default function ListaProdutosMobile({
                     : "—"}
                 </p>
               </div>
-            </div>
-
-            {/* Rodapé: lote, validade e data */}
-            <div className="flex flex-wrap text-xs text-gray-400 gap-4">
-              <span>Lotes: {item.lotes.filter(Boolean).join(', ') || '-'}</span>
-              <span>Val.: {item.validades.filter(Boolean).map(formatDate).join(', ') || '-'}</span>
             </div>
 
             {/* Botões */}

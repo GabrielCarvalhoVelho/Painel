@@ -1,7 +1,6 @@
   // (Removido bloco duplicado fora da classe)
 // src/services/attachmentProductService.ts
 import { createClient } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
 
 // Cliente com service role (contorna RLS para Storage)
 const supabaseServiceRole = createClient(

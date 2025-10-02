@@ -11,7 +11,6 @@ type ModalParams = {
 
 interface Props {
   produtos: ProdutoAgrupado[];
-  formatDate: (dateString: string | null) => string;
   getCategoryIcon: (categoria: string) => JSX.Element;
   openAttachmentModal: (productId: string, productName: string) => void;
   setHistoryModal: (params: ModalParams) => void;
@@ -20,7 +19,6 @@ interface Props {
 
 export default function ListaProdutosDesktop({
   produtos,
-  formatDate,
   getCategoryIcon,
   openAttachmentModal,
   setHistoryModal,
@@ -45,17 +43,11 @@ export default function ListaProdutosDesktop({
               {getCategoryIcon(item.categorias[0] || '')}
             </div>
 
-            {/* 2) NOME / MARCA / CATEGORIA */}
+            {/* 2) NOME / CATEGORIA */}
             <div className="flex-1 min-w-0">
               <h4 className="text-lg font-semibold text-[#092f20] truncate">
                 {item.nome}
               </h4>
-              <p className="text-sm text-gray-600 truncate">
-                {item.marcas.join(', ') || "Marca não informada"}
-              </p>
-              <p className="text-sm text-gray-700 font-medium truncate">
-                {item.fornecedores.map(f => f.fornecedor).join(', ') || "—"}
-              </p>
               <span className="text-xs font-medium px-2 py-0.5 bg-[#397738]/10 text-[#397738] rounded-full">
                 {item.categorias.join(', ')}
               </span>
@@ -110,11 +102,6 @@ export default function ListaProdutosDesktop({
               </button>
             </div>
 
-            {/* 5) RODAPÉ */}
-            <div className="absolute bottom-2 left-28 md:left-auto md:right-6 text-xs text-gray-400 flex gap-4">
-              <span>Lotes: {item.lotes.filter(Boolean).join(', ') || '-'}</span>
-              <span>Validades: {item.validades.filter(Boolean).map(formatDate).join(', ') || '-'}</span>
-            </div>
           </div>
         ))}
       </div>

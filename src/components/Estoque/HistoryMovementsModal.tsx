@@ -1,8 +1,9 @@
 // src/components/Estoque/HistoryMovementsModal.tsx
 import { useEffect, useState } from 'react';
-import { X } from 'lucide-react';
-import { ProdutoEstoque, MovimentacaoEstoque, EstoqueService } from '../../services/estoqueService';
+import { X, Paperclip } from 'lucide-react';
+import { MovimentacaoExpandida, EstoqueService } from '../../services/estoqueService';
 import { ProdutoAgrupado } from '../../services/agruparProdutosService';
+import AttachmentProductModal from './AttachmentProductModal';
 
 interface Props {
   isOpen: boolean;
@@ -11,157 +12,195 @@ interface Props {
 }
 
 export default function HistoryMovementsModal({ isOpen, product, onClose }: Props) {
-  const [selectedProduto, setSelectedProduto] = useState<ProdutoEstoque | null>(null);
+  const [items, setItems] = useState<MovimentacaoExpandida[]>([]);
   const [loading, setLoading] = useState(false);
-  const [items, setItems] = useState<MovimentacaoEstoque[]>([]);
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
   const [totais, setTotais] = useState({ entradas: 0, saidas: 0 });
-  const pageSize = 20;
+  const [attachmentModal, setAttachmentModal] = useState({
+    isOpen: false,
+    productId: '',
+    productName: ''
+  });
 
   useEffect(() => {
     if (!isOpen || !product) return;
-    setPage(1);
-    // Seleciona o primeiro produto do grupo por padrão
-    setSelectedProduto(product.produtos[0] || null);
+    
+    const loadData = async () => {
+      setLoading(true);
+      
+      try {
+        const allMovements: MovimentacaoExpandida[] = [];
+        
+        for (const p of product.produtos) {
+          const resp = await EstoqueService.getMovimentacoesExpandidas(p.id, 1, 50);
+          allMovements.push(...resp.data);
+        }
+        
+        for (const p of product.produtos) {
+          if (p.quantidade > 0) {
+            const entradaInicial: MovimentacaoExpandida = {
+              id: -p.id,
+              produto_id: p.id,
+              user_id: p.user_id,
+              tipo: 'entrada',
+              quantidade: p.quantidade,
+              observacao: 'Lançamento inicial do produto',
+              created_at: p.created_at || new Date().toISOString(),
+              nome_produto: p.nome_produto,
+              marca: p.marca,
+              categoria: p.categoria,
+              unidade: p.unidade,
+              valor: p.valor,
+              lote: p.lote,
+              validade: p.validade,
+              fornecedor: p.fornecedor || null,
+              registro_mapa: p.registro_mapa || null,
+              produto_created_at: p.created_at || new Date().toISOString(),
+            };
+            allMovements.push(entradaInicial);
+          }
+        }
+
+        allMovements.sort((a, b) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+
+        setItems(allMovements);
+
+        const entradas = allMovements.filter(m => m.tipo === 'entrada').reduce((sum, m) => sum + m.quantidade, 0);
+        const saidas = allMovements.filter(m => m.tipo === 'saida').reduce((sum, m) => sum + m.quantidade, 0);
+        setTotais({ entradas, saidas });
+
+      } catch (error) {
+        console.error('Erro ao carregar histórico:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
   }, [isOpen, product]);
 
-  useEffect(() => {
-    if (!isOpen || !selectedProduto) return;
-    load(page);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, selectedProduto, page]);
+  const formatDateTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit', 
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
-  async function load(p: number) {
-    if (!selectedProduto) return;
-    setLoading(true);
-    try {
-      const resp = await EstoqueService.getMovimentacoes(selectedProduto.id, p, pageSize);
-      setItems(resp.items);
-      setTotal(resp.total);
-      setTotais(resp.totais);
-      setPage(p);
-    } catch (e) {
-      console.error('Erro ao carregar histórico:', e);
-      alert('❌ Erro ao carregar histórico.');
-    } finally {
-      setLoading(false);
-    }
-  }
+  const openAttachmentModal = (productId: string, productName: string) => {
+    setAttachmentModal({
+      isOpen: true,
+      productId,
+      productName
+    });
+  };
 
-  const pages = Math.max(1, Math.ceil(total / pageSize));
-
-  if (!isOpen || !product) return null;
-
-  const fmtDataHora = (iso: string) =>
-    new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+  if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center">
-      <div
-        className="
-          bg-white rounded-t-2xl shadow-xl w-full h-[90vh] max-h-[90vh] flex flex-col
-          md:rounded-xl md:max-w-2xl md:h-auto md:max-h-[85vh]
-        "
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white z-10">
-          <div>
-            <h3 className="text-lg font-semibold text-[#092f20]">Histórico de Movimentações</h3>
-            <p className="text-sm text-gray-600 truncate">
-              {product.nome} {selectedProduto ? `• ${selectedProduto.marca || '—'} • Fornecedor: ${selectedProduto.fornecedor || '—'}` : ''}
-            </p>
-            {/* Dropdown de fornecedores/produtos */}
-            <div className="mt-2">
-              <select
-                className="border rounded px-2 py-1 text-sm"
-                value={selectedProduto?.id || ''}
-                onChange={e => {
-                  const prod = product.produtos.find(p => p.id === Number(e.target.value));
-                  setSelectedProduto(prod || null);
-                }}
-              >
-                {product.produtos.map(p => (
-                  <option key={p.id} value={p.id}>
-                    {p.fornecedor || 'Fornecedor desconhecido'} • Marca: {p.marca || '—'} • Lote: {p.lote || '—'}
-                  </option>
-                ))}
-              </select>
+    <>
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+          
+          <div className="flex items-center justify-between p-6 border-b">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">
+                Histórico - {product?.nome}
+              </h3>
+              <div className="flex gap-4 text-sm text-gray-600 mt-1">
+                <span>📈 Entradas: {totais.entradas}</span>
+                <span>📉 Saídas: {totais.saidas}</span>
+                <span>📦 Total em estoque: {product?.totalEstoque}</span>
+              </div>
             </div>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 p-1"
+            >
+              <X className="w-6 h-6" />
+            </button>
           </div>
-          <button onClick={onClose} className="p-1 text-gray-500 hover:text-gray-700 rounded">
-            <X className="w-6 h-6" />
-          </button>
-        </div>
 
-        {/* Totais → apenas saídas */}
-        {selectedProduto && (
-        <div className="p-4 border-b">
-          <div className="bg-red-50 rounded-lg p-3">
-            <p className="text-xs text-red-700">Saídas</p>
-            <p className="text-lg font-bold text-red-800">
-              - {totais.saidas} {selectedProduto.unidade}
-            </p>
-          </div>
-        </div>
-        )}
+          <div className="flex-1 overflow-y-auto p-6">
+            {loading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                <p className="text-gray-600 mt-2">Carregando histórico...</p>
+              </div>
+            ) : items.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500">Nenhuma movimentação encontrada</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {items.map((m) => (
+                  <div key={`${m.produto_id}-${m.id}`} className="border rounded-lg p-4 bg-gray-50">
+                    <div className="flex items-start justify-between">
+                      
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3">
+                          <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+                            m.tipo === 'entrada' 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {m.tipo === 'entrada' ? '↗️ Entrada' : '↙️ Saída'}
+                          </span>
+                          <span className="font-medium text-gray-900">
+                            {m.quantidade} {m.unidade}
+                          </span>
+                          <span className="text-gray-500 text-sm">
+                            {formatDateTime(m.created_at)}
+                          </span>
+                        </div>
 
-        {/* Lista */}
-        <div className="flex-1 overflow-y-auto px-2 md:px-4">
-          {loading ? (
-            <div className="p-6 text-center text-gray-500">Carregando…</div>
-          ) : items.length === 0 ? (
-            <div className="p-6 text-center text-gray-500">Nenhuma movimentação encontrada.</div>
-          ) : (
-            <ul className="divide-y divide-gray-100">
-              {items.map(m => (
-                <li key={m.id} className="p-4 flex items-start justify-between">
-                  <div>
-                    <div className="text-sm text-gray-500">{fmtDataHora(m.created_at)}</div>
-                    <div className="text-xs text-gray-600 mt-1">
-                      {m.observacao || '—'}
+                        {m.observacao && (
+                          <p className="text-sm text-gray-600 mt-2">{m.observacao}</p>
+                        )}
+
+                        {m.tipo === 'entrada' && (
+                          <div className="text-sm text-gray-600 space-y-1 mt-2">
+                            <div><strong>Marca:</strong> {m.marca || '—'}</div>
+                            <div><strong>Fornecedor:</strong> {m.fornecedor || '—'}</div>
+                            <div><strong>Lote:</strong> {m.lote || '—'}</div>
+                            <div><strong>Validade:</strong> {m.validade ? new Date(m.validade).toLocaleDateString('pt-BR') : '—'}</div>
+                            {m.valor && (
+                              <div><strong>Valor unitário:</strong> R$ {Number(m.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={() => openAttachmentModal(
+                          m.produto_id.toString(),
+                          m.nome_produto || 'Produto'
+                        )}
+                        className="flex items-center gap-1 px-3 py-1 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
+                        title="Ver anexos"
+                      >
+                        <Paperclip className="w-4 h-4" />
+                        Anexos
+                      </button>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <span
-                      className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium
-                      ${m.tipo === 'entrada' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}
-                    >
-                      {m.tipo}
-                    </span>
-                    <div className={`mt-1 font-semibold ${m.tipo === 'entrada' ? 'text-green-700' : 'text-red-700'}`}>
-                      {m.tipo === 'entrada' ? '+' : '-'} {Number(m.quantidade)} {selectedProduto ? selectedProduto.unidade : ''}
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        {/* Paginação */}
-        <div className="p-3 border-t flex items-center justify-between text-sm sticky bottom-0 bg-white">
-          <span className="text-gray-500">
-            Página {page} de {pages} • {total} mov.
-          </span>
-          <div className="flex gap-2">
-            <button
-              onClick={() => load(Math.max(1, page - 1))}
-              disabled={page <= 1 || loading}
-              className="px-3 py-1.5 border rounded disabled:opacity-50"
-            >
-              Anterior
-            </button>
-            <button
-              onClick={() => load(Math.min(pages, page + 1))}
-              disabled={page >= pages || loading}
-              className="px-3 py-1.5 border rounded disabled:opacity-50"
-            >
-              Próxima
-            </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
-    </div>
+
+      <AttachmentProductModal
+        isOpen={attachmentModal.isOpen}
+        onClose={() => setAttachmentModal({ isOpen: false, productId: '', productName: '' })}
+        productId={attachmentModal.productId}
+        productName={attachmentModal.productName}
+      />
+    </>
   );
 }
