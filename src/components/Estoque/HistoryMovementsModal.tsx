@@ -113,8 +113,8 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
               </h3>
               <div className="flex gap-4 text-sm text-gray-600 mt-1">
                 <span><strong>Entradas:</strong> {totais.entradas}</span>
-                <span>📉 Saídas: {totais.saidas}</span>
-                <span>📦 Total em estoque: {product?.totalEstoque}</span>
+                <span><strong>Saídas:</strong> {totais.saidas}</span>
+                <span><strong>Total em estoque:</strong> {product?.totalEstoque}</span>
               </div>
             </div>
             <button
