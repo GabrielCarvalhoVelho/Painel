@@ -5,6 +5,8 @@ import LoadingSpinner from '../Dashboard/LoadingSpinner';
 import ErrorMessage from '../Dashboard/ErrorMessage';
 import { MaquinaService } from '../../services/maquinaService';
 import FileAttachmentModal from './FileAttachmentModal';
+import MaquinasEquipamentosHeaderMobile from './MaquinasEquipamentosHeaderMobile';
+import MaquinasEquipamentosListMobile from './MaquinasEquipamentosListMobile';
 import { MaquinasEquipamentos } from '../../lib/supabase';
 
 
@@ -167,7 +169,12 @@ export default function MaquinasEquipamentosPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <MaquinasEquipamentosHeaderMobile
+        numeroMaquinas={numeroMaquinas}
+        custoTotal={custoTotal}
+      />
+
+      <div className="hidden md:block bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-[#092f20]">Máquinas e Equipamentos</h2>
           <p className="text-sm font-medium text-[#397738]">
@@ -189,10 +196,17 @@ export default function MaquinasEquipamentosPanel() {
         </div>
       </div>
 
-      <MaquinaList
+      <div className="hidden md:block">
+        <MaquinaList
+          maquinas={maquinas}
+          title="Máquinas Ativas"
+          emptyMessage="Nenhuma máquina ativa encontrada"
+        />
+      </div>
+
+      <MaquinasEquipamentosListMobile
         maquinas={maquinas}
-        title="Máquinas Ativas"
-        emptyMessage="Nenhuma máquina ativa encontrada"
+        onOpenAttachments={handleOpenAttachments}
       />
 
       {showAttachmentModal && selectedMaquina && (
