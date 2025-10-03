@@ -76,14 +76,12 @@ export default function FileAttachmentModal({
         setFileSlots([
           {
             id: 'primeiro_envio',
-            label: 'Primeiro Arquivo',
             hasFile: attachmentInfo.hasPrimeiroEnvio,
             url: attachmentInfo.url_primeiro_envio,
             fileType: attachmentInfo.primeiroEnvioType
           },
           {
             id: 'segundo_envio',
-            label: 'Segundo Arquivo',
             hasFile: attachmentInfo.hasSegundoEnvio,
             url: attachmentInfo.url_segundo_envio,
             fileType: attachmentInfo.segundoEnvioType
@@ -92,8 +90,8 @@ export default function FileAttachmentModal({
       } else {
         // If no attachment info found, reset to empty state
         setFileSlots([
-          { id: 'primeiro_envio', label: 'Primeiro Arquivo', hasFile: false, url: null, fileType: null },
-          { id: 'segundo_envio', label: 'Segundo Arquivo', hasFile: false, url: null, fileType: null }
+          { id: 'primeiro_envio', hasFile: false, url: null, fileType: null },
+          { id: 'segundo_envio', hasFile: false, url: null, fileType: null }
         ]);
       }
     } catch (error) {
