@@ -175,7 +175,7 @@ export default function MaquinasEquipamentosPanel() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-[#86b646]/10 p-6 rounded-lg">
             <p>Total de Máquinas</p>
             <p className="text-3xl font-bold">{numeroMaquinas}</p>
