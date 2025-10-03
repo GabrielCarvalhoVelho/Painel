@@ -9,7 +9,10 @@ import {
   CheckCircle,
   Loader2,
   FileText,
-  File
+  File,
+  Image as ImageIcon,
+  FileSpreadsheet,
+  FileArchive
 } from 'lucide-react';
 import { AttachmentService } from '../../services/attachmentService';
 
@@ -47,8 +50,8 @@ export default function FileAttachmentModal({
     type: null
   });
   const [fileSlots, setFileSlots] = useState<FileSlot[]>([
-    { id: 'primeiro_envio', label: 'Primeiro Arquivo', hasFile: false, url: null, fileType: null },
-    { id: 'segundo_envio', label: 'Segundo Arquivo', hasFile: false, url: null, fileType: null }
+    { id: 'primeiro_envio', label: 'Foto da Máquina', hasFile: false, url: null, fileType: null },
+    { id: 'segundo_envio', label: 'Documento da Máquina', hasFile: false, url: null, fileType: null }
   ]);
   const [loading, setLoading] = useState(false);
   const [uploadingSlot, setUploadingSlot] = useState<string | null>(null);
@@ -76,14 +79,14 @@ export default function FileAttachmentModal({
         setFileSlots([
           {
             id: 'primeiro_envio',
-            label: 'Primeiro Arquivo',
+            label: 'Foto da Máquina',
             hasFile: attachmentInfo.hasPrimeiroEnvio,
             url: attachmentInfo.url_primeiro_envio,
             fileType: attachmentInfo.primeiroEnvioType
           },
           {
             id: 'segundo_envio',
-            label: 'Segundo Arquivo',
+            label: 'Documento da Máquina',
             hasFile: attachmentInfo.hasSegundoEnvio,
             url: attachmentInfo.url_segundo_envio,
             fileType: attachmentInfo.segundoEnvioType
@@ -92,8 +95,8 @@ export default function FileAttachmentModal({
       } else {
         // If no attachment info found, reset to empty state
         setFileSlots([
-          { id: 'primeiro_envio', label: 'Primeiro Arquivo', hasFile: false, url: null, fileType: null },
-          { id: 'segundo_envio', label: 'Segundo Arquivo', hasFile: false, url: null, fileType: null }
+          { id: 'primeiro_envio', label: 'Foto da Máquina', hasFile: false, url: null, fileType: null },
+          { id: 'segundo_envio', label: 'Documento da Máquina', hasFile: false, url: null, fileType: null }
         ]);
       }
     } catch (error) {
@@ -106,25 +109,41 @@ export default function FileAttachmentModal({
 
   const getFileIcon = (fileType: string | null) => {
     if (!fileType) return <File className="w-5 h-5" />;
-    
-    if (fileType.startsWith('image/')) {
-      return <ImageIcon className="w-5 h-5" />;
+
+    const type = fileType.toLowerCase();
+
+    // Image files
+    if (type.includes('image') || ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(type)) {
+      return <ImageIcon className="w-5 h-5 text-blue-600" />;
     }
-    
-    return <FileText className="w-5 h-5" />;
+
+    // Spreadsheet files
+    if (['xls', 'xlsx', 'csv'].includes(type)) {
+      return <FileSpreadsheet className="w-5 h-5 text-green-600" />;
+    }
+
+    // Archive files
+    if (['zip', 'rar'].includes(type)) {
+      return <FileArchive className="w-5 h-5 text-orange-600" />;
+    }
+
+    // PDF and document files
+    if (['pdf', 'doc', 'docx', 'txt', 'xml'].includes(type)) {
+      return <FileText className="w-5 h-5 text-red-600" />;
+    }
+
+    return <File className="w-5 h-5 text-gray-600" />;
   };
 
   const isImageFile = (fileType: string | null) => {
     if (!fileType) return false;
-    
+
+    const type = fileType.toLowerCase();
+
     // Verifica se é um tipo de imagem
-    const isImage = fileType.startsWith('image/') || 
-                   fileType === 'jpg' || 
-                   fileType === 'jpeg' || 
-                   fileType === 'png' || 
-                   fileType === 'gif' || 
-                   fileType === 'webp';
-    
+    const isImage = type.startsWith('image/') ||
+                   ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(type);
+
     console.log('🖼️ Verificando se é imagem:', { fileType, isImage });
     return isImage;
   };
@@ -475,7 +494,7 @@ export default function FileAttachmentModal({
         <input
           ref={fileInputRef}
           type="file"
-          accept=".xml,.jpg,.jpeg,.pdf,image/jpeg,application/xml,application/pdf"
+          accept="*/*"
           onChange={handleFileChange}
           className="hidden"
         />
