@@ -169,11 +169,6 @@ export default function MaquinasEquipamentosPanel() {
 
   return (
     <div className="space-y-6">
-      <MaquinasEquipamentosHeaderMobile
-        numeroMaquinas={numeroMaquinas}
-        custoTotal={custoTotal}
-      />
-
       <div className="hidden md:block bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-[#092f20]">Máquinas e Equipamentos</h2>
@@ -203,6 +198,11 @@ export default function MaquinasEquipamentosPanel() {
           </div>
         </div>
       </div>
+
+      <MaquinasEquipamentosHeaderMobile
+        numeroMaquinas={numeroMaquinas}
+        custoTotal={custoTotal}
+      />
 
       <div className="hidden md:block">
         <MaquinaList
