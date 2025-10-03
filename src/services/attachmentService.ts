@@ -537,6 +537,32 @@ export class AttachmentService {
 
   private bucketName = 'Documento_Maquina';
   private tableName = 'maquinas_equipamentos';
+
+/**
+ * Valida se o arquivo tem tipo e tamanho adequados
+ */
+validateFile(file: File): string | null {
+  const maxFileSize = 10 * 1024 * 1024; // 10MB
+  const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/xml', 'text/xml'];
+
+  if (!file || !file.name) {
+    return 'Arquivo inválido ou sem nome.';
+  }
+
+  if (file.size === 0) {
+    return 'Arquivo está vazio.';
+  }
+
+  if (file.size > maxFileSize) {
+    return 'Arquivo muito grande. Limite de 10MB.';
+  }
+
+  if (!allowedTypes.includes(file.type)) {
+    return 'Tipo de arquivo não permitido. Apenas PDF, JPG, PNG, WEBP e XML são suportados.';
+  }
+
+  return null;
+}
 async uploadFile(
   maquinaId: string,
   file: File, 
@@ -559,7 +585,7 @@ async uploadFile(
       return { success: false, error: 'Arquivo está vazio.' };
     }
 
-    const allowedExtensions = ['xml', 'jpg', 'jpeg', 'pdf'];
+    const allowedExtensions = ['xml', 'jpg', 'jpeg', 'pdf', 'png', 'webp'];
     const getFileExtension = (fileName: string): string | null => {
       const match = fileName.match(/\.([^.]+)$/);
       return match ? match[1].toLowerCase() : null;
@@ -572,9 +598,9 @@ async uploadFile(
 
     if (!fileExt || !allowedExtensions.includes(fileExt)) {
       console.error('❌ Invalid file type:', fileExt);
-      return { 
-        success: false, 
-        error: `Tipo de arquivo ${fileExt || 'desconhecido'} não permitido. Apenas xml, jpg e pdf são suportados.` 
+      return {
+        success: false,
+        error: `Tipo de arquivo ${fileExt || 'desconhecido'} não permitido. Apenas xml, jpg, pdf, png e webp são suportados.`
       };
     }
 
@@ -897,13 +923,15 @@ const regex = new RegExp(`https?://[^/]+/storage/v1/object/public/${this.bucketN
 }
 
 private getFileTypeFromUrl(url: string): string {
-  if (!url) return 'unknown'; 
+  if (!url) return 'unknown';
   if (url.includes('/xml/')) return 'xml';
   if (url.includes('/jpg/')) return 'jpg';
   if (url.includes('/pdf/')) return 'pdf';
+  if (url.includes('/png/')) return 'png';
+  if (url.includes('/webp/')) return 'webp';
 
   const extension = url.includes('.') ? url.split('.').pop()?.toLowerCase() : '';
-  return ['xml', 'jpg', 'jpeg', 'pdf'].includes(extension || '') ? 
+  return ['xml', 'jpg', 'jpeg', 'pdf', 'png', 'webp'].includes(extension || '') ?
          (extension === 'jpeg' ? 'jpg' : extension || 'unknown') : 'unknown';
 }
 
@@ -912,7 +940,9 @@ private getContentType(fileExtension: string): string {
     'xml': 'application/xml',
     'jpg': 'image/jpeg',
     'jpeg': 'image/jpeg',
-    'pdf': 'application/pdf'
+    'pdf': 'application/pdf',
+    'png': 'image/png',
+    'webp': 'image/webp'
   };
   return contentTypes[fileExtension.toLowerCase()] || 'application/octet-stream';
 }

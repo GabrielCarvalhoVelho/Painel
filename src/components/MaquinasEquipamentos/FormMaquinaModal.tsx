@@ -73,22 +73,30 @@ export default function FormMaquinaModal({ isOpen, onClose, onCreated }: Props) 
         const validationError = attachmentService.validateFile(formData.anexo);
         if (validationError) throw new Error(validationError);
 
-        await attachmentService.uploadFile(
+        const uploadResult = await attachmentService.uploadFile(
           novaMaquina.id_maquina,
           formData.anexo,
-          'url_primeiro_envio'
+          'primeiro_envio'
         );
+
+        if (!uploadResult.success) {
+          throw new Error(uploadResult.error || 'Erro ao fazer upload da foto da máquina');
+        }
       }
 
       if (formData.documento_maquina) {
         const validationError = attachmentService.validateFile(formData.documento_maquina);
         if (validationError) throw new Error(validationError);
 
-        await attachmentService.uploadFile(
+        const uploadResult = await attachmentService.uploadFile(
           novaMaquina.id_maquina,
           formData.documento_maquina,
-          'url_documento_maquina'
+          'segundo_envio'
         );
+
+        if (!uploadResult.success) {
+          throw new Error(uploadResult.error || 'Erro ao fazer upload do documento da máquina');
+        }
       }
 
       onCreated(novaMaquina);
