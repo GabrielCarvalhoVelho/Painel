@@ -81,9 +81,15 @@ export default function AttachmentModal({
     try {
       setLoading(true);
       setMessage(null);
+
+      console.log('📥 Iniciando download:', { transactionId, type });
+
       await AttachmentService.downloadAttachment(transactionId);
+
+      console.log('✅ Download concluído com sucesso');
       setMessage({ type: 'success', text: 'Download iniciado com sucesso!' });
     } catch (error) {
+      console.error('💥 Erro no download:', error);
       setMessage({
         type: 'error',
         text: error instanceof Error ? error.message : 'Erro ao fazer download'

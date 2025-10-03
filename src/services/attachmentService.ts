@@ -1,6 +1,5 @@
 import { supabase } from '../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase'; // ✅
 
 
 // Cliente com service role para operações de storage (contorna RLS)
@@ -681,24 +680,41 @@ async uploadFile(
  async downloadFile(url: string): Promise<FileDownloadResult> {
     try {
       if (!url) {
+        console.error('❌ No URL provided for download');
         return { data: null, error: 'No URL provided', fileType: null };
       }
 
+      console.log('⬇️ Starting download for URL:', url);
+
       const filePath = this.extractFilePathFromUrl(url);
-      
+      if (!filePath) {
+        console.error('❌ Could not extract file path from URL');
+        return { data: null, error: 'Invalid URL format', fileType: null };
+      }
+
+      console.log('📁 Extracted file path:', filePath);
+
       const fileType = this.getFileTypeFromUrl(url);
-      
+      console.log('📄 Detected file type:', fileType);
+
       const { data, error } = await supabase.storage
         .from(this.bucketName)
         .download(filePath);
 
       if (error) {
+        console.error('❌ Download error:', error);
         return { data: null, error: error.message, fileType: null };
       }
 
+      if (!data) {
+        console.error('❌ No data returned from download');
+        return { data: null, error: 'No data received', fileType: null };
+      }
+
+      console.log('✅ Download successful, blob size:', data.size);
       return { data, error: null, fileType };
     } catch (error) {
-      console.error('Error downloading file:', error);
+      console.error('💥 Unexpected error downloading file:', error);
       return { data: null, error: (error as Error).message, fileType: null };
     }
   }
@@ -892,47 +908,60 @@ private async getFileUrl(maquinaId: string, uploadType: 'primeiro_envio' | 'segu
 }
 
 private extractFilePathFromUrl(url: string): string {
+  if (!url) {
+    console.log('❌ Empty URL provided');
+    return '';
+  }
+
   console.log('🔍 Input URL:', url);
   console.log('🪣 Bucket name:', `"${this.bucketName}"`);
-  console.log('🪣 Bucket name length:', this.bucketName.length);
-  console.log('🪣 Bucket name chars:', [...this.bucketName]);
-  
-const regex = new RegExp(`https?://[^/]+/storage/v1/object/public/${this.bucketName}/(.+)$`);
+
+  const urlWithoutParams = url.split('?')[0];
+  console.log('🔍 URL without params:', urlWithoutParams);
+
+  const regex = new RegExp(`https?://[^/]+/storage/v1/object/public/${this.bucketName}/(.+)$`);
   console.log('📝 Regex pattern:', regex.toString());
-  
-  const match = url.match(regex);
+
+  const match = urlWithoutParams.match(regex);
   console.log('🎯 Regex match result:', match);
-  
+
   if (match && match[1]) {
     console.log('✅ Extracted path:', match[1]);
     return match[1];
   }
-  
-  const expectedPattern = `/storage/v1/object/${this.bucketName}/`;
+
+  const expectedPattern = `/storage/v1/object/public/${this.bucketName}/`;
   console.log('🔍 Expected pattern:', expectedPattern);
-  console.log('🔍 URL contains pattern?', url.includes(expectedPattern));
-  
-  if (url.includes(expectedPattern)) {
-    const filePath = url.substring(url.indexOf(expectedPattern) + expectedPattern.length);
+  console.log('🔍 URL contains pattern?', urlWithoutParams.includes(expectedPattern));
+
+  if (urlWithoutParams.includes(expectedPattern)) {
+    const startIndex = urlWithoutParams.indexOf(expectedPattern) + expectedPattern.length;
+    const filePath = urlWithoutParams.substring(startIndex);
     console.log('✅ Manual extraction result:', filePath);
     return filePath;
   }
-  
+
   console.log('❌ No match found');
   return '';
 }
 
 private getFileTypeFromUrl(url: string): string {
   if (!url) return 'unknown';
+
   if (url.includes('/xml/')) return 'xml';
   if (url.includes('/jpg/')) return 'jpg';
   if (url.includes('/pdf/')) return 'pdf';
   if (url.includes('/png/')) return 'png';
   if (url.includes('/webp/')) return 'webp';
 
-  const extension = url.includes('.') ? url.split('.').pop()?.toLowerCase() : '';
-  return ['xml', 'jpg', 'jpeg', 'pdf', 'png', 'webp'].includes(extension || '') ?
-         (extension === 'jpeg' ? 'jpg' : extension || 'unknown') : 'unknown';
+  const urlWithoutParams = url.split('?')[0];
+  const extension = urlWithoutParams.includes('.') ? urlWithoutParams.split('.').pop() : null;
+
+  if (!extension) return 'unknown';
+
+  const ext = extension.toLowerCase();
+  return ['xml', 'jpg', 'jpeg', 'pdf', 'png', 'webp'].includes(ext) ?
+         (ext === 'jpeg' ? 'jpg' : ext) : 'unknown';
 }
 
 private getContentType(fileExtension: string): string {

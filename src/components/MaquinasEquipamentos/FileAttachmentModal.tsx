@@ -9,7 +9,8 @@ import {
   CheckCircle,
   Loader2,
   FileText,
-  File
+  File,
+  Image as ImageIcon
 } from 'lucide-react';
 import { AttachmentService } from '../../services/attachmentService';
 
@@ -131,41 +132,58 @@ export default function FileAttachmentModal({
     try {
       setLoading(true);
       setMessage(null);
-      
+
       if (!slot.url) {
         throw new Error('URL do arquivo não encontrada');
       }
-      
+
+      console.log('📥 Iniciando download para:', { slotId: slot.id, url: slot.url, fileType: slot.fileType });
+
       const result = await attachmentService.downloadFile(slot.url);
-      
+
+      if (result.error) {
+        console.error('❌ Erro no download:', result.error);
+        throw new Error(result.error);
+      }
+
+      if (!result.data) {
+        console.error('❌ Nenhum dado retornado');
+        throw new Error('Nenhum dado recebido do servidor');
+      }
+
       if (result.data && result.fileType) {
-        // Criar URL temporária
+        console.log('✅ Dados recebidos:', { size: result.data.size, type: result.fileType });
+
         const tempUrl = URL.createObjectURL(result.data);
-        
+
         let extension = 'bin';
         if (result.fileType === 'xml') extension = 'xml';
-        else if (result.fileType === 'jpg') extension = 'jpg';
+        else if (result.fileType === 'jpg' || result.fileType === 'jpeg') extension = 'jpg';
         else if (result.fileType === 'pdf') extension = 'pdf';
+        else if (result.fileType === 'png') extension = 'png';
+        else if (result.fileType === 'webp') extension = 'webp';
 
-        // Criar link para download
+        const safeLabel = (slot.id || 'arquivo').toLowerCase().replace(/[^a-z0-9]/g, '_');
         const link = document.createElement('a');
         link.href = tempUrl;
-        link.download = `${slot.label.toLowerCase().replace(' ', '_')}_${maquinaId}_${Date.now()}.${extension}`;
-        
+        link.download = `${safeLabel}_${maquinaId}_${Date.now()}.${extension}`;
+
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        
+
         URL.revokeObjectURL(tempUrl);
-        
+
+        console.log('✅ Download concluído');
         setMessage({ type: 'success', text: 'Download iniciado com sucesso!' });
       } else {
-        throw new Error(result.error || 'Erro ao fazer download');
+        throw new Error('Dados inválidos retornados do servidor');
       }
     } catch (error) {
-      setMessage({ 
-        type: 'error', 
-        text: error instanceof Error ? error.message : 'Erro ao fazer download' 
+      console.error('💥 Erro no handleDownload:', error);
+      setMessage({
+        type: 'error',
+        text: error instanceof Error ? error.message : 'Erro ao fazer download'
       });
     } finally {
       setLoading(false);
