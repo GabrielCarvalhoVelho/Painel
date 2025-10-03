@@ -1,5 +1,6 @@
 // src/components/Estoque/ListaProdutosDesktop.tsx
 import { ProdutoAgrupado } from '../../services/agruparProdutosService';
+import { formatUnitFull } from '../../lib/formatUnit';
 
 type ModalParams = {
   isOpen: boolean;
@@ -55,7 +56,7 @@ export default function ListaProdutosDesktop({
               <div className="text-center">
                 <p className="text-xs text-gray-500">Quantidade</p>
                 <p className="text-lg font-bold text-[#092f20]">
-                  {item.totalEstoque} {item.unidades[0]}
+                  {item.totalEstoque} {formatUnitFull(item.unidades[0])}
                 </p>
               </div>
               <div className="text-center">

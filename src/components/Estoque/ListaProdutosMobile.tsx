@@ -1,5 +1,6 @@
 // src/components/Estoque/ListaProdutosMobile.tsx
 import { ProdutoAgrupado } from '../../services/agruparProdutosService';
+import { formatUnitFull } from '../../lib/formatUnit';
 
 type ModalParams = {
   isOpen: boolean;
@@ -52,7 +53,7 @@ export default function ListaProdutosMobile({
               <div>
                 <p className="text-gray-500">Qtd.</p>
                 <p className="font-bold">
-                  {item.totalEstoque} {item.unidades[0]}
+                  {item.totalEstoque} {formatUnitFull(item.unidades[0])}
                 </p>
               </div>
               <div>
