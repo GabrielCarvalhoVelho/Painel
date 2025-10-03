@@ -57,10 +57,13 @@ export default function FileAttachmentModal({
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeUploadSlot, setActiveUploadSlot] = useState<'primeiro_envio' | 'segundo_envio' | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       setMessage(null);
+      setSelectedFile(null);
+      setActiveUploadSlot(null);
       checkAttachments();
       console.log('🆔 Modal aberto para máquina ID:', maquinaId);
     }
@@ -228,42 +231,39 @@ export default function FileAttachmentModal({
     try {
       setUploadingSlot(activeUploadSlot);
       setMessage(null);
-      
-      // Find the current slot to check if it has an existing file
+
       const currentSlot = fileSlots.find(slot => slot.id === activeUploadSlot);
       const isReplacement = currentSlot?.hasFile || false;
-      
+
       console.log(`📤 ${isReplacement ? 'Replacing' : 'Uploading'} file for slot:`, activeUploadSlot);
 
       const result = await attachmentService.uploadFile(
-        maquinaId, 
+        maquinaId,
         file,
         activeUploadSlot,
       );
-      
+
       if (result.success) {
-        setMessage({ 
-          type: 'success', 
-          text: `Arquivo ${isReplacement ? 'substituído' : 'enviado'} com sucesso!` 
+        setMessage({
+          type: 'success',
+          text: `Arquivo ${isReplacement ? 'substituído' : 'enviado'} com sucesso!`
         });
         await checkAttachments();
       } else {
         throw new Error(result.error || 'Erro ao fazer upload');
       }
-      
+
     } catch (error) {
       console.error('Upload error:', error);
-      setMessage({ 
-        type: 'error', 
-        text: error instanceof Error ? error.message : 'Erro ao processar arquivo' 
+      setMessage({
+        type: 'error',
+        text: error instanceof Error ? error.message : 'Erro ao processar arquivo'
       });
     } finally {
       setUploadingSlot(null);
+      setSelectedFile(null);
       setActiveUploadSlot(null);
-      // Clear input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      event.target.value = '';
     }
   };
 
@@ -404,10 +404,9 @@ export default function FileAttachmentModal({
               {/* Botões de ação quando NÃO tem arquivo */}
               {!slot.hasFile && (
                 <div className="flex flex-col gap-2">
-                  <button
-                    className="flex items-center justify-center gap-2 bg-[#86b646] text-white py-2 rounded hover:bg-[#397738] transition-colors"
-                    onClick={() => handleFileSelect(slot.id, false)}
-                    disabled={uploadingSlot !== null}
+                  <label
+                    htmlFor={`file-input-${slot.id}`}
+                    className="flex items-center justify-center gap-2 bg-[#86b646] text-white py-2 rounded hover:bg-[#397738] transition-colors cursor-pointer"
                   >
                     {uploadingSlot === slot.id ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -415,7 +414,38 @@ export default function FileAttachmentModal({
                       <Upload className="w-4 h-4" />
                     )}
                     {uploadingSlot === slot.id ? 'Enviando...' : 'Anexar Arquivo'}
-                  </button>
+                  </label>
+                  <input
+                    id={`file-input-${slot.id}`}
+                    ref={activeUploadSlot === slot.id ? fileInputRef : null}
+                    type="file"
+                    accept=".xml,.jpg,.jpeg,.pdf,.png,.webp,image/jpeg,image/png,image/webp,application/xml,application/pdf"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setSelectedFile(file);
+                        setActiveUploadSlot(slot.id);
+                        handleFileChange(e);
+                      }
+                    }}
+                    className="hidden"
+                    disabled={uploadingSlot !== null}
+                  />
+                  {selectedFile && activeUploadSlot === slot.id && uploadingSlot !== slot.id && (
+                    <div className="flex flex-col items-center gap-2 py-3 border-2 border-dashed border-[#397738] rounded-lg bg-green-50">
+                      <div className="text-[#397738]">
+                        <Upload className="w-8 h-8" />
+                      </div>
+                      <div className="text-center">
+                        <p className="text-sm font-bold text-[#397738]">
+                          {selectedFile.name}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {selectedFile.type.split('/')[1]?.toUpperCase() || 'Arquivo'} (máx. 10MB)
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -503,14 +533,6 @@ export default function FileAttachmentModal({
           ))}
         </div>
 
-        {/* Input de arquivo oculto */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".xml,.jpg,.jpeg,.pdf,image/jpeg,application/xml,application/pdf"
-          onChange={handleFileChange}
-          className="hidden"
-        />
       </div>
     </div>
   );
