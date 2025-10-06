@@ -4,6 +4,7 @@ import { X, Save, Upload } from 'lucide-react';
 import { EstoqueService } from '../../services/estoqueService';
 import { AuthService } from '../../services/authService';
 import { AttachmentProductService } from '../../services/attachmentProductService';
+import { formatCurrencyInput, unformatCurrency, centsToDecimal } from '../../lib/currencyFormatter';
 
 interface Props {
   isOpen: boolean;
@@ -19,6 +20,7 @@ export default function FormProdutoModal({ isOpen, onClose, onCreated }: Props) 
     unidade: '',
     quantidade: '',
     valor: '',
+    valorDisplay: 'R$ 0,00',
     lote: '',
     validade: '',
     fornecedor: '',
@@ -31,7 +33,16 @@ export default function FormProdutoModal({ isOpen, onClose, onCreated }: Props) 
   if (!isOpen) return null;
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    if (field === 'valor') {
+      const result = formatCurrencyInput(value);
+      setFormData((prev) => ({
+        ...prev,
+        valor: result.numeric.toString(),
+        valorDisplay: result.formatted
+      }));
+    } else {
+      setFormData((prev) => ({ ...prev, [field]: value }));
+    }
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: '' }));
   };
 
@@ -186,13 +197,20 @@ export default function FormProdutoModal({ isOpen, onClose, onCreated }: Props) 
           <div>
             <label className="block text-sm font-medium mb-1">Valor unitário (opcional)</label>
             <input
-              type="number"
-              step="0.01"
-              value={formData.valor}
+              type="text"
+              inputMode="numeric"
+              value={formData.valorDisplay}
               onChange={(e) => handleInputChange('valor', e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg border-gray-300"
-              placeholder="Ex.: 120,00"
+              onFocus={(e) => {
+                // Se o valor for R$ 0,00, limpa ao focar
+                if (formData.valorDisplay === 'R$ 0,00') {
+                  e.target.select();
+                }
+              }}
+              className="w-full px-3 py-2 border rounded-lg border-gray-300 font-medium"
+              placeholder="R$ 0,00"
             />
+            <p className="text-xs text-gray-500 mt-1">Digite apenas os números. Ex: 12000 = R$ 120,00</p>
           </div>
 
           {/* Lote e Validade */}
