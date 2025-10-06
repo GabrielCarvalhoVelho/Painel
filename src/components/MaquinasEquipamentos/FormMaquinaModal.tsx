@@ -3,6 +3,7 @@ import { X, Save, Upload } from 'lucide-react';
 import { MaquinaService } from '../../services/maquinaService';
 import { AuthService } from '../../services/authService';
 import { AttachmentService } from '../../services/attachmentService';
+import { formatCurrencyInput } from '../../lib/currencyFormatter';
 
 interface Props {
   isOpen: boolean;
@@ -17,6 +18,7 @@ export default function FormMaquinaModal({ isOpen, onClose, onCreated }: Props) 
     categoria: '',
     horimetro_atual: '',
     valor_compra: '',
+    valor_compra_display: 'R$ 0,00',
     data_compra: '',
     fornecedor: '',
     numero_serie: '',
@@ -30,7 +32,16 @@ export default function FormMaquinaModal({ isOpen, onClose, onCreated }: Props) 
   if (!isOpen) return null;
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    if (field === 'valor_compra') {
+      const result = formatCurrencyInput(value);
+      setFormData((prev) => ({
+        ...prev,
+        valor_compra: result.numeric.toString(),
+        valor_compra_display: result.formatted
+      }));
+    } else {
+      setFormData((prev) => ({ ...prev, [field]: value }));
+    }
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: '' }));
   };
 
@@ -253,13 +264,19 @@ export default function FormMaquinaModal({ isOpen, onClose, onCreated }: Props) 
           <div>
             <label className="block text-sm font-medium mb-1">Valor de compra (opcional)</label>
             <input
-              type="number"
-              step="0.01"
-              value={formData.valor_compra}
+              type="text"
+              inputMode="numeric"
+              value={formData.valor_compra_display}
               onChange={(e) => handleInputChange('valor_compra', e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg border-gray-300"
-              placeholder="Ex.: 250000,00"
+              onFocus={(e) => {
+                if (formData.valor_compra_display === 'R$ 0,00') {
+                  e.target.select();
+                }
+              }}
+              className="w-full px-3 py-2 border rounded-lg border-gray-300 font-medium"
+              placeholder="R$ 0,00"
             />
+            <p className="text-xs text-gray-500 mt-1">Digite apenas os números. Ex: 25000000 = R$ 250.000,00</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
