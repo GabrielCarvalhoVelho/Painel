@@ -53,32 +53,83 @@ export class AttachmentService {
         .single();
 
       if (error) {
-        console.error('Erro ao buscar grupo de anexo:', error);
+        console.error('❌ Erro ao buscar grupo de anexo:', {
+          error,
+          transactionId
+        });
         return null;
       }
 
+      console.log('📊 Informações do grupo obtidas:', {
+        transactionId,
+        id_grupo_anexo: data.id_grupo_anexo,
+        id_transacao_pai: data.id_transacao_pai,
+        numero_parcelas: data.numero_parcelas,
+        has_shared_url: !!data.anexo_compartilhado_url
+      });
+
       return data;
     } catch (error) {
-      console.error('Erro ao buscar informações do grupo:', error);
+      console.error('💥 Erro ao buscar informações do grupo:', {
+        error: error instanceof Error ? error.message : error,
+        transactionId
+      });
       return null;
     }
   }
 
   /**
    * Retorna o ID usado para nomear o arquivo no storage
-   * Para parcelas: usa id_grupo_anexo
-   * Para transações individuais: usa id_transacao
+   * Prioridade:
+   * 1. Se existe anexo_compartilhado_url, extrai o ID do arquivo da URL
+   * 2. Se não, usa id_grupo_anexo para parcelas
+   * 3. Caso contrário, usa id_transacao para transações individuais
    */
   private static async getStorageFileId(transactionId: string): Promise<string> {
     const groupInfo = await this.getTransactionAttachmentGroup(transactionId);
 
+    // Prioridade 1: Se já existe URL compartilhada, extrair o ID do arquivo dela
+    if (groupInfo?.anexo_compartilhado_url) {
+      const fileId = this.extractFileIdFromUrl(groupInfo.anexo_compartilhado_url);
+      if (fileId) {
+        console.log('🔗 Usando ID extraído da URL compartilhada:', fileId);
+        return fileId;
+      }
+    }
+
+    // Prioridade 2: Usar id_grupo_anexo se disponível
     if (groupInfo?.id_grupo_anexo) {
       console.log('📦 Usando ID do grupo de anexo:', groupInfo.id_grupo_anexo);
       return groupInfo.id_grupo_anexo;
     }
 
+    // Prioridade 3: Usar o ID da própria transação
     console.log('📄 Usando ID da transação individual:', transactionId);
     return transactionId;
+  }
+
+  /**
+   * Extrai o ID do arquivo de uma URL do Supabase Storage
+   * Exemplo: https://.../notas_fiscais/88a47ce1-baaa-463c-afe7-5d90c8186625.jpg
+   * Retorna: 88a47ce1-baaa-463c-afe7-5d90c8186625
+   */
+  private static extractFileIdFromUrl(url: string): string | null {
+    try {
+      // Remove query parameters
+      const urlWithoutParams = url.split('?')[0];
+
+      // Extract filename from URL
+      const parts = urlWithoutParams.split('/');
+      const filename = parts[parts.length - 1];
+
+      // Remove extension
+      const fileId = filename.replace(/\.[^/.]+$/, '');
+
+      return fileId || null;
+    } catch (error) {
+      console.error('❌ Erro ao extrair ID do arquivo da URL:', error);
+      return null;
+    }
   }
 
   /**
@@ -182,24 +233,40 @@ export class AttachmentService {
   private static async checkFileExistsByUrl(transactionId: string): Promise<boolean> {
     try {
       console.log('🔗 Verificando arquivo por URL pública...');
-      const fileName = `${transactionId}.jpg`;
-      
+
+      // IMPORTANTE: Usar o ID correto do storage (grupo ou transação individual)
+      const fileId = await this.getStorageFileId(transactionId);
+      const fileName = `${fileId}.jpg`;
+
+      console.log('📦 Verificando arquivo:', fileName, '(ID original:', transactionId + ')');
+
       const { data } = supabaseServiceRole.storage
         .from(this.BUCKET_NAME)
         .getPublicUrl(fileName);
 
       if (!data?.publicUrl) {
+        console.log('❌ Não foi possível gerar URL pública');
         return false;
       }
 
       // Fazer requisição HEAD para verificar se arquivo existe
-      const response = await fetch(data.publicUrl, { 
+      const response = await fetch(data.publicUrl, {
         method: 'HEAD',
         cache: 'no-cache'
       });
-      
+
       const exists = response.ok;
       console.log('🌐 Verificação por URL:', exists ? '✅ Existe' : '❌ Não existe');
+
+      if (!exists) {
+        console.log('⚠️ Arquivo não encontrado:', {
+          fileId,
+          fileName,
+          transactionId,
+          url: data.publicUrl
+        });
+      }
+
       return exists;
     } catch (error) {
       console.error('💥 Erro na verificação por URL:', error);
@@ -215,7 +282,14 @@ export class AttachmentService {
       console.log('⬇️ Fazendo download do anexo:', transactionId);
       const fileId = await this.getStorageFileId(transactionId);
       const fileName = `${fileId}.jpg`;
-      
+
+      console.log('📦 Resolvido ID do arquivo:', {
+        transactionId,
+        fileId,
+        fileName,
+        isGroup: fileId !== transactionId
+      });
+
       // Tentar primeiro com service role
       let { data, error } = await supabaseServiceRole.storage
         .from(this.BUCKET_NAME)
@@ -232,7 +306,12 @@ export class AttachmentService {
       }
 
       if (error) {
-        console.error('❌ Erro no download:', error);
+        console.error('❌ Erro no download:', {
+          error,
+          fileName,
+          fileId,
+          transactionId
+        });
         // Tentar download via URL pública
         await this.downloadViaPublicUrl(transactionId);
         return;
@@ -269,7 +348,13 @@ export class AttachmentService {
       console.log('🔗 Tentando download via URL pública...');
       const fileId = await this.getStorageFileId(transactionId);
       const fileName = `${fileId}.jpg`;
-      
+
+      console.log('📦 Usando fileId para URL pública:', {
+        transactionId,
+        fileId,
+        fileName
+      });
+
       const { data } = supabaseServiceRole.storage
         .from(this.BUCKET_NAME)
         .getPublicUrl(fileName);
@@ -278,10 +363,17 @@ export class AttachmentService {
         throw new Error('Não foi possível obter URL pública');
       }
 
+      console.log('🔗 URL pública gerada:', data.publicUrl);
+
       // Fazer download via fetch
       const response = await fetch(data.publicUrl);
       if (!response.ok) {
-        throw new Error(`Erro HTTP: ${response.status}`);
+        console.error('❌ Falha na requisição HTTP:', {
+          status: response.status,
+          statusText: response.statusText,
+          url: data.publicUrl
+        });
+        throw new Error(`Erro HTTP: ${response.status} - ${response.statusText}`);
       }
 
       const blob = await response.blob();
@@ -296,7 +388,10 @@ export class AttachmentService {
       
       console.log('✅ Download via URL pública concluído');
     } catch (error) {
-      console.error('💥 Erro no download via URL:', error);
+      console.error('💥 Erro no download via URL:', {
+        error: error instanceof Error ? error.message : error,
+        transactionId
+      });
       throw error;
     }
   }
