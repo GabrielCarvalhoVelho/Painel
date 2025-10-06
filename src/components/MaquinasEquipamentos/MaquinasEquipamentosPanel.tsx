@@ -9,6 +9,7 @@ import FormMaquinaModal from './FormMaquinaModal';
 import MaquinasEquipamentosHeaderMobile from './MaquinasEquipamentosHeaderMobile';
 import MaquinasEquipamentosListMobile from './MaquinasEquipamentosListMobile';
 import { MaquinasEquipamentos } from '../../lib/supabase';
+import { formatCurrency } from '../../lib/currencyFormatter';
 
 
 export default function MaquinasEquipamentosPanel() {
@@ -191,7 +192,7 @@ export default function MaquinasEquipamentosPanel() {
           <div className="bg-[#8fa49d]/10 p-6 rounded-lg">
             <p>Valor Total</p>
             <p className="text-3xl font-bold">
-              R$ {custoTotal.toLocaleString()}
+              {formatCurrency(custoTotal)}
             </p>
           </div>
           <div className="bg-[#397738]/10 p-6 rounded-lg border-2 border-dashed border-[#397738]/30">

@@ -1,4 +1,5 @@
 import React from "react";
+import { formatCurrency } from '../../lib/currencyFormatter';
 
 interface Props {
   numeroMaquinas: number;
@@ -23,9 +24,8 @@ export default function MaquinasEquipamentosHeaderMobile({ numeroMaquinas, custo
 
           <div className="bg-[#8fa49d]/10 p-4 rounded-lg text-center">
             <p className="text-xs text-gray-600">Valor Total</p>
-            <p className="text-xl font-bold text-[#092f20] flex items-baseline justify-center gap-1">
-              <span className="text-base">R$</span>
-              <span>{custoTotal.toLocaleString('pt-BR')}</span>
+            <p className="text-xl font-bold text-[#092f20]">
+              {formatCurrency(custoTotal)}
             </p>
           </div>
 
