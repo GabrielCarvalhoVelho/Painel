@@ -306,12 +306,6 @@ export default function AttachmentModal({
             <div>
               <h3 className="text-lg font-semibold text-[#092f20]">Gerenciar Anexos</h3>
               <p className="text-sm text-gray-600 truncate max-w-48">{transactionDescription}</p>
-              {groupInfo?.tem_grupo && (
-                <p className="text-xs text-blue-600 mt-1">
-                  🔗 Anexo compartilhado - {groupInfo.numero_parcelas} parcela{groupInfo.numero_parcelas > 1 ? 's' : ''}
-                  {groupInfo.parcela_atual && ` (atual: ${groupInfo.parcela_atual})`}
-                </p>
-              )}
             </div>
           </div>
           <button
@@ -371,11 +365,6 @@ export default function AttachmentModal({
           {/* Se houver imagem */}
           {attachments.find(a => a.type === 'image') && (
             <div className="flex flex-col items-center gap-2 bg-gray-50 p-3 rounded-lg border">
-              {groupInfo?.tem_grupo && (
-                <div className="w-full mb-2 px-2 py-1 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700 text-center">
-                  📎 Anexo compartilhado entre {groupInfo.numero_parcelas} parcela{groupInfo.numero_parcelas > 1 ? 's' : ''}
-                </div>
-              )}
               <img
                 src={attachments.find(a => a.type === 'image')?.url}
                 alt="Imagem anexada"
