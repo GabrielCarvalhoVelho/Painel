@@ -76,6 +76,7 @@ export interface TransacaoFinanceira {
   numero_parcelas?: number;
   id_transacao_pai?: string;
   anexo_compartilhado_url?: string;
+  anexo_arquivo_url?: string;
   id_grupo_anexo?: string;
   parcela_com_anexo_original?: boolean;
 }

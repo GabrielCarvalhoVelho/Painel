@@ -28,7 +28,7 @@ interface TransactionGroupInfo {
 
 export type AttachmentFile = {
   url: string;
-  type: 'image' | 'pdf';
+  type: 'image' | 'pdf' | 'xml' | 'file';
   name: string;
 };
 
@@ -39,23 +39,25 @@ export default function AttachmentModal({
   transactionDescription
 }: AttachmentModalProps) {
   const [confirmState, setConfirmState] = useState<{
-    type: 'delete-image' | 'delete-pdf' | 'replace-image' | 'replace-pdf' | null;
+    type: 'delete-image' | 'delete-file' | 'replace-image' | 'replace-file' | null;
     onConfirm?: () => void;
   }>({ type: null });
   const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [groupInfo, setGroupInfo] = useState<TransactionGroupInfo | null>(null);
-  const [imageKey, setImageKey] = useState<number>(Date.now()); // Key para forçar re-render da imagem
+  const [imageKey, setImageKey] = useState<number>(Date.now());
+  const [fileKey, setFileKey] = useState<number>(Date.now());
   const imageInputRef = useRef<HTMLInputElement>(null);
-  const pdfInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
       setAttachments([]);
       setMessage(null);
       setGroupInfo(null);
-      setImageKey(Date.now()); // Reset image key ao abrir modal
+      setImageKey(Date.now());
+      setFileKey(Date.now());
       loadTransactionInfo();
       checkAttachments();
       console.log('🆔 Modal aberto para transação ID:', transactionId);
@@ -94,26 +96,38 @@ export default function AttachmentModal({
       setLoading(true);
       console.log('🔄 Verificando anexos para transação:', transactionId, forceRefresh ? '(refresh forçado)' : '');
 
-      const imageExists = await AttachmentService.hasAttachment(transactionId);
-      console.log('📸 Imagem existe?', imageExists);
       const files: AttachmentFile[] = [];
 
+      const imageExists = await AttachmentService.hasAttachment(transactionId);
+      console.log('📸 Imagem existe?', imageExists);
+
       if (imageExists) {
-        // Forçar refresh da URL quando solicitado (após substituição)
         const imageUrl = await AttachmentService.getAttachmentUrl(transactionId, forceRefresh);
-        console.log('🔗 URL obtida:', imageUrl);
+        console.log('🔗 URL da imagem obtida:', imageUrl);
         if (imageUrl) {
           files.push({
             url: imageUrl,
             type: 'image',
             name: `${transactionId}.jpg`
           });
-          console.log('✅ Arquivo adicionado à lista:', files);
-        } else {
-          console.warn('⚠️ URL não foi gerada apesar do arquivo existir');
         }
-      } else {
-        console.log('❌ Nenhum anexo encontrado para esta transação');
+      }
+
+      const fileExists = await AttachmentService.hasFileAttachment(transactionId);
+      console.log('📄 Arquivo existe?', fileExists);
+
+      if (fileExists) {
+        const fileUrl = await AttachmentService.getFileAttachmentUrl(transactionId, forceRefresh);
+        console.log('🔗 URL do arquivo obtida:', fileUrl);
+        if (fileUrl) {
+          const fileType = fileUrl.includes('.pdf') ? 'pdf' : fileUrl.includes('.xml') ? 'xml' : 'file';
+          const extension = fileType === 'pdf' ? 'pdf' : fileType === 'xml' ? 'xml' : 'file';
+          files.push({
+            url: fileUrl,
+            type: fileType as 'pdf' | 'xml' | 'file',
+            name: `${transactionId}.${extension}`
+          });
+        }
       }
 
       console.log('📋 Total de anexos encontrados:', files.length);
@@ -126,14 +140,18 @@ export default function AttachmentModal({
     }
   };
 
-  const handleDownload = async (type: 'image' | 'pdf') => {
+  const handleDownload = async (type: 'image' | 'file') => {
     try {
       setLoading(true);
       setMessage(null);
 
       console.log('📥 Iniciando download:', { transactionId, type });
 
-      await AttachmentService.downloadAttachment(transactionId);
+      if (type === 'image') {
+        await AttachmentService.downloadAttachment(transactionId);
+      } else {
+        await AttachmentService.downloadFileAttachment(transactionId);
+      }
 
       console.log('✅ Download concluído com sucesso');
       setMessage({ type: 'success', text: 'Download iniciado com sucesso!' });
@@ -162,17 +180,17 @@ export default function AttachmentModal({
     }
   };
 
-  const handlePdfSelect = (isReplace = false) => {
+  const handleFileSelect = (isReplace = false) => {
     if (isReplace) {
       setConfirmState({
-        type: 'replace-pdf',
+        type: 'replace-file',
         onConfirm: () => {
           setConfirmState({ type: null });
-          pdfInputRef.current?.click();
+          fileInputRef.current?.click();
         }
       });
     } else {
-      pdfInputRef.current?.click();
+      fileInputRef.current?.click();
     }
   };
 
@@ -219,19 +237,42 @@ export default function AttachmentModal({
     }
   };
 
-  const handlePdfChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+
+    const isReplacing = attachments.some(a => a.type === 'pdf' || a.type === 'xml' || a.type === 'file');
+
     try {
       setLoading(true);
       setMessage(null);
-      setMessage({ type: 'error', text: 'Upload de PDF não implementado ainda.' });
-      await checkAttachments();
+      console.log('📤 Iniciando upload do arquivo...', isReplacing ? '(substituição)' : '(novo)');
+
+      AttachmentService.validateFile(file);
+
+      if (isReplacing) {
+        await AttachmentService.replaceFileAttachment(transactionId, file);
+        console.log('✅ Arquivo substituído com sucesso');
+      } else {
+        await AttachmentService.uploadFileAttachment(transactionId, file);
+        console.log('✅ Novo arquivo carregado com sucesso');
+      }
+
+      setFileKey(Date.now());
+
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      console.log('🔄 Recarregando lista de anexos...');
+      await checkAttachments(true);
+
+      const successMessage = isReplacing ? 'Arquivo substituído com sucesso!' : 'Arquivo salvo com sucesso!';
+      setMessage({ type: 'success', text: successMessage });
     } catch (error) {
+      console.error('❌ Erro no upload:', error);
       setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Erro ao processar arquivo' });
     } finally {
       setLoading(false);
-      if (pdfInputRef.current) pdfInputRef.current.value = '';
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -262,15 +303,23 @@ export default function AttachmentModal({
     });
   };
 
-  const handleDeletePdf = () => {
+  const handleDeleteFile = () => {
+    const mensagemConfirmacao = groupInfo?.tem_grupo
+      ? `Atenção: Este anexo é compartilhado com ${groupInfo.numero_parcelas} parcela${groupInfo.numero_parcelas > 1 ? 's' : ''}. Ao confirmar, o arquivo será excluído de forma definitiva do Painel da Fazenda e do nosso banco de dados, afetando todas as parcelas. Deseja continuar?`
+      : 'Atenção: ao confirmar, o arquivo será excluído de forma definitiva do Painel da Fazenda e do nosso banco de dados. Deseja continuar?';
+
     setConfirmState({
-      type: 'delete-pdf',
+      type: 'delete-file',
       onConfirm: async () => {
         setConfirmState({ type: null });
         try {
           setLoading(true);
           setMessage(null);
-          setMessage({ type: 'error', text: 'Exclusão de PDF não implementada ainda.' });
+          await AttachmentService.deleteFileAttachment(transactionId);
+          const mensagemSucesso = groupInfo?.tem_grupo
+            ? `Arquivo excluído de todas as ${groupInfo.numero_parcelas} parcelas!`
+            : 'Arquivo excluído!';
+          setMessage({ type: 'success', text: mensagemSucesso });
           await checkAttachments();
         } catch (error) {
           setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Erro ao excluir arquivo' });
@@ -370,13 +419,13 @@ export default function AttachmentModal({
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg> Anexar Imagem
               </button>
             )}
-            {!attachments.find(a => a.type === 'pdf') && (
+            {!attachments.find(a => a.type === 'pdf' || a.type === 'xml' || a.type === 'file') && (
               <button
                 className="flex items-center justify-center gap-2 bg-[#397738] text-white py-2 rounded hover:bg-[#86b646] transition-colors"
-                onClick={() => handlePdfSelect(false)}
+                onClick={() => handleFileSelect(false)}
                 disabled={loading}
               >
-                <FileText className="w-5 h-5" /> Anexar Arquivo
+                <FileText className="w-5 h-5" /> Anexar Arquivo (PDF/XML)
               </button>
             )}
           </div>
@@ -420,17 +469,23 @@ export default function AttachmentModal({
             </div>
           )}
 
-          {/* Se houver PDF */}
-          {attachments.find(a => a.type === 'pdf') && (
+          {/* Se houver arquivo (PDF, XML) */}
+          {attachments.find(a => a.type === 'pdf' || a.type === 'xml' || a.type === 'file') && (
             <div className="flex flex-col items-center gap-2 bg-gray-50 p-3 rounded-lg border">
               <div className="flex items-center gap-2 mb-2">
                 <FileText className="w-5 h-5 text-red-600" />
-                <span className="font-medium">PDF anexado</span>
+                <span className="font-medium">
+                  {attachments.find(a => a.type === 'pdf')
+                    ? 'PDF anexado'
+                    : attachments.find(a => a.type === 'xml')
+                    ? 'XML anexado'
+                    : 'Arquivo anexado'}
+                </span>
               </div>
               <div className="flex gap-2 mb-2">
                 <button
                   className="bg-[#f3f4f6] text-[#092f20] px-2 py-1 rounded hover:bg-[#e5e7eb] flex items-center gap-1 transition-colors"
-                  onClick={() => handleDownload('pdf')}
+                  onClick={() => handleDownload('file')}
                   disabled={loading}
                 >
                   <Download className="w-4 h-4" /> Download
@@ -439,14 +494,14 @@ export default function AttachmentModal({
               <div className="flex gap-2">
                 <button
                   className="bg-[#eaf4ec] text-[#092f20] px-3 py-1 rounded hover:bg-[#d3e7d8] flex items-center gap-1 transition-colors"
-                  onClick={() => handlePdfSelect(true)}
+                  onClick={() => handleFileSelect(true)}
                   disabled={loading}
                 >
                   <Upload className="w-4 h-4" /> Substituir Arquivo
                 </button>
                 <button
                   className="bg-[#ffeaea] text-[#b71c1c] px-3 py-1 rounded hover:bg-[#ffd6d6] flex items-center gap-1 transition-colors"
-                  onClick={handleDeletePdf}
+                  onClick={handleDeleteFile}
                   disabled={loading}
                 >
                   <Trash2 className="w-4 h-4" /> Excluir Arquivo
@@ -465,10 +520,10 @@ export default function AttachmentModal({
           className="hidden"
         />
         <input
-          ref={pdfInputRef}
+          ref={fileInputRef}
           type="file"
-          accept="application/pdf"
-          onChange={handlePdfChange}
+          accept="application/pdf,application/xml,text/xml"
+          onChange={handleFileChange}
           className="hidden"
         />
       </div>

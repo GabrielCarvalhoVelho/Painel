@@ -35,6 +35,8 @@ interface AttachmentInfo {
 
 export class AttachmentService {
   private static readonly BUCKET_NAME = 'notas_fiscais';
+  private static readonly IMAGE_FOLDER = 'imagens';
+  private static readonly FILE_FOLDER = 'arquivos';
 
   /**
    * Busca informações do grupo de anexo de uma transação
@@ -43,12 +45,13 @@ export class AttachmentService {
     id_grupo_anexo: string | null;
     id_transacao_pai: string | null;
     anexo_compartilhado_url: string | null;
+    anexo_arquivo_url: string | null;
     numero_parcelas: number;
   } | null> {
     try {
       const { data, error } = await supabase
         .from('transacoes_financeiras')
-        .select('id_grupo_anexo, id_transacao_pai, anexo_compartilhado_url, numero_parcelas')
+        .select('id_grupo_anexo, id_transacao_pai, anexo_compartilhado_url, anexo_arquivo_url, numero_parcelas')
         .eq('id_transacao', transactionId)
         .single();
 
@@ -65,7 +68,8 @@ export class AttachmentService {
         id_grupo_anexo: data.id_grupo_anexo,
         id_transacao_pai: data.id_transacao_pai,
         numero_parcelas: data.numero_parcelas,
-        has_shared_url: !!data.anexo_compartilhado_url
+        has_shared_url: !!data.anexo_compartilhado_url,
+        has_arquivo_url: !!data.anexo_arquivo_url
       });
 
       return data;
@@ -219,58 +223,11 @@ export class AttachmentService {
 
       // Método 2: Se não encontrou na lista, tentar verificar por URL direta
       console.log('🔄 Arquivo não encontrado na lista, tentando verificação por URL...');
-      return await this.checkFileExistsByUrl(transactionId);
+      return await this.checkFileExistsByUrl(transactionId, false);
     } catch (error) {
       console.error('💥 Erro ao verificar anexo:', error);
       // Fallback final: tentar verificar por URL
-      return await this.checkFileExistsByUrl(transactionId);
-    }
-  }
-
-  /**
-   * Verifica se arquivo existe tentando acessar a URL pública
-   */
-  private static async checkFileExistsByUrl(transactionId: string): Promise<boolean> {
-    try {
-      console.log('🔗 Verificando arquivo por URL pública...');
-
-      // IMPORTANTE: Usar o ID correto do storage (grupo ou transação individual)
-      const fileId = await this.getStorageFileId(transactionId);
-      const fileName = `${fileId}.jpg`;
-
-      console.log('📦 Verificando arquivo:', fileName, '(ID original:', transactionId + ')');
-
-      const { data } = supabaseServiceRole.storage
-        .from(this.BUCKET_NAME)
-        .getPublicUrl(fileName);
-
-      if (!data?.publicUrl) {
-        console.log('❌ Não foi possível gerar URL pública');
-        return false;
-      }
-
-      // Fazer requisição HEAD para verificar se arquivo existe
-      const response = await fetch(data.publicUrl, {
-        method: 'HEAD',
-        cache: 'no-cache'
-      });
-
-      const exists = response.ok;
-      console.log('🌐 Verificação por URL:', exists ? '✅ Existe' : '❌ Não existe');
-
-      if (!exists) {
-        console.log('⚠️ Arquivo não encontrado:', {
-          fileId,
-          fileName,
-          transactionId,
-          url: data.publicUrl
-        });
-      }
-
-      return exists;
-    } catch (error) {
-      console.error('💥 Erro na verificação por URL:', error);
-      return false;
+      return await this.checkFileExistsByUrl(transactionId, false);
     }
   }
 
@@ -766,6 +723,522 @@ export class AttachmentService {
     }
 
     return true;
+  }
+
+  /**
+   * Valida se o arquivo é um tipo aceito (PDF, XML)
+   */
+  static validateFile(file: File): boolean {
+    const validTypes = ['application/pdf', 'application/xml', 'text/xml'];
+    const maxSize = 10 * 1024 * 1024; // 10MB
+
+    if (!validTypes.includes(file.type)) {
+      throw new Error('Tipo de arquivo não suportado. Use PDF ou XML.');
+    }
+
+    if (file.size > maxSize) {
+      throw new Error('Arquivo muito grande. Tamanho máximo: 10MB.');
+    }
+
+    return true;
+  }
+
+  /**
+   * Retorna o ID usado para nomear arquivos (PDF, XML) no storage
+   */
+  private static async getStorageFileIdForFile(transactionId: string): Promise<string> {
+    const groupInfo = await this.getTransactionAttachmentGroup(transactionId);
+
+    if (groupInfo?.anexo_arquivo_url) {
+      const fileId = this.extractFileIdFromUrl(groupInfo.anexo_arquivo_url);
+      if (fileId) {
+        console.log('🔗 Usando ID extraído da URL de arquivo compartilhada:', fileId);
+        return fileId;
+      }
+    }
+
+    if (groupInfo?.id_grupo_anexo) {
+      console.log('📦 Usando ID do grupo de anexo para arquivo:', groupInfo.id_grupo_anexo);
+      return groupInfo.id_grupo_anexo;
+    }
+
+    console.log('📄 Usando ID da transação individual para arquivo:', transactionId);
+    return transactionId;
+  }
+
+  /**
+   * Detecta a extensão do arquivo baseado no tipo MIME
+   */
+  private static getFileExtension(file: File): string {
+    if (file.type === 'application/pdf') return 'pdf';
+    if (file.type === 'application/xml' || file.type === 'text/xml') return 'xml';
+
+    const nameParts = file.name.split('.');
+    if (nameParts.length > 1) {
+      const ext = nameParts[nameParts.length - 1].toLowerCase();
+      if (['pdf', 'xml'].includes(ext)) return ext;
+    }
+
+    return 'pdf';
+  }
+
+  /**
+   * Verifica se existe um arquivo anexado para uma transação
+   */
+  static async hasFileAttachment(transactionId: string): Promise<boolean> {
+    try {
+      console.log('🔍 Verificando arquivo para transação:', transactionId);
+
+      const groupInfo = await this.getTransactionAttachmentGroup(transactionId);
+      if (groupInfo?.anexo_arquivo_url) {
+        console.log('✅ Arquivo compartilhado encontrado no banco de dados');
+        return true;
+      }
+
+      const fileId = await this.getStorageFileIdForFile(transactionId);
+
+      const pdfFileName = `${this.FILE_FOLDER}/${fileId}.pdf`;
+      const xmlFileName = `${this.FILE_FOLDER}/${fileId}.xml`;
+
+      let { data, error } = await supabaseServiceRole.storage
+        .from(this.BUCKET_NAME)
+        .list(this.FILE_FOLDER, {
+          limit: 1000,
+          search: fileId
+        });
+
+      if (error) {
+        console.log('⚠️ Erro com service role, tentando cliente normal...');
+        const result = await supabase.storage
+          .from(this.BUCKET_NAME)
+          .list(this.FILE_FOLDER, {
+            limit: 1000,
+            search: fileId
+          });
+        data = result.data;
+        error = result.error;
+      }
+
+      if (error) {
+        console.error('❌ Erro ao listar arquivos:', error);
+        return await this.checkFileExistsByUrl(transactionId, true);
+      }
+
+      const hasFile = data && data.some(file =>
+        file.name === `${fileId}.pdf` || file.name === `${fileId}.xml`
+      );
+
+      console.log('📁 Resultado da busca de arquivo:', {
+        encontrado: hasFile,
+        arquivosProcurados: [pdfFileName, xmlFileName],
+        arquivosEncontrados: data?.map(f => f.name).join(', ') || 'nenhum'
+      });
+
+      if (hasFile) {
+        return true;
+      }
+
+      console.log('🔄 Arquivo não encontrado na lista, tentando verificação por URL...');
+      return await this.checkFileExistsByUrl(transactionId, true);
+    } catch (error) {
+      console.error('💥 Erro ao verificar arquivo:', error);
+      return await this.checkFileExistsByUrl(transactionId, true);
+    }
+  }
+
+  /**
+   * Verifica se arquivo existe tentando acessar a URL pública
+   */
+  private static async checkFileExistsByUrl(transactionId: string, isFile: boolean = false): Promise<boolean> {
+    try {
+      console.log(`🔗 Verificando ${isFile ? 'arquivo' : 'imagem'} por URL pública...`);
+
+      const fileId = isFile
+        ? await this.getStorageFileIdForFile(transactionId)
+        : await this.getStorageFileId(transactionId);
+
+      const extensions = isFile ? ['pdf', 'xml'] : ['jpg'];
+
+      for (const ext of extensions) {
+        const folder = isFile ? this.FILE_FOLDER : '';
+        const fileName = folder ? `${folder}/${fileId}.${ext}` : `${fileId}.${ext}`;
+
+        console.log(`📦 Verificando arquivo: ${fileName}`);
+
+        const { data } = supabaseServiceRole.storage
+          .from(this.BUCKET_NAME)
+          .getPublicUrl(fileName);
+
+        if (!data?.publicUrl) continue;
+
+        const response = await fetch(data.publicUrl, {
+          method: 'HEAD',
+          cache: 'no-cache'
+        });
+
+        if (response.ok) {
+          console.log(`✅ ${isFile ? 'Arquivo' : 'Imagem'} encontrado: ${fileName}`);
+          return true;
+        }
+      }
+
+      console.log(`❌ Nenhum ${isFile ? 'arquivo' : 'imagem'} encontrado`);
+      return false;
+    } catch (error) {
+      console.error('💥 Erro na verificação por URL:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Faz upload de um arquivo (PDF ou XML)
+   */
+  static async uploadFileAttachment(transactionId: string, file: File): Promise<boolean> {
+    try {
+      console.log('⬆️ Fazendo upload do arquivo:', transactionId);
+      console.log('📁 Arquivo original:', file.name, file.size, file.type);
+
+      this.validateFile(file);
+
+      const fileId = await this.getStorageFileIdForFile(transactionId);
+      const ext = this.getFileExtension(file);
+      const fileName = `${this.FILE_FOLDER}/${fileId}.${ext}`;
+
+      console.log('📦 Usando ID de arquivo:', fileId, 'extensão:', ext);
+
+      let { data, error } = await supabaseServiceRole.storage
+        .from(this.BUCKET_NAME)
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: true,
+          contentType: file.type
+        });
+
+      if (error) {
+        console.log('⚠️ Tentativa com service role falhou, tentando com cliente normal...');
+        const result = await supabase.storage
+          .from(this.BUCKET_NAME)
+          .upload(fileName, file, {
+            cacheControl: '3600',
+            upsert: true,
+            contentType: file.type
+          });
+        data = result.data;
+        error = result.error;
+      }
+
+      if (error) {
+        console.error('❌ Erro no upload:', error);
+
+        if (error.message.includes('row-level security') || error.message.includes('RLS')) {
+          throw new Error('Erro de permissão: Configure as políticas RLS do bucket ou use a chave de serviço');
+        }
+
+        throw new Error(`Erro ao fazer upload: ${error.message}`);
+      }
+
+      console.log('✅ Upload concluído:', data);
+
+      const publicUrl = await this.getFileAttachmentUrl(transactionId);
+      if (publicUrl) {
+        await this.updateFileAttachmentUrl(transactionId, publicUrl);
+      }
+
+      return true;
+    } catch (error) {
+      console.error('💥 Erro no upload de arquivo:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Substitui um arquivo existente
+   */
+  static async replaceFileAttachment(transactionId: string, file: File): Promise<boolean> {
+    try {
+      console.log('🔄 Substituindo arquivo:', transactionId);
+
+      this.validateFile(file);
+
+      const fileId = await this.getStorageFileIdForFile(transactionId);
+      const ext = this.getFileExtension(file);
+      const fileName = `${this.FILE_FOLDER}/${fileId}.${ext}`;
+
+      let { data, error } = await supabaseServiceRole.storage
+        .from(this.BUCKET_NAME)
+        .update(fileName, file, {
+          cacheControl: '3600',
+          contentType: file.type
+        });
+
+      if (error) {
+        console.log('⚠️ Tentativa com service role falhou, tentando com cliente normal...');
+        const result = await supabase.storage
+          .from(this.BUCKET_NAME)
+          .update(fileName, file, {
+            cacheControl: '3600',
+            contentType: file.type
+          });
+        data = result.data;
+        error = result.error;
+      }
+
+      if (error) {
+        console.error('❌ Erro na substituição:', error);
+
+        if (error.message.includes('row-level security') || error.message.includes('RLS')) {
+          throw new Error('Erro de permissão: Configure as políticas RLS do bucket ou use a chave de serviço');
+        }
+
+        throw new Error(`Erro ao substituir arquivo: ${error.message}`);
+      }
+
+      console.log('✅ Substituição concluída:', data);
+
+      const publicUrl = await this.getFileAttachmentUrl(transactionId, true);
+      if (publicUrl) {
+        await this.updateFileAttachmentUrl(transactionId, publicUrl);
+        console.log('🔄 URL de arquivo compartilhada atualizada no banco de dados');
+      }
+
+      return true;
+    } catch (error) {
+      console.error('💥 Erro ao substituir arquivo:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Exclui um arquivo
+   */
+  static async deleteFileAttachment(transactionId: string): Promise<boolean> {
+    try {
+      console.log('🗑️ Excluindo arquivo:', transactionId);
+      const fileId = await this.getStorageFileIdForFile(transactionId);
+
+      const filesToDelete = [
+        `${this.FILE_FOLDER}/${fileId}.pdf`,
+        `${this.FILE_FOLDER}/${fileId}.xml`
+      ];
+
+      let { data, error } = await supabaseServiceRole.storage
+        .from(this.BUCKET_NAME)
+        .remove(filesToDelete);
+
+      if (error) {
+        console.log('⚠️ Tentativa com service role falhou, tentando com cliente normal...');
+        const result = await supabase.storage
+          .from(this.BUCKET_NAME)
+          .remove(filesToDelete);
+        data = result.data;
+        error = result.error;
+      }
+
+      if (error) {
+        console.error('❌ Erro na exclusão:', error);
+
+        if (error.message.includes('row-level security') || error.message.includes('RLS')) {
+          throw new Error('Erro de permissão: Configure as políticas RLS do bucket ou use a chave de serviço');
+        }
+
+        throw new Error(`Erro ao excluir arquivo: ${error.message}`);
+      }
+
+      console.log('✅ Exclusão concluída:', data);
+
+      await this.updateFileAttachmentUrl(transactionId, null);
+
+      return true;
+    } catch (error) {
+      console.error('💥 Erro ao excluir arquivo:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Faz o download de um arquivo
+   */
+  static async downloadFileAttachment(transactionId: string): Promise<void> {
+    try {
+      console.log('⬇️ Fazendo download do arquivo:', transactionId);
+      const fileId = await this.getStorageFileIdForFile(transactionId);
+
+      const extensions = ['pdf', 'xml'];
+      let downloaded = false;
+
+      for (const ext of extensions) {
+        const fileName = `${this.FILE_FOLDER}/${fileId}.${ext}`;
+
+        let { data, error } = await supabaseServiceRole.storage
+          .from(this.BUCKET_NAME)
+          .download(fileName);
+
+        if (error) {
+          console.log(`⚠️ Tentando download de ${ext} com cliente normal...`);
+          const result = await supabase.storage
+            .from(this.BUCKET_NAME)
+            .download(fileName);
+          data = result.data;
+          error = result.error;
+        }
+
+        if (!error && data) {
+          console.log('📦 Blob recebido:', data.size, 'bytes, tipo:', data.type);
+
+          const url = URL.createObjectURL(data);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `arquivo_${transactionId}.${ext}`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+
+          console.log('✅ Download concluído');
+          downloaded = true;
+          break;
+        }
+      }
+
+      if (!downloaded) {
+        console.log('🔄 Tentando download via URL pública...');
+        await this.downloadFileViaPublicUrl(transactionId);
+      }
+    } catch (error) {
+      console.error('💥 Erro no download:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Download de arquivo via URL pública (fallback)
+   */
+  private static async downloadFileViaPublicUrl(transactionId: string): Promise<void> {
+    try {
+      console.log('🔗 Tentando download de arquivo via URL pública...');
+      const fileId = await this.getStorageFileIdForFile(transactionId);
+
+      const extensions = ['pdf', 'xml'];
+
+      for (const ext of extensions) {
+        const fileName = `${this.FILE_FOLDER}/${fileId}.${ext}`;
+
+        const { data } = supabaseServiceRole.storage
+          .from(this.BUCKET_NAME)
+          .getPublicUrl(fileName);
+
+        if (!data?.publicUrl) continue;
+
+        console.log('🔗 URL pública gerada:', data.publicUrl);
+
+        const response = await fetch(data.publicUrl);
+        if (!response.ok) continue;
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `arquivo_${transactionId}.${ext}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        console.log('✅ Download via URL pública concluído');
+        return;
+      }
+
+      throw new Error('Arquivo não encontrado');
+    } catch (error) {
+      console.error('💥 Erro no download via URL:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtém a URL pública de um arquivo
+   */
+  static async getFileAttachmentUrl(transactionId: string, forceRefresh = false): Promise<string | null> {
+    try {
+      console.log('🔗 Obtendo URL do arquivo:', transactionId, forceRefresh ? '(forçando refresh)' : '');
+
+      if (!forceRefresh) {
+        const groupInfo = await this.getTransactionAttachmentGroup(transactionId);
+        if (groupInfo?.anexo_arquivo_url) {
+          console.log('✅ URL obtida do banco de dados (arquivo compartilhado)');
+          const urlBase = groupInfo.anexo_arquivo_url.split('?')[0];
+          const timestamp = Date.now();
+          const random = Math.random().toString(36).substring(7);
+          return `${urlBase}?v=${timestamp}&r=${random}&nocache=true`;
+        }
+      }
+
+      const fileId = await this.getStorageFileIdForFile(transactionId);
+      const extensions = ['pdf', 'xml'];
+
+      for (const ext of extensions) {
+        const fileName = `${this.FILE_FOLDER}/${fileId}.${ext}`;
+
+        console.log('📦 Gerando URL pública para arquivo:', fileName);
+
+        let { data } = supabaseServiceRole.storage
+          .from(this.BUCKET_NAME)
+          .getPublicUrl(fileName);
+
+        if (!data?.publicUrl) {
+          console.log('⚠️ Tentando URL pública com cliente normal...');
+          const result = supabase.storage
+            .from(this.BUCKET_NAME)
+            .getPublicUrl(fileName);
+          data = result.data;
+        }
+
+        if (data?.publicUrl) {
+          const response = await fetch(data.publicUrl, { method: 'HEAD', cache: 'no-cache' });
+          if (response.ok) {
+            const timestamp = Date.now();
+            const random = Math.random().toString(36).substring(7);
+            const urlWithTimestamp = `${data.publicUrl}?v=${timestamp}&r=${random}&nocache=true`;
+            console.log('📎 URL gerada com cache-busting:', urlWithTimestamp);
+            return urlWithTimestamp;
+          }
+        }
+      }
+
+      console.log('❌ Não foi possível obter URL pública do arquivo');
+      return null;
+    } catch (error) {
+      console.error('💥 Erro ao obter URL do arquivo:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Atualiza a URL do arquivo compartilhado no banco de dados
+   */
+  private static async updateFileAttachmentUrl(
+    transactionId: string,
+    url: string | null
+  ): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('transacoes_financeiras')
+        .update({
+          anexo_arquivo_url: url
+        })
+        .eq('id_transacao', transactionId);
+
+      if (error) {
+        console.error('Erro ao atualizar URL do arquivo compartilhado:', error);
+        return false;
+      }
+
+      console.log('✅ URL do arquivo compartilhado atualizada (trigger propagará para parcelas)');
+      return true;
+    } catch (error) {
+      console.error('Erro ao atualizar arquivo compartilhado:', error);
+      return false;
+    }
   }
 
   //parte diferente adicionar só apartir daqui no bolt adicionar as interfaces também file opperation result, filedownloadresult e attachmentserviceinterface
