@@ -117,20 +117,46 @@ const FinanceiroPanel: React.FC = () => {
       ]);
 
       setPeriodBalance(balance);
-      
+
       // ✅ LÓGICA ALTERADA AQUI
-      // 1. Guarda a lista COMPLETA em segundo plano
-      setTodasTransacoesRealizadas(transactions.realizadas);
-      // ✅ CORREÇÃO: Ordena as transações futuras antes de armazenar
-      const transacoesFuturasOrdenadas = [...transactions.futuras].sort((a, b) => {
+      // 1. Ordena transações realizadas: primeiro por data de pagamento, depois por data de registro (mais recente primeiro)
+      const transacoesRealizadasOrdenadas = [...transactions.realizadas].sort((a, b) => {
+        // Primeiro critério: data_agendamento_pagamento (DESC)
         const dateA = new Date(a.data_agendamento_pagamento || '').getTime();
         const dateB = new Date(b.data_agendamento_pagamento || '').getTime();
-        return dateA - dateB; // Ordem crescente: mais próximas primeiro
+
+        if (dateB !== dateA) {
+          return dateB - dateA; // Ordem decrescente: mais recente primeiro
+        }
+
+        // Segundo critério (desempate): data_registro (DESC)
+        const registroA = new Date(a.data_registro || '').getTime();
+        const registroB = new Date(b.data_registro || '').getTime();
+        return registroB - registroA; // Ordem decrescente: lançamento mais recente primeiro
+      });
+
+      // 2. Guarda a lista COMPLETA ordenada em segundo plano
+      setTodasTransacoesRealizadas(transacoesRealizadasOrdenadas);
+
+      // 3. Ordena as transações futuras antes de armazenar
+      const transacoesFuturasOrdenadas = [...transactions.futuras].sort((a, b) => {
+        // Primeiro critério: data_agendamento_pagamento (ASC)
+        const dateA = new Date(a.data_agendamento_pagamento || '').getTime();
+        const dateB = new Date(b.data_agendamento_pagamento || '').getTime();
+
+        if (dateA !== dateB) {
+          return dateA - dateB; // Ordem crescente: mais próximas primeiro
+        }
+
+        // Segundo critério (desempate): data_registro (DESC)
+        const registroA = new Date(a.data_registro || '').getTime();
+        const registroB = new Date(b.data_registro || '').getTime();
+        return registroB - registroA; // Ordem decrescente: lançamento mais recente primeiro
       });
       setTodasTransacoesFuturas(transacoesFuturasOrdenadas);
-      
-      // 2. Mostra apenas os 10 primeiros itens inicialmente
-      setTransacoesRealizadas(transactions.realizadas.slice(0, INITIAL_ITEM_COUNT));
+
+      // 4. Mostra apenas os 10 primeiros itens inicialmente
+      setTransacoesRealizadas(transacoesRealizadasOrdenadas.slice(0, INITIAL_ITEM_COUNT));
       setTransacoesFuturas(transacoesFuturasOrdenadas.slice(0, INITIAL_ITEM_COUNT));
 
     } catch (err) {
@@ -547,14 +573,7 @@ const FinanceiroPanel: React.FC = () => {
                 </p>
               </div>
             ) : (
-              [...transacoesFuturas]
-                .sort((a, b) => {
-                  // Ordena transações futuras da data mais próxima para a mais distante (ASC)
-                  const dateA = new Date(a.data_agendamento_pagamento || '').getTime();
-                  const dateB = new Date(b.data_agendamento_pagamento || '').getTime();
-                  return dateA - dateB; // Ordem crescente: datas mais próximas primeiro
-                })
-                .map((transaction) => renderTransactionCard(transaction, true))
+              transacoesFuturas.map((transaction) => renderTransactionCard(transaction, true))
             )}
 
             {/* ✅ BOTÃO ADICIONADO AQUI */}
