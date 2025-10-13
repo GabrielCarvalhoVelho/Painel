@@ -116,6 +116,7 @@ export interface AtividadeAgricola {
   data?: string;
   dose_usada?: string;
   id_talhoes?: string;
+  data_registro?: string;
 }
 
 export interface VinculoUsuarioPropriedade {

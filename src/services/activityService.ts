@@ -22,7 +22,7 @@ export class ActivityService {
         .from('atividades_agricolas')
         .select('*')
         .eq('user_id', userId)
-        .order('data', { ascending: false })
+        .order('data_registro', { ascending: false })
         .limit(limit);
 
       if (error) {
@@ -59,7 +59,7 @@ export class ActivityService {
         .select('*')
         .eq('user_id', userId)
         .gte('data', dataInicio.toISOString().split('T')[0])
-        .order('data', { ascending: false });
+        .order('data_registro', { ascending: false });
 
       if (error) {
         console.error('Erro ao buscar atividades dos últimos 30 dias:', error);

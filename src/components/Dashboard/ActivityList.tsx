@@ -8,11 +8,9 @@ interface ActivityListProps {
 }
 
 export default function ActivityList({ activities }: ActivityListProps) {
-  const sortedActivities = [...activities].sort((a, b) => {
-    const dateA = new Date(a.data as string).getTime();
-    const dateB = new Date(b.data as string).getTime();
-    return dateB - dateA; // for descending order (most recent first)
-  });
+  // Activities are already sorted by data_registro from the backend
+  // No need to re-sort on frontend
+  const sortedActivities = activities;
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
       <div className="flex items-center justify-between mb-6">
