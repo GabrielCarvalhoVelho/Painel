@@ -1,5 +1,4 @@
 // src/services/authService.ts
-import { setAccessToken } from '../lib/supabase';
 
 export interface JWTPayload {
   sub: string;          // UUID do usuário (vem como "sub" no JWT assinado pelo n8n)
@@ -76,24 +75,12 @@ export class AuthService {
       this.currentUser = dev;
       console.log('🔓 MODO DESENVOLVIMENTO ATIVO - Bypass habilitado');
       console.log('👤 Usuário de desenvolvimento:', dev);
-
-      // 🔑 Criar e injetar JWT válido para bypass de desenvolvimento
-      await this.injectDevBypassToken(dev.user_id, dev.nome);
-
       return dev;
     }
 
     const token = localStorage.getItem(this.TOKEN_KEY);
     if (!token) {
       console.warn('⚠️ Nenhum token encontrado no localStorage');
-      return null;
-    }
-
-    // 👉 injeta o token no supabase
-    try {
-      await setAccessToken(token);
-    } catch (e) {
-      console.error('❌ Falha ao setar token no Supabase:', e);
       return null;
     }
 
@@ -130,51 +117,5 @@ export class AuthService {
 
   isAuthenticated() {
     return this.currentUser !== null;
-  }
-
-  // 🔧 Cria e injeta um JWT válido para desenvolvimento
-  private async injectDevBypassToken(userId: string, nome: string) {
-    try {
-      // Criar payload JWT para desenvolvimento
-      const header = {
-        alg: 'HS256',
-        typ: 'JWT'
-      };
-
-      const now = Math.floor(Date.now() / 1000);
-      const payload: JWTPayload = {
-        sub: userId,
-        nome: nome,
-        email: 'dev@zedasafra.com',
-        role: 'authenticated',
-        aud: 'authenticated',
-        exp: now + (60 * 60 * 24), // 24 horas
-        iat: now
-      };
-
-      // Codificar em base64url (simplificado para desenvolvimento)
-      const base64UrlEncode = (obj: any) => {
-        const json = JSON.stringify(obj);
-        return btoa(json)
-          .replace(/\+/g, '-')
-          .replace(/\//g, '_')
-          .replace(/=/g, '');
-      };
-
-      const headerEncoded = base64UrlEncode(header);
-      const payloadEncoded = base64UrlEncode(payload);
-
-      // Para desenvolvimento, criar um token simples (não assinado corretamente)
-      // Importante: Isso só funciona porque as políticas RLS verificam apenas o sub/user_id
-      const devToken = `${headerEncoded}.${payloadEncoded}.dev-signature`;
-
-      // Injetar o token no Supabase
-      await setAccessToken(devToken);
-
-      console.log('🔑 JWT de desenvolvimento criado e injetado para RLS bypass');
-    } catch (error) {
-      console.error('❌ Erro ao criar JWT de desenvolvimento:', error);
-      throw error;
-    }
   }
 }

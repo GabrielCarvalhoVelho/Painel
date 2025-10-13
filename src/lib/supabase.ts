@@ -1,11 +1,38 @@
 // src/lib/supabase.ts
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 const url = import.meta.env.VITE_SUPABASE_URL!;
 const anon = import.meta.env.VITE_SUPABASE_ANON_KEY!;
+const serviceRole = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
 
-// Singleton, sem persistir sessão do GoTrue (vamos injetar o token manualmente)
-export const supabase = createClient(url, anon, {
+// 🔧 Detecta ambiente de desenvolvimento
+const isDevelopment = () => {
+  if (import.meta.env.MODE === 'development') return true;
+  if (import.meta.env.VITE_ZE_AMBIENTE === 'development') return true;
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.')) {
+      return true;
+    }
+  }
+  if (import.meta.env.DEV === true) return true;
+  return false;
+};
+
+const DEV_MODE = isDevelopment();
+
+// 🔑 Em desenvolvimento, use service role para bypass de RLS
+// Em produção, use anon key (RLS será aplicado baseado no JWT do n8n)
+const apiKey = DEV_MODE && serviceRole ? serviceRole : anon;
+
+console.log('🔧 Supabase Client Mode:', {
+  mode: import.meta.env.MODE,
+  isDev: DEV_MODE,
+  usingServiceRole: DEV_MODE && !!serviceRole
+});
+
+// Singleton Supabase client
+export const supabase: SupabaseClient = createClient(url, apiKey, {
   auth: {
     persistSession: false,
     autoRefreshToken: false,
@@ -14,22 +41,7 @@ export const supabase = createClient(url, anon, {
 });
 
 export async function login(login: string, password: string) {
-  
-}
 
-// helper para injetar o token do n8n
-export async function setAccessToken(token: string) {
-  const { error } = await supabase.auth.setSession({
-    access_token: token,
-    refresh_token: 'dummy-refresh', // 🔑 precisa ser não vazio
-  });
-
-  if (error) {
-    console.error('❌ Falha ao setar token no Supabase:', error.message);
-    throw error;
-  }
-
-  console.log('🔑 JWT custom injetado no Supabase');
 }
 
 // ------------------
