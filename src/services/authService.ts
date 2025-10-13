@@ -11,7 +11,41 @@ export interface JWTPayload {
   iat?: number;
 }
 
-const DEV_BYPASS = import.meta.env.VITE_ZE_AMBIENTE === 'development';
+// 🔧 Detecta ambiente de desenvolvimento usando múltiplas verificações
+const isDevelopment = () => {
+  // Método 1: Vite MODE (mais confiável)
+  if (import.meta.env.MODE === 'development') return true;
+
+  // Método 2: Variável customizada
+  if (import.meta.env.VITE_ZE_AMBIENTE === 'development') return true;
+
+  // Método 3: Verificação de hostname (localhost/127.0.0.1)
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.')) {
+      return true;
+    }
+  }
+
+  // Método 4: Verificação DEV explícita
+  if (import.meta.env.DEV === true) return true;
+
+  return false;
+};
+
+const DEV_BYPASS = isDevelopment();
+
+// Log de diagnóstico
+if (typeof window !== 'undefined') {
+  console.log('🔍 Debug Ambiente:', {
+    'import.meta.env.MODE': import.meta.env.MODE,
+    'import.meta.env.DEV': import.meta.env.DEV,
+    'import.meta.env.PROD': import.meta.env.PROD,
+    'VITE_ZE_AMBIENTE': import.meta.env.VITE_ZE_AMBIENTE,
+    'window.location.hostname': window.location.hostname,
+    'DEV_BYPASS ativo': DEV_BYPASS
+  });
+}
 
 export class AuthService {
   private static instance: AuthService;
@@ -40,7 +74,8 @@ export class AuthService {
     if (DEV_BYPASS) {
       const dev = this.getBypassedDevUser();
       this.currentUser = dev;
-      console.log('🔓 Dev bypass ativo:', dev);
+      console.log('🔓 MODO DESENVOLVIMENTO ATIVO - Bypass habilitado');
+      console.log('👤 Usuário de desenvolvimento:', dev);
 
       // 🔑 Criar e injetar JWT válido para bypass de desenvolvimento
       await this.injectDevBypassToken(dev.user_id, dev.nome);

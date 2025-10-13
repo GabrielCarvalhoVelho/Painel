@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Bell, MessageSquare, Wifi, Menu, LogOut } from 'lucide-react';
+import { User, Bell, MessageSquare, Wifi, Menu, LogOut, Code } from 'lucide-react';
 import { Usuario } from '../../lib/supabase';
 import { AuthService } from '../../services/authService';
 import { UserService } from '../../services/userService';
@@ -10,6 +10,10 @@ interface HeaderProps {
   user: { nome: string } | null; // Mantém para compatibilidade, mas será substituído
   onLogout: () => void;
 }
+
+const isDevelopment = import.meta.env.MODE === 'development' ||
+                      import.meta.env.DEV === true ||
+                      import.meta.env.VITE_ZE_AMBIENTE === 'development';
 
 export default function Header({ onMenuClick, sidebarOpen, user, onLogout }: HeaderProps) {
   const [userData, setUserData] = useState<Usuario | null>(null);
@@ -61,13 +65,20 @@ export default function Header({ onMenuClick, sidebarOpen, user, onLogout }: Hea
         </div>
         
         <div className="flex items-center space-x-2 md:space-x-4">
+          {isDevelopment && (
+            <div className="hidden md:flex items-center space-x-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg">
+              <Code className="w-4 h-4 text-amber-600" />
+              <span className="text-xs font-semibold text-amber-700">MODO DEV</span>
+            </div>
+          )}
+
           <div className="hidden sm:flex items-center space-x-2 text-[#397738]">
             <Wifi className="w-4 h-4" />
             <span className="text-xs md:text-sm font-medium">WhatsApp conectado</span>
           </div>
-          
-         
-          
+
+
+
           <div className="flex items-center space-x-1 md:space-x-3 pl-2 md:pl-4 border-l border-gray-200">
             <div className="w-6 h-6 md:w-8 md:h-8 bg-gradient-to-br from-[#092f20] to-[#397738] rounded-full flex items-center justify-center">
               <User className="w-4 h-4 text-white" />
