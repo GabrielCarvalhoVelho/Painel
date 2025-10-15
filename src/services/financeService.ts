@@ -499,7 +499,7 @@ export class FinanceService {
     const hoje = new Date();
     const hojeSemHora = format(hoje, 'yyyy-MM-dd');
 
-  
+
     const { data, error } = await supabase
       .from('transacoes_financeiras')
       .select('valor, status, data_agendamento_pagamento')
@@ -533,6 +533,53 @@ export class FinanceService {
     return 0;
   }
 }
+
+  /**
+   * Calcula o saldo real considerando APENAS transações com status 'Pago' até hoje
+   * Replica a query: SELECT SUM(valor) FROM transacoes_financeiras WHERE status = 'Pago' AND data_transacao <= CURRENT_DATE
+   */
+  static async getSaldoRealApenasPago(userId: string): Promise<number> {
+    try {
+      const hoje = new Date();
+      const hojeSemHora = format(hoje, 'yyyy-MM-dd');
+
+      console.log('💰 Calculando saldo real (apenas Pago) até hoje:', hojeSemHora);
+
+      const { data, error } = await supabase
+        .from('transacoes_financeiras')
+        .select('valor')
+        .eq('user_id', userId)
+        .eq('status', 'Pago')
+        .lte('data_agendamento_pagamento', hojeSemHora);
+
+      if (error) {
+        console.error('❌ Erro ao buscar transações pagas até hoje:', error);
+        return 0;
+      }
+
+      if (!data || data.length === 0) {
+        console.log('📊 Nenhuma transação paga encontrada até hoje');
+        return 0;
+      }
+
+      const saldoTotal = data.reduce((acc, transacao) => {
+        const valor = Number(transacao.valor) || 0;
+        return acc + valor;
+      }, 0);
+
+      console.log(`✅ Saldo real calculado (apenas Pago):`, {
+        totalTransacoesPagas: data.length,
+        saldoTotal: this.formatCurrency(saldoTotal),
+        dataLimite: hojeSemHora
+      });
+
+      return saldoTotal;
+
+    } catch (error) {
+      console.error('❌ Erro ao calcular saldo real (apenas Pago):', error);
+      return 0;
+    }
+  }
 
 
 static async getResumoMensalFinanceiro(userId: string): Promise<{ totalReceitas: number; totalDespesas: number }> {
@@ -747,7 +794,7 @@ static async getResumoMensalFinanceiro(userId: string): Promise<{ totalReceitas:
    * Calcula saldos para um período específico de forma inteligente.
    */
   static async getPeriodBalance(
-    userId: string, 
+    userId: string,
     filterPeriod: FilterPeriod,
     customStartDate?: Date,
     customEndDate?: Date
@@ -770,11 +817,11 @@ static async getResumoMensalFinanceiro(userId: string): Promise<{ totalReceitas:
 
       // 2. Determina as datas do período e se ele é estritamente futuro
       const { startDate, endDate, includeFuture } = this.getPeriodDates(
-        filterPeriod, 
-        customStartDate, 
+        filterPeriod,
+        customStartDate,
         customEndDate
       );
-      
+
       // 💡 NOVO: Identifica se o filtro é apenas para o futuro.
       const isFutureOnlyPeriod = filterPeriod === 'proximos-7-dias' || filterPeriod === 'proximos-30-dias';
 
@@ -791,22 +838,21 @@ static async getResumoMensalFinanceiro(userId: string): Promise<{ totalReceitas:
 
       // 5. 💡 LÓGICA PRINCIPAL ALTERADA AQUI
       //    Define qual conjunto de transações usar para os cards de Entradas/Saídas.
-      const transacoesParaCards = isFutureOnlyPeriod 
+      const transacoesParaCards = isFutureOnlyPeriod
         ? transacoesFuturasPeriodo   // Se for período futuro, usa as transações futuras.
         : transacoesRealizadasPeriodo; // Senão, usa as transações já realizadas.
 
       const totalEntradas = this.calcularEntradas(transacoesParaCards);
       const totalSaidas = this.calcularSaidas(transacoesParaCards);
-      
-      // 6. 💡 MELHORIA: Calcula o saldo real GLOBAL do usuário para o card "Saldo Atual (Hoje)".
-      //    Isso garante que o valor seja sempre o saldo consolidado até o momento.
-      const todasTransacoesReais = data.filter(t => this.isTransacaoProcessada(t));
-      const saldoRealGlobal = this.calcularSaldoTransacoes(todasTransacoesReais);
+
+      // 6. 🔄 NOVA LÓGICA: Calcula o saldo real APENAS com transações status 'Pago' até hoje
+      //    Replica a query: SELECT SUM(valor) WHERE status = 'Pago' AND data <= hoje
+      const saldoRealGlobal = await this.getSaldoRealApenasPago(userId);
 
       const result: PeriodBalance = {
         totalEntradas,
         totalSaidas,
-        saldoReal: saldoRealGlobal, // Usa o saldo global, mais preciso para o usuário.
+        saldoReal: saldoRealGlobal, // Usa apenas transações pagas
         transacoesRealizadas: transacoesRealizadasPeriodo.length,
         transacoesFuturas: transacoesFuturasPeriodo.length
       };
@@ -814,7 +860,7 @@ static async getResumoMensalFinanceiro(userId: string): Promise<{ totalReceitas:
       // 7. Adiciona projeções se o período incluir o futuro
       if (includeFuture) {
         const saldoFuturoPeriodo = this.calcularSaldoTransacoes(transacoesFuturasPeriodo);
-        // O saldo projetado agora é o saldo real GLOBAL + o impacto futuro do período selecionado.
+        // O saldo projetado agora é o saldo real (apenas Pago) + o impacto futuro do período selecionado.
         result.saldoProjetado = saldoRealGlobal + saldoFuturoPeriodo;
 
         // A lógica de impacto futuro para 7/30 dias permanece a mesma e funcional.
@@ -827,18 +873,18 @@ static async getResumoMensalFinanceiro(userId: string): Promise<{ totalReceitas:
 
           const todasTransacoesFuturas = data.filter(t => this.isTransacaoFutura(t));
 
-          const transacoesFuturas7Dias = todasTransacoesFuturas.filter(t => 
+          const transacoesFuturas7Dias = todasTransacoesFuturas.filter(t =>
             this.isTransacaoNoPeriodo(t, hoje, em7Dias)
           );
-          const transacoesFuturas30Dias = todasTransacoesFuturas.filter(t => 
+          const transacoesFuturas30Dias = todasTransacoesFuturas.filter(t =>
             this.isTransacaoNoPeriodo(t, hoje, em30Dias)
           );
 
-          // ✅ NOVA LÓGICA: Calcula entradas e saídas separadamente
+          // ✅ NOVA LÓGICA: Calcula entradas e saídas separadamente usando saldo real (apenas Pago)
           const entradas7Dias = this.calcularEntradas(transacoesFuturas7Dias);
           const saidas7Dias = this.calcularSaidas(transacoesFuturas7Dias);
           result.impactoFuturo7Dias = saldoRealGlobal + entradas7Dias - saidas7Dias;
-          
+
           const entradas30Dias = this.calcularEntradas(transacoesFuturas30Dias);
           const saidas30Dias = this.calcularSaidas(transacoesFuturas30Dias);
           result.impactoFuturo30Dias = saldoRealGlobal + entradas30Dias - saidas30Dias;
