@@ -859,7 +859,13 @@ static async getResumoMensalFinanceiro(userId: string): Promise<{ totalReceitas:
 
       // 7. Adiciona projeções se o período incluir o futuro
       if (includeFuture) {
-        const saldoFuturoPeriodo = this.calcularSaldoTransacoes(transacoesFuturasPeriodo);
+        // Para o filtro "todos", usa TODAS as transações futuras do usuário
+        // Para outros filtros, usa apenas as transações futuras do período
+        const transacoesFuturasParaProjecao = filterPeriod === 'todos'
+          ? data.filter(t => this.isTransacaoFutura(t))
+          : transacoesFuturasPeriodo;
+
+        const saldoFuturoPeriodo = this.calcularSaldoTransacoes(transacoesFuturasParaProjecao);
         // O saldo projetado agora é o saldo real (apenas Pago) + o impacto futuro do período selecionado.
         result.saldoProjetado = saldoRealGlobal + saldoFuturoPeriodo;
 
