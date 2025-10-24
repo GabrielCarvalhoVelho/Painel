@@ -448,14 +448,14 @@ export default function ActivityAttachmentModal({
         <input
           ref={imageInputRef}
           type="file"
-          accept="image/*"
+          accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,image/bmp,image/svg+xml,image/avif,image/heic,image/heif"
           onChange={handleImageChange}
           className="hidden"
         />
         <input
           ref={fileInputRef}
           type="file"
-          accept="application/pdf,application/xml,text/xml"
+          accept="application/pdf,application/xml,text/xml,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,text/plain"
           onChange={handleFileChange}
           className="hidden"
         />

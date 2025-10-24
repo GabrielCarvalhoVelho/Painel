@@ -33,12 +33,24 @@ export class AttachmentProductService {
       'image/jpg',
       'image/png',
       'image/webp',
+      'image/gif',
+      'image/bmp',
+      'image/svg+xml',
+      'image/avif',
       'application/pdf',
+      'application/xml',
+      'text/xml',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'text/csv',
+      'text/plain'
     ];
     const maxSize = 10 * 1024 * 1024; // 10MB
 
     if (!allowedTypes.includes(file.type)) {
-      return 'Formato inválido. Use JPG, PNG, WEBP ou PDF.';
+      return 'Formato inválido. Suportados: imagens (JPG, PNG, WebP, GIF, BMP, SVG, AVIF), documentos (PDF, XML, DOC, DOCX, XLS, XLSX, CSV, TXT).';
     }
     if (file.size > maxSize) {
       return 'Arquivo muito grande. Máximo 10MB.';

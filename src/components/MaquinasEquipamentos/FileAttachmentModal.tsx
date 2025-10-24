@@ -115,7 +115,10 @@ export default function FileAttachmentModal({
            fileType === 'jpeg' ||
            fileType === 'png' ||
            fileType === 'gif' ||
-           fileType === 'webp';
+           fileType === 'webp' ||
+           fileType === 'bmp' ||
+           fileType === 'svg' ||
+           fileType === 'avif';
   };
 
   const handleDownload = async (slot: FileSlot) => {
@@ -174,7 +177,7 @@ export default function FileAttachmentModal({
   const openFileExplorer = (slotId: 'primeiro_envio' | 'segundo_envio') => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.xml,.jpg,.jpeg,.pdf,.png,.webp,image/jpeg,image/png,image/webp,application/xml,application/pdf';
+    input.accept = '.xml,.jpg,.jpeg,.pdf,.png,.webp,.gif,.bmp,.svg,.avif,.doc,.docx,.xls,.xlsx,.csv,.txt,image/jpeg,image/png,image/webp,image/gif,image/bmp,image/svg+xml,image/avif,application/xml,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,text/plain';
     input.onchange = (e) => handleFileChange(e as any, slotId);
     input.click();
   };

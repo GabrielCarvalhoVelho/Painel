@@ -363,14 +363,14 @@ export default function AttachmentProductModal({
         <input
           ref={imageInputRef}
           type="file"
-          accept="image/*"
+          accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,image/bmp,image/svg+xml,image/avif"
           onChange={handleImageChange}
           className="hidden"
         />
         <input
           ref={pdfInputRef}
           type="file"
-          accept="application/pdf"
+          accept="application/pdf,application/xml,text/xml,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,text/plain"
           onChange={handlePdfChange}
           className="hidden"
         />

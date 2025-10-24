@@ -711,11 +711,22 @@ export class AttachmentService {
    * Valida se o arquivo é uma imagem válida
    */
   static validateImageFile(file: File): boolean {
-    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    const validTypes = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+      'image/bmp',
+      'image/svg+xml',
+      'image/avif',
+      'image/heic',
+      'image/heif'
+    ];
     const maxSize = 10 * 1024 * 1024; // 10MB
 
     if (!validTypes.includes(file.type)) {
-      throw new Error('Tipo de arquivo não suportado. Use JPG, PNG, GIF ou WebP.');
+      throw new Error('Tipo de arquivo não suportado. Use JPG, PNG, GIF, WebP, BMP, SVG, AVIF ou HEIC.');
     }
 
     if (file.size > maxSize) {
@@ -726,14 +737,24 @@ export class AttachmentService {
   }
 
   /**
-   * Valida se o arquivo é um tipo aceito (PDF, XML)
+   * Valida se o arquivo é um tipo aceito (PDF, XML, DOC, DOCX, XLS, XLSX, CSV, TXT)
    */
   static validateFile(file: File): boolean {
-    const validTypes = ['application/pdf', 'application/xml', 'text/xml'];
+    const validTypes = [
+      'application/pdf',
+      'application/xml',
+      'text/xml',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'text/csv',
+      'text/plain'
+    ];
     const maxSize = 10 * 1024 * 1024; // 10MB
 
     if (!validTypes.includes(file.type)) {
-      throw new Error('Tipo de arquivo não suportado. Use PDF ou XML.');
+      throw new Error('Tipo de arquivo não suportado. Use PDF, XML, DOC, DOCX, XLS, XLSX, CSV ou TXT.');
     }
 
     if (file.size > maxSize) {
@@ -770,13 +791,26 @@ export class AttachmentService {
    * Detecta a extensão do arquivo baseado no tipo MIME
    */
   private static getFileExtension(file: File): string {
-    if (file.type === 'application/pdf') return 'pdf';
-    if (file.type === 'application/xml' || file.type === 'text/xml') return 'xml';
+    const mimeToExt: Record<string, string> = {
+      'application/pdf': 'pdf',
+      'application/xml': 'xml',
+      'text/xml': 'xml',
+      'application/msword': 'doc',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+      'application/vnd.ms-excel': 'xls',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+      'text/csv': 'csv',
+      'text/plain': 'txt'
+    };
+
+    if (mimeToExt[file.type]) {
+      return mimeToExt[file.type];
+    }
 
     const nameParts = file.name.split('.');
     if (nameParts.length > 1) {
       const ext = nameParts[nameParts.length - 1].toLowerCase();
-      if (['pdf', 'xml'].includes(ext)) return ext;
+      if (['pdf', 'xml', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'txt'].includes(ext)) return ext;
     }
 
     return 'pdf';
@@ -1252,7 +1286,25 @@ export class AttachmentService {
  */
 validateFile(file: File): string | null {
   const maxFileSize = 10 * 1024 * 1024; // 10MB
-  const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/xml', 'text/xml'];
+  const allowedTypes = [
+    'application/pdf',
+    'image/jpeg',
+    'image/jpg',
+    'image/png',
+    'image/webp',
+    'image/gif',
+    'image/bmp',
+    'image/svg+xml',
+    'image/avif',
+    'application/xml',
+    'text/xml',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'text/csv',
+    'text/plain'
+  ];
 
   if (!file || !file.name) {
     return 'Arquivo inválido ou sem nome.';
@@ -1267,7 +1319,7 @@ validateFile(file: File): string | null {
   }
 
   if (!allowedTypes.includes(file.type)) {
-    return 'Tipo de arquivo não permitido. Apenas PDF, JPG, PNG, WEBP e XML são suportados.';
+    return 'Tipo de arquivo não permitido. Suportados: imagens (JPG, PNG, WebP, GIF, BMP, SVG, AVIF), documentos (PDF, XML, DOC, DOCX, XLS, XLSX, CSV, TXT).';
   }
 
   return null;
@@ -1294,7 +1346,7 @@ async uploadFile(
       return { success: false, error: 'Arquivo está vazio.' };
     }
 
-    const allowedExtensions = ['xml', 'jpg', 'jpeg', 'pdf', 'png', 'webp'];
+    const allowedExtensions = ['xml', 'jpg', 'jpeg', 'pdf', 'png', 'webp', 'gif', 'bmp', 'svg', 'avif', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'txt'];
     const getFileExtension = (fileName: string): string | null => {
       const match = fileName.match(/\.([^.]+)$/);
       return match ? match[1].toLowerCase() : null;
@@ -1309,7 +1361,7 @@ async uploadFile(
       console.error('❌ Invalid file type:', fileExt);
       return {
         success: false,
-        error: `Tipo de arquivo ${fileExt || 'desconhecido'} não permitido. Apenas xml, jpg, pdf, png e webp são suportados.`
+        error: `Tipo de arquivo ${fileExt || 'desconhecido'} não permitido. Suportados: imagens (jpg, png, webp, gif, bmp, svg, avif), documentos (pdf, xml, doc, docx, xls, xlsx, csv, txt).`
       };
     }
 
@@ -1658,11 +1710,12 @@ private extractFilePathFromUrl(url: string): string {
 private getFileTypeFromUrl(url: string): string {
   if (!url) return 'unknown';
 
-  if (url.includes('/xml/')) return 'xml';
-  if (url.includes('/jpg/')) return 'jpg';
-  if (url.includes('/pdf/')) return 'pdf';
-  if (url.includes('/png/')) return 'png';
-  if (url.includes('/webp/')) return 'webp';
+  const pathExtensions = ['/xml/', '/jpg/', '/pdf/', '/png/', '/webp/', '/gif/', '/bmp/', '/svg/', '/avif/', '/doc/', '/docx/', '/xls/', '/xlsx/', '/csv/', '/txt/'];
+  for (const pathExt of pathExtensions) {
+    if (url.includes(pathExt)) {
+      return pathExt.replace(/\//g, '');
+    }
+  }
 
   const urlWithoutParams = url.split('?')[0];
   const extension = urlWithoutParams.includes('.') ? urlWithoutParams.split('.').pop() : null;
@@ -1670,8 +1723,8 @@ private getFileTypeFromUrl(url: string): string {
   if (!extension) return 'unknown';
 
   const ext = extension.toLowerCase();
-  return ['xml', 'jpg', 'jpeg', 'pdf', 'png', 'webp'].includes(ext) ?
-         (ext === 'jpeg' ? 'jpg' : ext) : 'unknown';
+  const validExts = ['xml', 'jpg', 'jpeg', 'pdf', 'png', 'webp', 'gif', 'bmp', 'svg', 'avif', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'txt'];
+  return validExts.includes(ext) ? (ext === 'jpeg' ? 'jpg' : ext) : 'unknown';
 }
 
 private getContentType(fileExtension: string): string {
@@ -1681,7 +1734,17 @@ private getContentType(fileExtension: string): string {
     'jpeg': 'image/jpeg',
     'pdf': 'application/pdf',
     'png': 'image/png',
-    'webp': 'image/webp'
+    'webp': 'image/webp',
+    'gif': 'image/gif',
+    'bmp': 'image/bmp',
+    'svg': 'image/svg+xml',
+    'avif': 'image/avif',
+    'doc': 'application/msword',
+    'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'xls': 'application/vnd.ms-excel',
+    'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'csv': 'text/csv',
+    'txt': 'text/plain'
   };
   return contentTypes[fileExtension.toLowerCase()] || 'application/octet-stream';
 }

@@ -694,11 +694,22 @@ export class ActivityAttachmentService {
   }
 
   static validateImageFile(file: File): boolean {
-    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    const validTypes = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+      'image/bmp',
+      'image/svg+xml',
+      'image/avif',
+      'image/heic',
+      'image/heif'
+    ];
     const maxSize = 10 * 1024 * 1024;
 
     if (!validTypes.includes(file.type)) {
-      throw new Error('Tipo de arquivo não suportado. Use JPG, PNG, GIF ou WebP.');
+      throw new Error('Tipo de arquivo não suportado. Use JPG, PNG, GIF, WebP, BMP, SVG, AVIF ou HEIC.');
     }
 
     if (file.size > maxSize) {
@@ -709,11 +720,21 @@ export class ActivityAttachmentService {
   }
 
   static validateFile(file: File): boolean {
-    const validTypes = ['application/pdf', 'application/xml', 'text/xml'];
+    const validTypes = [
+      'application/pdf',
+      'application/xml',
+      'text/xml',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'text/csv',
+      'text/plain'
+    ];
     const maxSize = 10 * 1024 * 1024;
 
     if (!validTypes.includes(file.type)) {
-      throw new Error('Tipo de arquivo não suportado. Use PDF ou XML.');
+      throw new Error('Tipo de arquivo não suportado. Use PDF, XML, DOC, DOCX, XLS, XLSX, CSV ou TXT.');
     }
 
     if (file.size > maxSize) {
@@ -724,13 +745,26 @@ export class ActivityAttachmentService {
   }
 
   private static getFileExtension(file: File): string {
-    if (file.type === 'application/pdf') return 'pdf';
-    if (file.type === 'application/xml' || file.type === 'text/xml') return 'xml';
+    const mimeToExt: Record<string, string> = {
+      'application/pdf': 'pdf',
+      'application/xml': 'xml',
+      'text/xml': 'xml',
+      'application/msword': 'doc',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+      'application/vnd.ms-excel': 'xls',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+      'text/csv': 'csv',
+      'text/plain': 'txt'
+    };
+
+    if (mimeToExt[file.type]) {
+      return mimeToExt[file.type];
+    }
 
     const nameParts = file.name.split('.');
     if (nameParts.length > 1) {
       const ext = nameParts[nameParts.length - 1].toLowerCase();
-      if (['pdf', 'xml'].includes(ext)) return ext;
+      if (['pdf', 'xml', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'txt'].includes(ext)) return ext;
     }
 
     return 'pdf';
