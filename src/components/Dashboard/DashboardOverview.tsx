@@ -173,8 +173,26 @@ export default function DashboardOverview() {
       console.log('📊 Dados do gráfico carregados:', grafico);
       console.log('💰 Exemplo de dados:', grafico.slice(0, 2));
       
-  // Pass full activity objects so ActivityList can render complete details
-  setAtividades(atividadesRecentes || []);
+  // Map activities to include a human-readable talhao label using talhoes list
+  const mappedAtividades = (atividadesRecentes || []).map((l: any) => {
+    const talhoesLanc = l.lancamento_talhoes || l.talhoes || [];
+    // If we have the talhoes list from TalhaoService, map ids to names
+    const nomes = talhoesLanc
+      .map((t: any) => {
+        const match = (talhoes || []).find((th: any) => th.id_talhao === t.talhao_id || th.id_talhao === t.talho_id);
+        return match ? match.nome : t.talhao_id || t.talho_id || null;
+      })
+      .filter(Boolean);
+
+    const talhaoLabel = nomes.length > 0 ? nomes.join(', ') : (l.area_atividade || l.area || null);
+
+    return {
+      ...l,
+      talhao: talhaoLabel || 'Área não informada'
+    };
+  });
+
+  setAtividades(mappedAtividades);
 
   setAtividadesGrafico((atividades30Dias || []).map((l: any) => ({ data: l.data_atividade || l.created_at })));
       setCotacaoAtual(cotacao);

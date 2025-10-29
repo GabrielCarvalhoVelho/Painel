@@ -42,7 +42,8 @@ export default function ActivityCard({ atividade, talhaoLabel }: Props) {
 
   const atividadeDisplay = {
     descricao: atividade.nome_atividade || atividade.tipo || '',
-    talhao: talhaoLabel || atividade.id_talhoes || 'Área não informada',
+    // Prefer a precomputed human-readable talhao name if present (set by DashboardOverview mapping or Manejo panel)
+    talhao: atividade.talhao || talhaoLabel || atividade.id_talhoes || 'Área não informada',
     observacoes: atividade.observacao || atividade.observacoes || ''
   };
 
