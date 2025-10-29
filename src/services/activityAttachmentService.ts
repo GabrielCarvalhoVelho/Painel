@@ -6,87 +6,19 @@ const supabaseServiceRole = createClient(
   import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY
 );
 
+/**
+ * Service de anexos agora trabalha somente com Supabase Storage.
+ * Não armazenamos mais URLs no banco. Os arquivos usam o mesmo id da atividade
+ * como nome do arquivo (ex: <atividade_id>.jpg, <atividade_id>.pdf).
+ */
 export class ActivityAttachmentService {
   private static readonly BUCKET_NAME = 'atividades_agricolas';
   private static readonly IMAGE_FOLDER = 'imagens';
   private static readonly FILE_FOLDER = 'arquivos';
 
-  private static async getActivityAttachmentInfo(activityId: string): Promise<{
-    anexo_url: string | null;
-    anexo_arquivo_url: string | null;
-  } | null> {
-    try {
-      const { data, error } = await supabase
-        .from('atividades_agricolas')
-        .select('anexo_url, anexo_arquivo_url')
-        .eq('id_atividade', activityId)
-        .single();
-
-      if (error) {
-        console.error('❌ Erro ao buscar informações de anexo:', error);
-        return null;
-      }
-
-      return data;
-    } catch (error) {
-      console.error('💥 Erro ao buscar informações de anexo:', error);
-      return null;
-    }
-  }
-
-  private static async updateImageUrl(activityId: string, url: string | null): Promise<boolean> {
-    try {
-      const cleanUrl = url ? url.split('?')[0] : null;
-
-      const { error } = await supabase
-        .from('atividades_agricolas')
-        .update({ anexo_url: cleanUrl })
-        .eq('id_atividade', activityId);
-
-      if (error) {
-        console.error('❌ Erro ao atualizar URL da imagem:', error);
-        return false;
-      }
-
-      console.log('✅ URL da imagem atualizada no banco:', cleanUrl);
-      return true;
-    } catch (error) {
-      console.error('💥 Erro ao atualizar imagem:', error);
-      return false;
-    }
-  }
-
-  private static async updateFileUrl(activityId: string, url: string | null): Promise<boolean> {
-    try {
-      const cleanUrl = url ? url.split('?')[0] : null;
-
-      const { error } = await supabase
-        .from('atividades_agricolas')
-        .update({ anexo_arquivo_url: cleanUrl })
-        .eq('id_atividade', activityId);
-
-      if (error) {
-        console.error('❌ Erro ao atualizar URL do arquivo:', error);
-        return false;
-      }
-
-      console.log('✅ URL do arquivo atualizada no banco:', cleanUrl);
-      return true;
-    } catch (error) {
-      console.error('💥 Erro ao atualizar arquivo:', error);
-      return false;
-    }
-  }
-
   static async hasAttachment(activityId: string): Promise<boolean> {
     try {
       console.log('🔍 Verificando anexo de imagem para atividade:', activityId);
-
-      const info = await this.getActivityAttachmentInfo(activityId);
-      if (info?.anexo_url) {
-        console.log('✅ Anexo de imagem encontrado no banco de dados');
-        return true;
-      }
 
       const fileName = `${activityId}.jpg`;
 
@@ -115,11 +47,7 @@ export class ActivityAttachmentService {
       }
 
       const hasFile = data && data.some(file => file.name === fileName);
-      console.log('📁 Resultado da busca:', {
-        encontrado: hasFile,
-        nomeProcurado: fileName,
-        pasta: this.IMAGE_FOLDER
-      });
+      console.log('📁 Resultado da busca:', { encontrado: hasFile, nomeProcurado: fileName, pasta: this.IMAGE_FOLDER });
 
       return hasFile || await this.checkFileExistsByUrl(activityId, false);
     } catch (error) {
@@ -131,12 +59,6 @@ export class ActivityAttachmentService {
   static async hasFileAttachment(activityId: string): Promise<boolean> {
     try {
       console.log('🔍 Verificando arquivo para atividade:', activityId);
-
-      const info = await this.getActivityAttachmentInfo(activityId);
-      if (info?.anexo_arquivo_url) {
-        console.log('✅ Arquivo encontrado no banco de dados');
-        return true;
-      }
 
       let { data, error } = await supabaseServiceRole.storage
         .from(this.BUCKET_NAME)
@@ -162,9 +84,7 @@ export class ActivityAttachmentService {
         return await this.checkFileExistsByUrl(activityId, true);
       }
 
-      const hasFile = data && data.some(file =>
-        file.name === `${activityId}.pdf` || file.name === `${activityId}.xml`
-      );
+      const hasFile = data && data.some(file => file.name === `${activityId}.pdf` || file.name === `${activityId}.xml`);
 
       return hasFile || await this.checkFileExistsByUrl(activityId, true);
     } catch (error) {
@@ -187,10 +107,7 @@ export class ActivityAttachmentService {
 
         if (!data?.publicUrl) continue;
 
-        const response = await fetch(data.publicUrl, {
-          method: 'HEAD',
-          cache: 'no-cache'
-        });
+        const response = await fetch(data.publicUrl, { method: 'HEAD', cache: 'no-cache' });
 
         if (response.ok) {
           console.log(`✅ ${isFile ? 'Arquivo' : 'Imagem'} encontrado: ${fileName}`);
@@ -209,26 +126,13 @@ export class ActivityAttachmentService {
     try {
       console.log('🔗 Obtendo URL da imagem:', activityId, forceRefresh ? '(refresh forçado)' : '');
 
-      const info = await this.getActivityAttachmentInfo(activityId);
-      if (info?.anexo_url) {
-        console.log('✅ URL encontrada no banco de dados:', info.anexo_url);
-        const timestamp = Date.now();
-        const random = Math.random().toString(36).substring(7);
-        return `${info.anexo_url}?v=${timestamp}&r=${random}`;
-      }
-
-      console.log('⚠️ URL não encontrada no banco, tentando gerar do storage...');
       const fileName = `${this.IMAGE_FOLDER}/${activityId}.jpg`;
 
-      let { data } = supabaseServiceRole.storage
-        .from(this.BUCKET_NAME)
-        .getPublicUrl(fileName);
+      let { data } = supabaseServiceRole.storage.from(this.BUCKET_NAME).getPublicUrl(fileName);
 
       if (!data?.publicUrl) {
         console.log('⚠️ Tentando URL pública com cliente normal...');
-        const result = supabase.storage
-          .from(this.BUCKET_NAME)
-          .getPublicUrl(fileName);
+        const result = supabase.storage.from(this.BUCKET_NAME).getPublicUrl(fileName);
         data = result.data;
       }
 
@@ -253,29 +157,16 @@ export class ActivityAttachmentService {
     try {
       console.log('🔗 Obtendo URL do arquivo:', activityId, forceRefresh ? '(refresh forçado)' : '');
 
-      const info = await this.getActivityAttachmentInfo(activityId);
-      if (info?.anexo_arquivo_url) {
-        console.log('✅ URL encontrada no banco de dados:', info.anexo_arquivo_url);
-        const timestamp = Date.now();
-        const random = Math.random().toString(36).substring(7);
-        return `${info.anexo_arquivo_url}?v=${timestamp}&r=${random}`;
-      }
-
-      console.log('⚠️ URL não encontrada no banco, tentando gerar do storage...');
       const extensions = ['pdf', 'xml'];
 
       for (const ext of extensions) {
         const fileName = `${this.FILE_FOLDER}/${activityId}.${ext}`;
 
-        let { data } = supabaseServiceRole.storage
-          .from(this.BUCKET_NAME)
-          .getPublicUrl(fileName);
+        let { data } = supabaseServiceRole.storage.from(this.BUCKET_NAME).getPublicUrl(fileName);
 
         if (!data?.publicUrl) {
           console.log('⚠️ Tentando URL pública com cliente normal...');
-          const result = supabase.storage
-            .from(this.BUCKET_NAME)
-            .getPublicUrl(fileName);
+          const result = supabase.storage.from(this.BUCKET_NAME).getPublicUrl(fileName);
           data = result.data;
         }
 
@@ -319,13 +210,11 @@ export class ActivityAttachmentService {
 
       if (error) {
         console.log('⚠️ Tentativa com service role falhou, tentando com cliente normal...');
-        const result = await supabase.storage
-          .from(this.BUCKET_NAME)
-          .upload(fileName, processedFile, {
-            cacheControl: '3600',
-            upsert: true,
-            contentType: 'image/jpeg'
-          });
+        const result = await supabase.storage.from(this.BUCKET_NAME).upload(fileName, processedFile, {
+          cacheControl: '3600',
+          upsert: true,
+          contentType: 'image/jpeg'
+        });
         data = result.data;
         error = result.error;
       }
@@ -337,25 +226,7 @@ export class ActivityAttachmentService {
 
       console.log('✅ Upload para storage concluído:', data);
 
-      const { data: urlData } = supabaseServiceRole.storage
-        .from(this.BUCKET_NAME)
-        .getPublicUrl(fileName);
-
-      if (!urlData?.publicUrl) {
-        console.error('❌ Erro ao gerar URL pública');
-        throw new Error('Não foi possível gerar URL pública do arquivo');
-      }
-
-      const cleanUrl = urlData.publicUrl.split('?')[0];
-      console.log('🔗 URL pública gerada:', cleanUrl);
-
-      const updateSuccess = await this.updateImageUrl(activityId, cleanUrl);
-      if (!updateSuccess) {
-        console.warn('⚠️ Upload concluído mas falha ao atualizar banco de dados');
-        throw new Error('Arquivo enviado mas erro ao atualizar banco de dados');
-      }
-
-      console.log('🎉 Upload completo: storage + banco de dados');
+      // Não atualizamos mais o banco de dados com a URL — apenas retornamos sucesso
       return true;
     } catch (error) {
       console.error('💥 Erro no upload:', error);
@@ -381,12 +252,10 @@ export class ActivityAttachmentService {
 
       if (error) {
         console.log('⚠️ Tentativa com service role falhou, tentando com cliente normal...');
-        const result = await supabase.storage
-          .from(this.BUCKET_NAME)
-          .update(fileName, processedFile, {
-            cacheControl: '3600',
-            contentType: 'image/jpeg'
-          });
+        const result = await supabase.storage.from(this.BUCKET_NAME).update(fileName, processedFile, {
+          cacheControl: '3600',
+          contentType: 'image/jpeg'
+        });
         data = result.data;
         error = result.error;
       }
@@ -397,26 +266,6 @@ export class ActivityAttachmentService {
       }
 
       console.log('✅ Substituição no storage concluída:', data);
-
-      const { data: urlData } = supabaseServiceRole.storage
-        .from(this.BUCKET_NAME)
-        .getPublicUrl(fileName);
-
-      if (!urlData?.publicUrl) {
-        console.error('❌ Erro ao gerar URL pública');
-        throw new Error('Não foi possível gerar URL pública do arquivo');
-      }
-
-      const cleanUrl = urlData.publicUrl.split('?')[0];
-      console.log('🔗 URL pública gerada:', cleanUrl);
-
-      const updateSuccess = await this.updateImageUrl(activityId, cleanUrl);
-      if (!updateSuccess) {
-        console.warn('⚠️ Substituição concluída mas falha ao atualizar banco de dados');
-        throw new Error('Arquivo substituído mas erro ao atualizar banco de dados');
-      }
-
-      console.log('🎉 Substituição completa: storage + banco de dados');
       return true;
     } catch (error) {
       console.error('💥 Erro ao substituir imagem:', error);
@@ -430,15 +279,11 @@ export class ActivityAttachmentService {
 
       const fileName = `${this.IMAGE_FOLDER}/${activityId}.jpg`;
 
-      let { data, error } = await supabaseServiceRole.storage
-        .from(this.BUCKET_NAME)
-        .remove([fileName]);
+      let { data, error } = await supabaseServiceRole.storage.from(this.BUCKET_NAME).remove([fileName]);
 
       if (error) {
         console.log('⚠️ Tentativa com service role falhou, tentando com cliente normal...');
-        const result = await supabase.storage
-          .from(this.BUCKET_NAME)
-          .remove([fileName]);
+        const result = await supabase.storage.from(this.BUCKET_NAME).remove([fileName]);
         data = result.data;
         error = result.error;
       }
@@ -449,9 +294,6 @@ export class ActivityAttachmentService {
       }
 
       console.log('✅ Exclusão concluída:', data);
-
-      await this.updateImageUrl(activityId, null);
-
       return true;
     } catch (error) {
       console.error('💥 Erro ao excluir imagem:', error);
@@ -470,23 +312,19 @@ export class ActivityAttachmentService {
       const fileName = `${this.FILE_FOLDER}/${activityId}.${ext}`;
       console.log('📂 Caminho no storage:', fileName);
 
-      let { data, error } = await supabaseServiceRole.storage
-        .from(this.BUCKET_NAME)
-        .upload(fileName, file, {
+      let { data, error } = await supabaseServiceRole.storage.from(this.BUCKET_NAME).upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: true,
+        contentType: file.type
+      });
+
+      if (error) {
+        console.log('⚠️ Tentativa com service role falhou, tentando com cliente normal...');
+        const result = await supabase.storage.from(this.BUCKET_NAME).upload(fileName, file, {
           cacheControl: '3600',
           upsert: true,
           contentType: file.type
         });
-
-      if (error) {
-        console.log('⚠️ Tentativa com service role falhou, tentando com cliente normal...');
-        const result = await supabase.storage
-          .from(this.BUCKET_NAME)
-          .upload(fileName, file, {
-            cacheControl: '3600',
-            upsert: true,
-            contentType: file.type
-          });
         data = result.data;
         error = result.error;
       }
@@ -497,26 +335,6 @@ export class ActivityAttachmentService {
       }
 
       console.log('✅ Upload para storage concluído:', data);
-
-      const { data: urlData } = supabaseServiceRole.storage
-        .from(this.BUCKET_NAME)
-        .getPublicUrl(fileName);
-
-      if (!urlData?.publicUrl) {
-        console.error('❌ Erro ao gerar URL pública');
-        throw new Error('Não foi possível gerar URL pública do arquivo');
-      }
-
-      const cleanUrl = urlData.publicUrl.split('?')[0];
-      console.log('🔗 URL pública gerada:', cleanUrl);
-
-      const updateSuccess = await this.updateFileUrl(activityId, cleanUrl);
-      if (!updateSuccess) {
-        console.warn('⚠️ Upload concluído mas falha ao atualizar banco de dados');
-        throw new Error('Arquivo enviado mas erro ao atualizar banco de dados');
-      }
-
-      console.log('🎉 Upload completo: storage + banco de dados');
       return true;
     } catch (error) {
       console.error('💥 Erro no upload de arquivo:', error);
@@ -535,21 +353,17 @@ export class ActivityAttachmentService {
       const fileName = `${this.FILE_FOLDER}/${activityId}.${ext}`;
       console.log('📂 Caminho no storage:', fileName);
 
-      let { data, error } = await supabaseServiceRole.storage
-        .from(this.BUCKET_NAME)
-        .update(fileName, file, {
-          cacheControl: '3600',
-          contentType: file.type
-        });
+      let { data, error } = await supabaseServiceRole.storage.from(this.BUCKET_NAME).update(fileName, file, {
+        cacheControl: '3600',
+        contentType: file.type
+      });
 
       if (error) {
         console.log('⚠️ Tentativa com service role falhou, tentando com cliente normal...');
-        const result = await supabase.storage
-          .from(this.BUCKET_NAME)
-          .update(fileName, file, {
-            cacheControl: '3600',
-            contentType: file.type
-          });
+        const result = await supabase.storage.from(this.BUCKET_NAME).update(fileName, file, {
+          cacheControl: '3600',
+          contentType: file.type
+        });
         data = result.data;
         error = result.error;
       }
@@ -560,26 +374,6 @@ export class ActivityAttachmentService {
       }
 
       console.log('✅ Substituição no storage concluída:', data);
-
-      const { data: urlData } = supabaseServiceRole.storage
-        .from(this.BUCKET_NAME)
-        .getPublicUrl(fileName);
-
-      if (!urlData?.publicUrl) {
-        console.error('❌ Erro ao gerar URL pública');
-        throw new Error('Não foi possível gerar URL pública do arquivo');
-      }
-
-      const cleanUrl = urlData.publicUrl.split('?')[0];
-      console.log('🔗 URL pública gerada:', cleanUrl);
-
-      const updateSuccess = await this.updateFileUrl(activityId, cleanUrl);
-      if (!updateSuccess) {
-        console.warn('⚠️ Substituição concluída mas falha ao atualizar banco de dados');
-        throw new Error('Arquivo substituído mas erro ao atualizar banco de dados');
-      }
-
-      console.log('🎉 Substituição completa: storage + banco de dados');
       return true;
     } catch (error) {
       console.error('💥 Erro ao substituir arquivo:', error);
@@ -591,20 +385,13 @@ export class ActivityAttachmentService {
     try {
       console.log('🗑️ Excluindo arquivo:', activityId);
 
-      const filesToDelete = [
-        `${this.FILE_FOLDER}/${activityId}.pdf`,
-        `${this.FILE_FOLDER}/${activityId}.xml`
-      ];
+      const filesToDelete = [`${this.FILE_FOLDER}/${activityId}.pdf`, `${this.FILE_FOLDER}/${activityId}.xml`];
 
-      let { data, error } = await supabaseServiceRole.storage
-        .from(this.BUCKET_NAME)
-        .remove(filesToDelete);
+      let { data, error } = await supabaseServiceRole.storage.from(this.BUCKET_NAME).remove(filesToDelete);
 
       if (error) {
         console.log('⚠️ Tentativa com service role falhou, tentando com cliente normal...');
-        const result = await supabase.storage
-          .from(this.BUCKET_NAME)
-          .remove(filesToDelete);
+        const result = await supabase.storage.from(this.BUCKET_NAME).remove(filesToDelete);
         data = result.data;
         error = result.error;
       }
@@ -615,9 +402,6 @@ export class ActivityAttachmentService {
       }
 
       console.log('✅ Exclusão concluída:', data);
-
-      await this.updateFileUrl(activityId, null);
-
       return true;
     } catch (error) {
       console.error('💥 Erro ao excluir arquivo:', error);

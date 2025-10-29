@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+// React import not required with new JSX runtime
+import { useState, useEffect } from 'react';
 import { 
   DollarSign, 
   TrendingUp, 
@@ -25,7 +26,7 @@ import WeatherWidget from './WeatherWidget';
 import { AuthService } from '../../services/authService';
 import { UserService } from '../../services/userService';
 import { FinanceService, ResumoFinanceiro, DadosGrafico, OverallBalance } from '../../services/financeService';
-import { ActivityService, AtividadeComData } from '../../services/activityService';
+import { ActivityService } from '../../services/activityService';
 import { CotacaoService } from '../../services/cotacaoService';
 import { TalhaoService } from '../../services/talhaoService';
 import { Usuario, TransacaoFinanceira } from '../../lib/supabase';
@@ -89,8 +90,8 @@ export default function DashboardOverview() {
   const [transacoes, setTransacoes] = useState<TransacaoFinanceira[]>([]);
   const [proximas5Transacoes, setProximas5Transacoes] = useState<TransacaoFinanceira[]>([]);
   const [ultimas5Transacoes, setUltimas5Transacoes] = useState<TransacaoFinanceira[]>([]);
-  const [atividades, setAtividades] = useState<AtividadeComData[]>([]);
-  const [atividadesGrafico, setAtividadesGrafico] = useState<AtividadeComData[]>([]);
+  const [atividades, setAtividades] = useState<Array<{ id_atividade: string; nome_atividade?: string; dataFormatada?: string }>>([]);
+  const [atividadesGrafico, setAtividadesGrafico] = useState<Array<{ data?: string }>>([]);
   const [cotacaoAtual, setCotacaoAtual] = useState(1726);
   const [variacaoCotacao, setVariacaoCotacao] = useState('+2.5');
   const [areaCultivada, setAreaCultivada] = useState(0);
@@ -147,8 +148,8 @@ export default function DashboardOverview() {
         FinanceService.getProximas5TransacoesFuturas(currentUser.user_id),
         FinanceService.getUltimas5TransacoesExecutadas(currentUser.user_id),
         FinanceService.getOverallBalance(currentUser.user_id),
-        ActivityService.getAtividades(currentUser.user_id, 5),
-        ActivityService.getAtividadesUltimos30Dias(currentUser.user_id),
+  ActivityService.getLancamentos(currentUser.user_id, 5),
+  ActivityService.getLancamentos(currentUser.user_id, 100),
         CotacaoService.getCotacaoAtual(),
         CotacaoService.getCotacaoCompleta(),
         TalhaoService.getAreaCultivadaCafe(currentUser.user_id),
@@ -172,8 +173,10 @@ export default function DashboardOverview() {
       console.log('📊 Dados do gráfico carregados:', grafico);
       console.log('💰 Exemplo de dados:', grafico.slice(0, 2));
       
-      setAtividades(atividadesRecentes);
-      setAtividadesGrafico(atividades30Dias);
+  // Map to minimal shapes used by dashboard components
+  setAtividades((atividadesRecentes || []).map((l: any) => ({ id_atividade: l.atividade_id, nome_atividade: l.nome_atividade, dataFormatada: l.dataFormatada })));
+
+  setAtividadesGrafico((atividades30Dias || []).map((l: any) => ({ data: l.data_atividade || l.created_at }))); 
       setCotacaoAtual(cotacao);
       setAreaCultivada(areaCafe);
       setTalhoesCafe(talhoes);

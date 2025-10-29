@@ -1,10 +1,29 @@
-import React from 'react';
-import { Calendar, MapPin, User, Package } from 'lucide-react';
-import { AtividadeComData } from '../../services/activityService';
+// React import not required with new JSX runtime
+import { Calendar, MapPin } from 'lucide-react';
 import { ActivityService } from '../../services/activityService';
 
 interface ActivityListProps {
-  activities: AtividadeComData[];
+  activities: Array<{
+    id_atividade: string;
+    nome_atividade?: string;
+    observacao?: string;
+    dataFormatada?: string;
+    area?: string | number;
+    produtos?: Array<{
+      nome_produto?: string;
+      quantidade_val?: number | null;
+      quantidade_un?: string | null;
+      dose_val?: number | null;
+      dose_un?: string | null;
+    }>;
+    maquinas?: Array<{
+      nome_maquina?: string;
+      horas_maquina?: number | null;
+    }>;
+    responsaveis?: Array<{
+      nome?: string;
+    }>;
+  }>;
 }
 
 export default function ActivityList({ activities }: ActivityListProps) {
@@ -24,7 +43,7 @@ export default function ActivityList({ activities }: ActivityListProps) {
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center space-x-3">
                 <span className="text-2xl">
-                  {ActivityService.getAtividadeIcon(activity.nome_atividade)}
+                  {ActivityService.getAtividadeIcon(activity.nome_atividade || '')}
                 </span>
                 <div>
                   <h4 className="font-medium text-[#092f20]">{activity.nome_atividade}</h4>
@@ -50,41 +69,34 @@ export default function ActivityList({ activities }: ActivityListProps) {
                 </div>
               )}
 
-              {activity.produto_usado && (
-                <div className="flex items-center space-x-2">
-                  <Package className="w-4 h-4 text-[#86b646]" />
-                  <div>
-                    <p className="text-gray-600">Produto</p>
-                    <p className="font-medium text-[#092f20]">{activity.produto_usado}</p>
-                  </div>
-                </div>
-              )}
+              <div className="col-span-2 md:col-span-1">
+                <span className="text-gray-600">Produtos</span>
+                <ul className="mt-1 space-y-1">
+                  {activity.produtos && activity.produtos.length > 0 ? (
+                    activity.produtos.map((p, idx) => (
+                      <li key={idx} className="flex justify-between">
+                        <span className="font-medium text-[#092f20]">{p.nome_produto}</span>
+                        <span className="text-gray-500">
+                          {p.quantidade_val ?? '-'} {p.quantidade_un ?? ''}
+                          {p.dose_val ? ` · ${p.dose_val} ${p.dose_un ?? ''}` : ''}
+                        </span>
+                      </li>
+                    ))
+                  ) : (
+                    <li className="text-gray-500">Não informado</li>
+                  )}
+                </ul>
+              </div>
 
-              {activity.quantidade && (
-                <div>
-                  <p className="text-gray-600">Quantidade</p>
-                  <p className="font-medium text-[#092f20]">{activity.quantidade}</p>
-                </div>
-              )}
-
-              {activity.responsavel && (
-                <div className="flex items-center space-x-2">
-                  <User className="w-4 h-4 text-[#8fa49d]" />
-                  <div>
-                    <p className="text-gray-600">Responsável</p>
-                    <p className="font-medium text-[#092f20]">{activity.responsavel}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {activity.dose_usada && (
-              <div className="mt-3 pt-3 border-t border-gray-200">
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">Dose utilizada:</span> {activity.dose_usada}
+              <div>
+                <span className="text-gray-600">Responsáveis</span>
+                <p className="font-medium text-[#092f20] mt-1">
+                  {activity.responsaveis && activity.responsaveis.length > 0 ? activity.responsaveis.map(r => r.nome).join(', ') : 'Não informado'}
                 </p>
               </div>
-            )}
+            </div>
+
+            {/* Doses individuais já aparecem na lista de produtos acima (dose_val/dose_un) */}
           </div>
         ))}
       </div>

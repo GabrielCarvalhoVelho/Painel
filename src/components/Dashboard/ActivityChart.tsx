@@ -1,11 +1,11 @@
-import React from 'react';
+// React import not required with new JSX runtime
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { AtividadeComData } from '../../services/activityService';
+// legacy AtividadeComData removed from service; we only need the `data` field here
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 interface ActivityChartProps {
-  activities: AtividadeComData[];
+  activities: { data?: string }[];
 }
 
 export default function ActivityChart({ activities }: ActivityChartProps) {

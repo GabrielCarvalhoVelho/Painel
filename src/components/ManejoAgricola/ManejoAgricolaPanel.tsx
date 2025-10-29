@@ -18,7 +18,7 @@ import {
   Paperclip
 } from 'lucide-react';
 import { AuthService } from '../../services/authService';
-import { ActivityService, AtividadeComData } from '../../services/activityService';
+import { ActivityService } from '../../services/activityService';
 import { TalhaoService } from '../../services/talhaoService';
 import LoadingSpinner from '../Dashboard/LoadingSpinner';
 import ErrorMessage from '../Dashboard/ErrorMessage';
@@ -27,7 +27,33 @@ import type { Talhao } from '../../lib/supabase';
 
 export default function ManejoAgricolaPanel() {
   const [filtroTalhao, setFiltroTalhao] = useState('todos');
-  const [atividades, setAtividades] = useState<AtividadeComData[]>([]);
+  type AtividadeComDataLocal = {
+    id_atividade: string;
+    user_id?: string;
+    nome_atividade?: string;
+    data?: string;
+    dataFormatada?: string;
+    area?: string;
+    // produtos, maquinas e responsaveis agora representam os dados reais
+    produtos?: Array<{
+      nome_produto?: string;
+      quantidade_val?: number | null;
+      quantidade_un?: string | null;
+      dose_val?: number | null;
+      dose_un?: string | null;
+    }>;
+    maquinas?: Array<{
+      nome_maquina?: string | null;
+      horas_maquina?: number | null;
+    }>;
+    responsaveis?: Array<{
+      nome?: string | null;
+    }>;
+    observacao?: string;
+    id_talhoes?: string; // CSV of talhao ids
+  };
+
+  const [atividades, setAtividades] = useState<AtividadeComDataLocal[]>([]);
   const [talhoes, setTalhoes] = useState<Talhao[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -81,22 +107,55 @@ export default function ManejoAgricolaPanel() {
       await TalhaoService.verificarEstruturaTalhoes();
     }
     
-    // Busca atividades, talhões e talhão default do usuário em paralelo
-    const [atividadesData, talhoesData, talhaoDefaultId] = await Promise.all([
-      ActivityService.getAtividades(currentUser.user_id, 100),
+    // Busca lançamentos (novo modelo), talhões e talhão default do usuário em paralelo
+    const [lancamentosData, talhoesData, talhaoDefaultId] = await Promise.all([
+      ActivityService.getLancamentos(currentUser.user_id, 100),
       TalhaoService.getTalhoesPorCriador(currentUser.user_id, { onlyActive: false }),
       TalhaoService.getTalhaoDefaultId(currentUser.user_id)
     ]);
-    
-    console.log('Atividades carregadas:', atividadesData);
+
+    console.log('Lançamentos carregados:', lancamentosData);
     console.log('Talhões carregados:', talhoesData);
     console.log('Talhão default ID:', talhaoDefaultId);
-    
-    setAtividades(atividadesData);
+
+    // Mapear lançamentos para o formato legado esperado pela UI
+    const mapped = (lancamentosData || []).map((l: any) => {
+      const produtos = l.lancamento_produtos || l.produtos || [];
+      const responsaveis = l.lancamento_responsaveis || l.responsaveis || [];
+      const talhoesLanc = l.lancamento_talhoes || l.talhoes || [];
+
+  // produtos, maquinas e responsaveis são tratados como arrays; não geramos campos legados
+      const id_talhoes = talhoesLanc.map((t: any) => t.talhao_id).join(',');
+
+      return {
+        id_atividade: l.atividade_id,
+        user_id: l.user_id,
+        nome_atividade: l.nome_atividade || '',
+        data: l.data_atividade || l.created_at || '',
+        dataFormatada: l.dataFormatada || '',
+        area: l.area_atividade || '',
+        observacao: l.observacao || '',
+        id_talhoes,
+        produtos: produtos.map((p: any) => ({
+          nome_produto: p.nome_produto,
+          quantidade_val: p.quantidade_val,
+          quantidade_un: p.quantidade_un,
+          dose_val: p.dose_val,
+          dose_un: p.dose_un
+        })),
+        maquinas: (l.lancamento_maquinas || l.maquinas || []).map((m: any) => ({
+          nome_maquina: m.nome_maquina,
+          horas_maquina: m.horas_maquina
+        })),
+        responsaveis: responsaveis.map((r: any) => ({ nome: r.nome })),
+      };
+    });
+
+    setAtividades(mapped);
     setTalhoes(talhoesData);
     setTalhaoDefault(talhaoDefaultId); // This should be the returned value from getTalhaoDefaultId
-    
-    console.log('Estado final - Atividades:', atividadesData.length);
+
+    console.log('Estado final - Atividades:', mapped.length);
     console.log('Estado final - Talhões:', talhoesData.length);
     console.log('talhao defaultId final:', talhaoDefaultId);
     
@@ -123,7 +182,7 @@ export default function ManejoAgricolaPanel() {
   const opcoesFiltraTalhao = ['todos', ...talhoes.map(t => t.id_talhao)];
 
   // Função para filtrar atividades por talhão
-  const filtrarAtividadesPorTalhao = (atividades: AtividadeComData[]) => {
+  const filtrarAtividadesPorTalhao = (atividades: AtividadeComDataLocal[]) => {
     if (filtroTalhao === 'todos') {
       return atividades;
     }
@@ -147,7 +206,7 @@ export default function ManejoAgricolaPanel() {
 };
 
   // Função para obter nomes dos talhões de uma atividade
-  const getNomesTalhoesAtividade = (atividade: AtividadeComData): string => {
+  const getNomesTalhoesAtividade = (atividade: AtividadeComDataLocal): string => {
     if (!atividade.id_talhoes) return 'Área não informada';
     
     const talhoesIds = atividade.id_talhoes.split(',').map(id => id.trim());
@@ -284,44 +343,17 @@ export default function ManejoAgricolaPanel() {
   };
 
   // Função para mapear campos da atividade real para o formato esperado
-  const mapAtividadeToDisplay = (atividade: AtividadeComData) => {
+  const mapAtividadeToDisplay = (atividade: AtividadeComDataLocal) => {
     return {
       ...atividade,
       tipo: atividade.nome_atividade,
       descricao: atividade.nome_atividade,
       talhao: getNomesTalhoesAtividade(atividade),
-      produto: atividade.produto_usado || 'Não informado',
-      dose: atividade.dose_usada || 'Não informado',
-      quantidade: atividade.quantidade || 'Não informado',
-      responsavel: atividade.responsavel || 'Não informado',
       observacoes: atividade.observacao || ''
     };
   };
 
-  // Função legada para compatibilidade
-  const getIconByTypeLegacy = (tipo: string) => {
-    switch (tipo) {
-      case 'Pulverização': return <Droplets className="w-5 h-5 text-[#397738]" />;
-      case 'Adubação': return <Package className="w-5 h-5 text-[#86b646]" />;
-      case 'Capina': return <Leaf className="w-5 h-5 text-[#397738]" />;
-      case 'Poda': return <Scissors className="w-5 h-5 text-[#8fa49d]" />;
-      case 'Irrigação': return <Droplets className="w-5 h-5 text-[#86b646]" />;
-      case 'Análise': return <Bug className="w-5 h-5 text-[#8fa49d]" />;
-      default: return <Sprout className="w-5 h-5 text-[#397738]" />;
-    }
-  };
-
-  const getStatusColorLegacy = (tipo: string) => {
-    switch (tipo) {
-      case 'Pulverização': return 'bg-[#397738]/10 border-[#397738]/30';
-      case 'Adubação': return 'bg-[#86b646]/10 border-[#86b646]/30';
-      case 'Capina': return 'bg-[#397738]/10 border-[#397738]/30';
-      case 'Poda': return 'bg-[#8fa49d]/10 border-[#8fa49d]/30';
-      case 'Irrigação': return 'bg-[#86b646]/10 border-[#86b646]/30';
-      case 'Análise': return 'bg-[#8fa49d]/10 border-[#8fa49d]/30';
-      default: return 'bg-[#397738]/10 border-[#397738]/30';
-    }
-  };
+  // helpers legados removidos — usamos getIconByType / getStatusColorByType atuais
 
   return (
     <div className="space-y-6">
@@ -523,36 +555,58 @@ export default function ManejoAgricolaPanel() {
               atividadesRecentes.map((atividade) => {
                 const atividadeDisplay = mapAtividadeToDisplay(atividade);
                 return (
-                  <div key={atividade.id_atividade} className={`p-4 rounded-lg border-2 ${getStatusColorByType(atividade.nome_atividade)} hover:shadow-sm transition-shadow`}>
-                <div className="flex items-start justify-between mb-3">
+                  <div key={atividade.id_atividade} className={`p-4 rounded-lg border-2 ${getStatusColorByType(atividade.nome_atividade || '')} hover:shadow-sm transition-shadow`}>
+        <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center space-x-3">
-                        {getIconByType(atividade.nome_atividade)}
+        {getIconByType(atividade.nome_atividade || '')}
                     <div>
                           <h4 className="font-medium text-[#092f20]">{atividadeDisplay.descricao}</h4>
                           <p className="text-sm text-gray-600">{atividade.dataFormatada}</p>
                     </div>
                   </div>
-                  <span className="text-xs bg-[#397738]/10 text-[#397738] px-2 py-1 rounded-full">
-                        {atividadeDisplay.talhao}
-                  </span>
+      <span className="text-xs bg-[#397738]/10 text-[#397738] px-2 py-1 rounded-full">
+        {atividadeDisplay.talhao}
+      </span>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                   <div>
-                    <span className="text-gray-600">Produto:</span>
-                        <p className="font-medium text-[#092f20]">{atividadeDisplay.produto}</p>
+                    <span className="text-gray-600">Produtos:</span>
+                    <ul className="mt-1 space-y-1">
+                      {atividade.produtos && atividade.produtos.length > 0 ? (
+                        atividade.produtos.map((p, idx) => (
+                          <li key={idx} className="flex justify-between">
+                            <span className="font-medium text-[#092f20]">{p.nome_produto}</span>
+                            <span className="text-gray-500 text-right">
+                              {p.quantidade_val ?? '-'} {p.quantidade_un ?? ''}
+                              {p.dose_val ? ` · ${p.dose_val} ${p.dose_un ?? ''}` : ''}
+                            </span>
+                          </li>
+                        ))
+                      ) : (
+                        <li className="text-gray-500">Não informado</li>
+                      )}
+                    </ul>
                   </div>
                   <div>
-                    <span className="text-gray-600">Dose:</span>
-                        <p className="font-medium text-[#092f20]">{atividadeDisplay.dose}</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Quantidade:</span>
-                        <p className="font-medium text-[#092f20]">{atividadeDisplay.quantidade}</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Responsável:</span>
-                        <p className="font-medium text-[#092f20]">{atividadeDisplay.responsavel}</p>
+                    <span className="text-gray-600">Máquinas:</span>
+                    <ul className="mt-1 space-y-1">
+                      {atividade.maquinas && atividade.maquinas.length > 0 ? (
+                        atividade.maquinas.map((m, idx) => (
+                          <li key={idx} className="flex justify-between">
+                            <span className="font-medium text-[#092f20]">{m.nome_maquina}</span>
+                            <span className="text-gray-500">{m.horas_maquina ?? '-'} h</span>
+                          </li>
+                        ))
+                      ) : (
+                        <li className="text-gray-500">Não informado</li>
+                      )}
+                    </ul>
+
+                    <div className="mt-2">
+                      <span className="text-gray-600">Responsáveis:</span>
+                      <p className="mt-1 text-sm text-[#092f20]">{atividade.responsaveis && atividade.responsaveis.length > 0 ? atividade.responsaveis.map(r => r.nome).join(', ') : 'Não informado'}</p>
+                    </div>
                   </div>
                 </div>
 
@@ -622,10 +676,10 @@ export default function ManejoAgricolaPanel() {
               atividadesFuturas.map((atividade) => {
                 const atividadeDisplay = mapAtividadeToDisplay(atividade);
                 return (
-                  <div key={atividade.id_atividade} className={`p-4 rounded-lg border-2 ${getStatusColorByType(atividade.nome_atividade)} hover:shadow-sm transition-shadow`}>
+                  <div key={atividade.id_atividade} className={`p-4 rounded-lg border-2 ${getStatusColorByType(atividade.nome_atividade || '')} hover:shadow-sm transition-shadow`}>
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center space-x-3">
-                        {getIconByType(atividade.nome_atividade)}
+                        {getIconByType(atividade.nome_atividade || '')}
                     <div>
                           <h4 className="font-medium text-[#092f20]">{atividadeDisplay.descricao}</h4>
                           <p className="text-sm text-gray-600">{atividade.dataFormatada}</p>
@@ -636,24 +690,48 @@ export default function ManejoAgricolaPanel() {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                   <div>
-                    <span className="text-gray-600">Produto:</span>
-                        <p className="font-medium text-[#092f20]">{atividadeDisplay.produto}</p>
+                    <span className="text-gray-600">Produtos:</span>
+                    <ul className="mt-1 space-y-1">
+                      {atividade.produtos && atividade.produtos.length > 0 ? (
+                        atividade.produtos.map((p, idx) => (
+                          <li key={idx} className="flex justify-between">
+                            <span className="font-medium text-[#092f20]">{p.nome_produto}</span>
+                            <span className="text-gray-500 text-right">
+                              {p.quantidade_val ?? '-'} {p.quantidade_un ?? ''}
+                              {p.dose_val ? ` · ${p.dose_val} ${p.dose_un ?? ''}` : ''}
+                            </span>
+                          </li>
+                        ))
+                      ) : (
+                        <li className="text-gray-500">Não informado</li>
+                      )}
+                    </ul>
                   </div>
                   <div>
-                    <span className="text-gray-600">Dose:</span>
-                        <p className="font-medium text-[#092f20]">{atividadeDisplay.dose}</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Quantidade:</span>
-                        <p className="font-medium text-[#092f20]">{atividadeDisplay.quantidade}</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Responsável:</span>
-                        <p className="font-medium text-[#092f20]">{atividadeDisplay.responsavel}</p>
+                    <span className="text-gray-600">Máquinas:</span>
+                    <ul className="mt-1 space-y-1">
+                      {atividade.maquinas && atividade.maquinas.length > 0 ? (
+                        atividade.maquinas.map((m, idx) => (
+                          <li key={idx} className="flex justify-between">
+                            <span className="font-medium text-[#092f20]">{m.nome_maquina}</span>
+                            <span className="text-gray-500">{m.horas_maquina ?? '-'} h</span>
+                          </li>
+                        ))
+                      ) : (
+                        <li className="text-gray-500">Não informado</li>
+                      )}
+                    </ul>
+
+                    <div className="mt-2">
+                      <span className="text-gray-600">Responsáveis:</span>
+                      <p className="mt-1 text-sm text-[#092f20]">{atividade.responsaveis && atividade.responsaveis.length > 0 ? atividade.responsaveis.map(r => r.nome).join(', ') : 'Não informado'}</p>
+                    </div>
                   </div>
                 </div>
+                
+                
 
                     {atividadeDisplay.observacoes && (
                   <div className="mt-3 pt-3 border-t border-gray-200">

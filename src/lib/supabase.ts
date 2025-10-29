@@ -186,3 +186,65 @@ export interface MaquinasEquipamentos {
   url_segundo_envio: string | null;
   created_at?: string;
 }
+
+// ------------------
+// Tipos para novo modelo de lançamentos agrícolas
+// ------------------
+
+export interface LancamentoAgricola {
+  atividade_id: string; // uuid PK
+  user_id: string | null;
+  nome_atividade?: string | null;
+  data_atividade?: string | null; // date (ISO yyyy-mm-dd)
+  area_atividade?: string | null;
+  observacao?: string | null;
+  created_at?: string | null; // timestampz
+  updated_at?: string | null; // timestampz
+}
+
+export interface LancamentoTalhao {
+  atividade_id: string; // uuid FK
+  talhao_id: string;
+}
+
+export interface LancamentoResponsavel {
+  id: number;
+  atividade_id: string;
+  nome?: string | null;
+}
+
+export interface LancamentoProduto {
+  id: number;
+  atividade_id: string;
+  nome_produto?: string | null;
+  quantidade_val?: number | null;
+  quantidade_un?: string | null;
+  dose_val?: number | null;
+  dose_un?: string | null;
+  produto_id?: number | null;
+}
+
+export interface LancamentoMaquina {
+  id: number;
+  atividade_id: string;
+  maquina_id?: string | null;
+  nome_maquina?: string | null;
+  horas_maquina?: number | null;
+}
+
+/**
+ * Constroi um path de anexo a partir do id da atividade e extensão opcional.
+ * Ex: anexoPathFor('uuid', 'jpg') => 'uuid.jpg'
+ */
+export function anexoPathFor(atividade_id: string, ext?: string) {
+  if (!ext) return atividade_id;
+  return `${atividade_id}.${ext}`;
+}
+
+/**
+ * Retorna URL pública do arquivo no storage (não valida existência).
+ * Uso: getAnexoPublicUrl('anexos', anexoPathFor(atividade_id, 'jpg'))
+ */
+export function getAnexoPublicUrl(bucket: string, path: string) {
+  return supabase.storage.from(bucket).getPublicUrl(path);
+}

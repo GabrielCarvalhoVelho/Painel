@@ -1,114 +1,178 @@
 // src/services/activityService.ts
 import { supabase } from '../lib/supabase';
-import { AtividadeAgricola } from '../lib/supabase';
+import type {
+  LancamentoAgricola,
+  LancamentoTalhao,
+  LancamentoResponsavel,
+  LancamentoProduto,
+  LancamentoMaquina,
+} from '../lib/supabase';
 import { format, parseISO, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-export interface AtividadeComData extends AtividadeAgricola {
+export interface LancamentoComData extends LancamentoAgricola {
   dataFormatada: string;
+  talhoes?: LancamentoTalhao[];
+  responsaveis?: LancamentoResponsavel[];
+  produtos?: LancamentoProduto[];
+  maquinas?: LancamentoMaquina[];
 }
 
 export class ActivityService {
-  static async getAtividades(userId: string, limit: number = 10): Promise<AtividadeComData[]> {
+  /** Lista lançamentos (com filhos) — retorna em ordem decrescente por data_atividade */
+  static async getLancamentos(userId?: string, limit: number = 50): Promise<LancamentoComData[]> {
     try {
-      if (!userId) {
-        console.error('Erro: user_id é obrigatório para buscar atividades');
-        return [];
-      }
-
-      console.log('[ActivityService] Buscando atividades para user_id:', userId);
-
-      const { data, error } = await supabase
-        .from('atividades_agricolas')
-        .select('*')
-        .eq('user_id', userId)
-        .order('data_registro', { ascending: false })
+      const query = supabase
+        .from('lancamentos_agricolas')
+        .select(
+          `*, lancamento_talhoes(*), lancamento_responsaveis(*), lancamento_produtos(*), lancamento_maquinas(*)`
+        )
+        .order('data_atividade', { ascending: false })
         .limit(limit);
 
+      if (userId) query.eq('user_id', userId);
+
+      const { data, error } = await query;
       if (error) {
-        console.error('Erro ao buscar atividades:', error);
+        console.error('Erro ao buscar lançamentos:', error);
         return [];
       }
 
-      console.log('[ActivityService] Atividades encontradas:', data?.length || 0);
-
-      return (data || []).map(atividade => ({
-        ...atividade,
-        dataFormatada: this.formatDate(atividade.data || '')
+      return (data || []).map((l: any) => ({
+        ...l,
+        dataFormatada: this.formatDate(l.data_atividade || l.created_at || ''),
+        talhoes: l.lancamento_talhoes || [],
+        responsaveis: l.lancamento_responsaveis || [],
+        produtos: l.lancamento_produtos || [],
+        maquinas: l.lancamento_maquinas || [],
       }));
-    } catch (error) {
-      console.error('Erro no serviço de atividades:', error);
+    } catch (err) {
+      console.error('Erro no ActivityService.getLancamentos:', err);
       return [];
     }
   }
 
-  static async getAtividadesUltimos30Dias(userId: string): Promise<AtividadeComData[]> {
+  static async getLancamentoById(atividade_id: string): Promise<LancamentoComData | null> {
     try {
-      if (!userId) {
-        console.error('Erro: user_id é obrigatório para buscar atividades');
-        return [];
-      }
-
-      console.log('[ActivityService] Buscando atividades dos últimos 30 dias para user_id:', userId);
-
-      const dataInicio = new Date();
-      dataInicio.setDate(dataInicio.getDate() - 30);
-
       const { data, error } = await supabase
-        .from('atividades_agricolas')
-        .select('*')
-        .eq('user_id', userId)
-        .gte('data', dataInicio.toISOString().split('T')[0])
-        .order('data_registro', { ascending: false });
+        .from('lancamentos_agricolas')
+        .select(
+          `*, lancamento_talhoes(*), lancamento_responsaveis(*), lancamento_produtos(*), lancamento_maquinas(*)`
+        )
+        .eq('atividade_id', atividade_id)
+        .single();
 
       if (error) {
-        console.error('Erro ao buscar atividades dos últimos 30 dias:', error);
-        return [];
+        console.error('Erro ao buscar lancamento por id:', error);
+        return null;
       }
 
-      console.log('[ActivityService] Atividades dos últimos 30 dias encontradas:', data?.length || 0);
-
-      return (data || []).map(atividade => ({
-        ...atividade,
-        dataFormatada: this.formatDate(atividade.data || '')
-      }));
-    } catch (error) {
-      console.error('Erro no serviço de atividades:', error);
-      return [];
+      const l: any = data;
+      return {
+        ...l,
+        dataFormatada: this.formatDate(l.data_atividade || l.created_at || ''),
+        talhoes: l.lancamento_talhoes || [],
+        responsaveis: l.lancamento_responsaveis || [],
+        produtos: l.lancamento_produtos || [],
+        maquinas: l.lancamento_maquinas || [],
+      };
+    } catch (err) {
+      console.error('Erro no ActivityService.getLancamentoById:', err);
+      return null;
     }
   }
 
-  static async getAtividadesPorTipo(userId: string): Promise<{ [tipo: string]: number }> {
+  static async createLancamento(
+    payload: Partial<LancamentoAgricola>,
+    {
+      talhoes,
+      responsaveis,
+      produtos,
+      maquinas,
+    }: {
+      talhoes?: Partial<LancamentoTalhao>[];
+      responsaveis?: Partial<LancamentoResponsavel>[];
+      produtos?: Partial<LancamentoProduto>[];
+      maquinas?: Partial<LancamentoMaquina>[];
+    } = {}
+  ) {
+    const { data: lancData, error: lancErr } = await supabase
+      .from('lancamentos_agricolas')
+      .insert([payload])
+      .select()
+      .single();
+
+    if (lancErr) return { error: lancErr };
+
+    const atividade_id = (lancData as any).atividade_id as string;
+
+  const inserts: any[] = [];
+  if (talhoes?.length) inserts.push(supabase.from('lancamento_talhoes').insert(talhoes.map(t => ({ ...t, atividade_id }))));
+  if (responsaveis?.length) inserts.push(supabase.from('lancamento_responsaveis').insert(responsaveis.map(r => ({ ...r, atividade_id }))));
+  if (produtos?.length) inserts.push(supabase.from('lancamento_produtos').insert(produtos.map(p => ({ ...p, atividade_id }))));
+  if (maquinas?.length) inserts.push(supabase.from('lancamento_maquinas').insert(maquinas.map(m => ({ ...m, atividade_id }))));
+
+  const insertResults = inserts.length ? await Promise.all(inserts as unknown as Promise<any>[]) : [];
+
+    return { data: lancData, inserts: insertResults };
+  }
+
+  static async updateLancamento(atividade_id: string, changes: Partial<LancamentoAgricola>) {
+    const { data, error } = await supabase
+      .from('lancamentos_agricolas')
+      .update(changes)
+      .eq('atividade_id', atividade_id)
+      .select()
+      .single();
+
+    return { data, error };
+  }
+
+  static async deleteLancamento(atividade_id: string) {
+    // Remover filhos explicitamente
+    await supabase.from('lancamento_talhoes').delete().eq('atividade_id', atividade_id);
+    await supabase.from('lancamento_responsaveis').delete().eq('atividade_id', atividade_id);
+    await supabase.from('lancamento_produtos').delete().eq('atividade_id', atividade_id);
+    await supabase.from('lancamento_maquinas').delete().eq('atividade_id', atividade_id);
+
+    const { data, error } = await supabase
+      .from('lancamentos_agricolas')
+      .delete()
+      .eq('atividade_id', atividade_id)
+      .select();
+
+    return { data, error };
+  }
+
+  static getAnexoPublicUrl(bucket: string, path: string) {
+    return supabase.storage.from(bucket).getPublicUrl(path);
+  }
+
+  static formatDate(dateString: string): string {
     try {
-      if (!userId) {
-        console.error('Erro: user_id é obrigatório para buscar atividades');
-        return {};
+      if (!dateString) return 'Data não informada';
+
+      let date: Date;
+      if (dateString.includes('T')) {
+        date = new Date(dateString);
+      } else if (dateString.includes('/')) {
+        const [dia, mes, ano] = dateString.split('/');
+        if (ano.length === 4) {
+          date = new Date(parseInt(ano), parseInt(mes) - 1, parseInt(dia));
+        } else {
+          date = new Date(parseInt(ano) + 2000, parseInt(mes) - 1, parseInt(dia));
+        }
+      } else if (dateString.includes('-')) {
+        date = parseISO(dateString);
+      } else {
+        return dateString;
       }
 
-      console.log('[ActivityService] Buscando atividades por tipo para user_id:', userId);
-
-      const { data, error } = await supabase
-        .from('atividades_agricolas')
-        .select('nome_atividade')
-        .eq('user_id', userId);
-
-      if (error) {
-        console.error('Erro ao buscar atividades por tipo:', error);
-        return {};
-      }
-
-      console.log('[ActivityService] Tipos de atividades encontrados:', data?.length || 0);
-
-      const contagem: { [tipo: string]: number } = {};
-      (data || []).forEach(atividade => {
-        const tipo = atividade.nome_atividade || 'Outros';
-        contagem[tipo] = (contagem[tipo] || 0) + 1;
-      });
-
-      return contagem;
+      if (!isValid(date)) return dateString;
+      return format(date, 'dd/MM/yyyy', { locale: ptBR });
     } catch (error) {
-      console.error('Erro no serviço de atividades:', error);
-      return {};
+      console.error('Erro ao formatar data:', error, dateString);
+      return dateString || 'Data não informada';
     }
   }
 
@@ -126,38 +190,8 @@ export class ActivityService {
     };
 
     for (const [key, icon] of Object.entries(icons)) {
-      if (nomeAtividade.toLowerCase().includes(key.toLowerCase())) {
-        return icon;
-      }
+      if ((nomeAtividade || '').toLowerCase().includes(key.toLowerCase())) return icon;
     }
     return '🚜';
-  }
-
-  static formatDate(dateString: string): string {
-    try {
-      if (!dateString) return 'Data não informada';
-      
-      let date: Date;
-      if (dateString.includes('T')) {
-        date = new Date(dateString);
-      } else if (dateString.includes('/')) {
-        const [dia, mes, ano] = dateString.split('/');
-        if (ano.length === 4) {
-          date = new Date(parseInt(ano), parseInt(mes) - 1, parseInt(dia));
-        } else {
-          date = new Date(parseInt(ano) + 2000, parseInt(mes) - 1, parseInt(dia));
-        }
-      } else if (dateString.includes('-')) {
-        date = parseISO(dateString);
-      } else {
-        return dateString;
-      }
-      
-      if (!isValid(date)) return dateString;
-      return format(date, 'dd/MM/yyyy', { locale: ptBR });
-    } catch (error) {
-      console.error('Erro ao formatar data:', error, dateString);
-      return dateString || 'Data não informada';
-    }
   }
 }
