@@ -82,7 +82,7 @@ function App() {
           </div>
           <h1 className="text-2xl font-bold text-[#092f20] mb-4">Acesso Restrito</h1>
           <p className="text-gray-600 mb-6">
-            Para acessar o painel do ZÉ DA SAFRA, você precisa de um link de acesso válido.
+            Para acessar o painel do Zé, você precisa de um link de acesso válido.
           </p>
           <div className="bg-[#86b646]/10 p-4 rounded-lg">
             <p className="text-sm text-[#397738]">
