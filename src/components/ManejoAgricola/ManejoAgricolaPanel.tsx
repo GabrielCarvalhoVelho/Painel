@@ -439,7 +439,7 @@ export default function ManejoAgricolaPanel() {
             <h3 className="text-lg font-semibold text-[#092f20] mb-2">Nenhum talhão encontrado</h3>
             <p className="text-gray-600 mb-4">
               Você ainda não possui talhões cadastrados. Os talhões são criados automaticamente 
-              quando você registra atividades agrícolas via WhatsApp do ZÉ DA SAFRA.
+              quando você registra atividades agrícolas via WhatsApp do Zé.
             </p>
             <div className="bg-[#86b646]/10 p-4 rounded-lg">
               <p className="text-sm text-[#397738]">
