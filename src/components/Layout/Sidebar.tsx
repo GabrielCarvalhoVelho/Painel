@@ -56,7 +56,7 @@ export default function Sidebar({ activeTab, setActiveTab, onClose }: SidebarPro
         <div className="flex items-center space-x-3">
           <img 
             src="/LOGO-ZE.png" 
-            alt="ZÉ DA SAFRA" 
+            alt="Zé · Solos.ag" 
             className="w-10 h-10 object-contain rounded-full"
             onError={(e) => {
               e.currentTarget.style.display = 'none';
