@@ -1,7 +1,7 @@
 // src/components/Estoque/HistoryMovementsModal.tsx
 import { useEffect, useState } from 'react';
 import { X, Paperclip } from 'lucide-react';
-import { MovimentacaoExpandida, EstoqueService, LancamentoProdutoEntry } from '../../services/estoqueService';
+import { EstoqueService, LancamentoProdutoEntry } from '../../services/estoqueService';
 import { ProdutoAgrupado } from '../../services/agruparProdutosService';
 import AttachmentProductModal from './AttachmentProductModal';
 import Pagination from './Pagination';
@@ -47,27 +47,21 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
     if (!product) return;
 
     try {
-      let allEntradas = 0;
+      // Primeiro, somamos todas as saídas registradas nas movimentações por produto
       let allSaidas = 0;
 
       for (const p of product.produtos) {
         try {
           const resp = await EstoqueService.getMovimentacoesExpandidas(p.id, 1, 1000);
           const data = resp?.data || [];
-          const entradas = data.filter(m => m.tipo === 'entrada').reduce((sum, m) => sum + m.quantidade, 0);
           const saidas = data.filter(m => m.tipo === 'saida').reduce((sum, m) => sum + m.quantidade, 0);
-          allEntradas += entradas;
           allSaidas += saidas;
-
-          if (p.quantidade > 0) {
-            allEntradas += p.quantidade;
-          }
         } catch (err) {
           console.error(`Erro ao buscar movimentações para totais (produto ${p.id}):`, err);
         }
       }
 
-      // também considerar lançamentos (aplicações) para totais — usamos quantidade_val
+      // Em seguida, adicionamos as saídas vindas de lançamentos (aplicações)
       try {
         const produtoIds = product.produtos.map(p => p.id);
         const lancamentos = await EstoqueService.getLancamentosPorProdutos(produtoIds);
@@ -78,6 +72,16 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
       } catch (err) {
         console.error('Erro ao buscar lançamentos para totais:', err);
       }
+
+      // Agora inferimos as entradas históricas a partir do estoque atual:
+      // entradas_históricas = estoque_atual + total_saídas
+      // Usamos o total de estoque agregado do agrupamento quando disponível,
+      // caso contrário somamos as quantidades individuais dos produtos.
+      const totalEstoqueGroup = typeof product.totalEstoque !== 'undefined' && product.totalEstoque !== null
+        ? Number(product.totalEstoque)
+        : product.produtos.reduce((s, pr) => s + (Number(pr.quantidade) || 0), 0);
+
+      const allEntradas = totalEstoqueGroup + allSaidas;
 
       setTotalEntradas(allEntradas);
       setTotalSaidas(allSaidas);
@@ -107,31 +111,9 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
         }
       }
 
-      for (const p of product.produtos) {
-        if (p.quantidade > 0) {
-          const entradaInicial: MovimentacaoExpandida = {
-            id: -p.id,
-            produto_id: p.id,
-            user_id: p.user_id,
-            tipo: 'entrada',
-            quantidade: p.quantidade,
-            observacao: null,
-            created_at: p.created_at || new Date().toISOString(),
-            nome_produto: p.nome_produto,
-            marca: p.marca,
-            categoria: p.categoria,
-            unidade: p.unidade,
-            valor: p.valor,
-            lote: p.lote,
-            validade: p.validade,
-            fornecedor: p.fornecedor || null,
-            registro_mapa: p.registro_mapa || null,
-            produto_created_at: p.created_at || new Date().toISOString(),
-          };
-          allMovements.push(entradaInicial);
-          totalMovements += 1;
-        }
-      }
+      // Não adicionamos entradas iniciais aqui — elas serão adicionadas após
+      // incluirmos os lançamentos, de modo que possamos calcular o valor original
+      // (estoque atual + todas as saídas) por produto.
 
       // Buscar lançamentos (aplicações) de produtos e normalizar
       const produtoIds = product.produtos.map(p => p.id);
@@ -176,6 +158,47 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
         }
       } catch (err) {
         console.error('Erro ao buscar lançamentos de produtos:', err);
+      }
+
+      // Agora que temos movimentações e lançamentos no `allMovements`, podemos
+      // reconstituir a entrada inicial original para cada produto que não tem
+      // uma movimentação do tipo 'entrada' registrada. A quantidade original
+      // é: estoque_atual (p.quantidade) + total_saidas_do_produto.
+      for (const p of product.produtos) {
+        const hasEntradaRegistrada = allMovements.some(m => m.produto_id === p.id && m.tipo === 'entrada' && m._source !== 'entrada_inicial');
+        if (!hasEntradaRegistrada) {
+          // total de saídas para este produto (considerando movimentações e lançamentos)
+          const totalSaidasProduto = allMovements
+            .filter(m => m.produto_id === p.id && m.tipo === 'saida')
+            .reduce((s, m) => s + (Number(m.quantidade) || 0), 0);
+
+          const quantidadeOriginal = (Number(p.quantidade) || 0) + totalSaidasProduto;
+
+          if (quantidadeOriginal > 0) {
+            const entradaInicial = {
+              id: -p.id,
+              produto_id: p.id,
+              user_id: p.user_id,
+              tipo: 'entrada',
+              quantidade: quantidadeOriginal,
+              observacao: 'Entrada inicial (valor informado no cadastro do produto)',
+              created_at: p.created_at || new Date().toISOString(),
+              nome_produto: p.nome_produto,
+              marca: p.marca,
+              categoria: p.categoria,
+              unidade: p.unidade,
+              valor: p.valor,
+              lote: p.lote,
+              validade: p.validade,
+              fornecedor: p.fornecedor || null,
+              registro_mapa: p.registro_mapa || null,
+              produto_created_at: p.created_at || new Date().toISOString(),
+              _source: 'entrada_inicial'
+            };
+            allMovements.push(entradaInicial);
+            totalMovements += 1;
+          }
+        }
       }
 
   // (debug removed)
