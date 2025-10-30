@@ -442,7 +442,7 @@ export default function DashboardOverview() {
             <Coffee className="w-8 h-8 text-[#86b646]" />
           </div>
           <h3 className="text-lg font-semibold text-[#092f20] mb-2">
-            {!isDataLoaded ? 'Carregando dados...' : 'Bem-vindo ao ZÉ DA SAFRA!'}
+            {!isDataLoaded ? 'Carregando dados...' : 'Bem-vindo ao Zé · Solos.ag!'}
           </h3>
           <p className="text-gray-600 mb-4">
             {!isDataLoaded 
