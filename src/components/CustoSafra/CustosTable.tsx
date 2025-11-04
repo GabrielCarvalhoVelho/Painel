@@ -60,15 +60,19 @@ const CustosTable: React.FC<{ userId: string; areaCultivada: number; produtivida
   const areaCultivada = toNumber(areaCultivadaIn);
   const produtividade = toNumber(produtividadeIn);
 
-  // 1. Agrupa valores reais do usuário
+  // 1. Agrupa valores reais do usuário, excluindo categoria "Receita"
   const grouped = estatisticas.reduce((acc, est) => {
     const categoria = est.categoria || "Sem categoria";
+    // Ignora categoria "Receita"
+    if (categoria === "Receita") {
+      return acc;
+    }
     const valorCategoria = Math.abs(est.valor ?? est.total ?? 0);
     acc[categoria] = (acc[categoria] || 0) + valorCategoria;
     return acc;
   }, {} as Record<string, number>);
 
-  // 2. Pega todas as categorias da CONAB como base
+  // 2. Pega todas as categorias da CONAB como base (já sem "Receita")
   const todasCategorias = CustoConabService.getAllCustos();
 
   // 3. Monta array final, mesmo que valor real = 0

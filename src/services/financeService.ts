@@ -494,10 +494,10 @@ export class FinanceService {
         return [];
       }
 
-      // Filtra apenas os valores negativos
+      // Filtra apenas os valores negativos e exclui categoria "Receita"
       const resultado = (data ?? [])
         .map(item => ({ ...item, valor: Number(item.valor) }))
-        .filter(item => item.valor < 0); // Mantém só negativos
+        .filter(item => item.valor < 0 && item.categoria !== 'Receita'); // Mantém só negativos e exclui Receita
 
       // Cast seguro para o tipo do projeto
       return resultado as unknown as TransacaoFinanceira[];

@@ -22,7 +22,6 @@ export class CustoConabService {
     { discriminacao: "Sementes e mudas", custoPorHa: 0.0000, custoPorSaca: 0.0000, participacaoCv: 0.0000, participacaoCt: 0.0000 },
     { discriminacao: "Fertilizantes", custoPorHa: 4945.6900, custoPorSaca: 176.6318, participacaoCv: 22.5400, participacaoCt: 18.7500 },
     { discriminacao: "Defensivos Agrícolas", custoPorHa: 1381.8300, custoPorSaca: 49.3511, participacaoCv: 6.3000, participacaoCt: 5.2400 },
-    { discriminacao: "Receita", custoPorHa: 0.0000, custoPorSaca: 0.0000, participacaoCv: 0.0000, participacaoCt: 0.0000 },
     { discriminacao: "Outros", custoPorHa: 0.0000, custoPorSaca: 0.0000, participacaoCv: 0.0000, participacaoCt: 0.0000 },
     { discriminacao: "Embalagens", custoPorHa: 0.0000, custoPorSaca: 0.0000, participacaoCv: 0.0000, participacaoCt: 0.0000 },
     { discriminacao: "Análise de Solo", custoPorHa: 22.5000, custoPorSaca: 0.8036, participacaoCv: 0.1000, participacaoCt: 0.0900 },
