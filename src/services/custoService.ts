@@ -38,8 +38,7 @@ export class CustoConabService {
     { discriminacao: "Seguro", custoPorHa: 0.0000, custoPorSaca: 0.0000, participacaoCv: 0.0000, participacaoCt: 0.0000 },
     { discriminacao: "Assistência Técnica", custoPorHa: 0.0000, custoPorSaca: 0.0000, participacaoCv: 0.0000, participacaoCt: 0.0000 },
     { discriminacao: "Classificação", custoPorHa: 0.0000, custoPorSaca: 0.0000, participacaoCv: 0.0000, participacaoCt: 0.0000 },
-    { discriminacao: "Outros", custoPorHa: 0.0000, custoPorSaca: 0.0000, participacaoCv: 0.0000, participacaoCt: 0.0000 },
-    
+
     // V - OUTROS CUSTOS FIXOS
     { discriminacao: "Manutenção e Instalações", custoPorHa: 330.0000, custoPorSaca: 11.7857, participacaoCv: 1.5000, participacaoCt: 1.2500 },
     { discriminacao: "Encargos Sociais", custoPorHa: 77.2500, custoPorSaca: 2.7589, participacaoCv: 0.3500, participacaoCt: 0.2900 },
@@ -95,8 +94,8 @@ static getAllCustos(): CustoConabItem[] {
 
     // Mapear itens para suas respectivas categorias baseado na posição na tabela
     const despesasCusteio = this.CUSTO_CONAB_DATA.slice(0, 15);
-    const outrasDespesas = this.CUSTO_CONAB_DATA.slice(15, 23);
-    const outrosCustosFixos = this.CUSTO_CONAB_DATA.slice(23, 26);
+    const outrasDespesas = this.CUSTO_CONAB_DATA.slice(15, 22);
+    const outrosCustosFixos = this.CUSTO_CONAB_DATA.slice(22, 25);
 
     grupos["DESPESAS DO CUSTEIO"] = despesasCusteio;
     grupos["OUTRAS DESPESAS"] = outrasDespesas;
