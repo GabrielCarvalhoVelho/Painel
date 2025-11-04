@@ -97,6 +97,11 @@ const CustosTable: React.FC<{ userId: string; areaCultivada: number; produtivida
     return num.toFixed(decimals).replace('.', ',');
   };
 
+  // Sort custos alphabetically by categoria
+  const custosSorted = [...custos].sort((a, b) =>
+    a.categoria.localeCompare(b.categoria, 'pt-BR')
+  );
+
   // Totals
   const totalRealHectare = custos.reduce((acc, item) => acc + item.realHectare, 0);
   const totalRealSaca = custos.reduce((acc, item) => acc + item.realSaca, 0);
@@ -138,7 +143,7 @@ const CustosTable: React.FC<{ userId: string; areaCultivada: number; produtivida
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {custos.map((item, index) => (
+              {custosSorted.map((item, index) => (
                 <tr key={`ha-${index}`} className="hover:bg-gray-50">
                   <td className="px-4 py-3 text-xs sm:text-sm text-gray-900 break-words max-w-[120px]">
                     {item.categoria}
@@ -183,7 +188,7 @@ const CustosTable: React.FC<{ userId: string; areaCultivada: number; produtivida
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {custos.map((item, index) => (
+              {custosSorted.map((item, index) => (
                 <tr key={`saca-${index}`} className="hover:bg-gray-50">
                   <td className="px-4 py-3 text-xs sm:text-sm text-gray-900 break-words max-w-[120px]">
                     {item.categoria}
