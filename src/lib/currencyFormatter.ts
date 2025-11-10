@@ -2,8 +2,8 @@
 
 /**
  * Formata um valor numérico para o formato de moeda brasileira (R$ 1.000,00)
- * @param value - Valor em centavos ou string
- * @returns String formatada no padrão brasileiro
+ * @param value - Valor decimal (ex: 1234.56)
+ * @returns String formatada no padrão brasileiro (ex: "R$ 1.234,56")
  */
 export const formatCurrency = (value: number | string): string => {
   const numValue = typeof value === 'string' ? parseFloat(value) : value;
@@ -29,7 +29,7 @@ export const unformatCurrency = (value: string): string => {
 
 /**
  * Converte string de centavos para valor decimal
- * @param cents - String com centavos (ex: "123456")
+ * @param cents - String com centavos (ex: "123456" representa R$ 1.234,56)
  * @returns Número decimal (ex: 1234.56)
  */
 export const centsToDecimal = (cents: string): number => {
@@ -38,59 +38,117 @@ export const centsToDecimal = (cents: string): number => {
 };
 
 /**
+ * Converte valor decimal para centavos
+ * @param value - Valor decimal (ex: 1234.56)
+ * @returns Número inteiro em centavos (ex: 123456)
+ */
+export const decimalToCents = (value: number): number => {
+  return Math.round(value * 100);
+};
+
+/**
  * Formata o input enquanto o usuário digita
- * Remove tudo que não for número e formata automaticamente
- * @param value - Valor atual do input
- * @returns Objeto com valor formatado para exibição e valor numérico
+ * Implementação otimizada para BRL: usuário digita números e vê formatação automática
+ * Exemplo: digita "12345" e vê "R$ 123,45"
+ *
+ * @param value - Valor atual do input (pode conter formatação ou não)
+ * @returns Objeto com valor formatado para exibição e valor numérico correto
  */
 export const formatCurrencyInput = (value: string): {
   formatted: string;
   numeric: number;
-  cents: string;
+  rawCents: string;
 } => {
   // Remove tudo que não for número
   const onlyNumbers = unformatCurrency(value);
 
   // Se vazio, retorna 0
-  if (!onlyNumbers) {
+  if (!onlyNumbers || onlyNumbers === '0') {
     return {
       formatted: 'R$ 0,00',
       numeric: 0,
-      cents: '0'
+      rawCents: '0'
     };
   }
 
-  // Converte para número (valor completo que o usuário digitou)
-  const numericValue = parseFloat(onlyNumbers);
+  // Remove zeros à esquerda, mas mantém pelo menos um dígito
+  const cleanedNumbers = onlyNumbers.replace(/^0+/, '') || '0';
 
-  // Formata para exibição
+  // Converte para centavos e depois para valor decimal correto
+  // Exemplo: "12345" -> 123.45
+  const numericValue = centsToDecimal(cleanedNumbers);
+
+  // Formata para exibição usando a função padrão de formatação
   const formatted = formatCurrency(numericValue);
 
   return {
     formatted,
     numeric: numericValue,
-    cents: onlyNumbers
+    rawCents: cleanedNumbers
   };
 };
 
 /**
- * Hook de React para gerenciar input de moeda
+ * Converte um valor salvo no banco de dados para formato de exibição no input
+ * @param dbValue - Valor do banco (pode ser number ou string)
+ * @returns Objeto com valores formatados para uso no input
+ */
+export const initializeCurrencyInput = (dbValue: string | number | null | undefined): {
+  formatted: string;
+  numeric: number;
+  rawCents: string;
+} => {
+  if (dbValue === null || dbValue === undefined || dbValue === '') {
+    return {
+      formatted: 'R$ 0,00',
+      numeric: 0,
+      rawCents: '0'
+    };
+  }
+
+  const numValue = typeof dbValue === 'string' ? parseFloat(dbValue) : dbValue;
+
+  if (isNaN(numValue) || numValue === 0) {
+    return {
+      formatted: 'R$ 0,00',
+      numeric: 0,
+      rawCents: '0'
+    };
+  }
+
+  // Converte o valor decimal para centavos para manter consistência
+  const cents = decimalToCents(numValue);
+
+  return {
+    formatted: formatCurrency(numValue),
+    numeric: numValue,
+    rawCents: cents.toString()
+  };
+};
+
+/**
+ * Hook de React para gerenciar input de moeda com comportamento otimizado
+ * @param initialValue - Valor inicial (number ou string do banco de dados)
+ * @returns Objeto com valores e funções para gerenciar o input
  */
 export const useCurrencyInput = (initialValue: string | number = 0) => {
-  const getInitialFormatted = () => {
+  const getInitialState = () => {
     if (typeof initialValue === 'number') {
-      return formatCurrency(initialValue);
+      return initializeCurrencyInput(initialValue);
     }
     if (initialValue === '' || initialValue === '0') {
-      return 'R$ 0,00';
+      return {
+        formatted: 'R$ 0,00',
+        numeric: 0,
+        rawCents: '0'
+      };
     }
-    return formatCurrencyInput(initialValue).formatted;
+    return initializeCurrencyInput(initialValue);
   };
 
-  const [displayValue, setDisplayValue] = React.useState<string>(getInitialFormatted());
-  const [numericValue, setNumericValue] = React.useState<number>(
-    typeof initialValue === 'number' ? initialValue : 0
-  );
+  const initialState = getInitialState();
+  const [displayValue, setDisplayValue] = React.useState<string>(initialState.formatted);
+  const [numericValue, setNumericValue] = React.useState<number>(initialState.numeric);
 
   const handleChange = (inputValue: string) => {
     const result = formatCurrencyInput(inputValue);
@@ -99,10 +157,17 @@ export const useCurrencyInput = (initialValue: string | number = 0) => {
     return result;
   };
 
+  const setValue = (value: number) => {
+    const result = initializeCurrencyInput(value);
+    setDisplayValue(result.formatted);
+    setNumericValue(result.numeric);
+  };
+
   return {
     displayValue,
     numericValue,
     handleChange,
+    setValue,
     reset: () => {
       setDisplayValue('R$ 0,00');
       setNumericValue(0);

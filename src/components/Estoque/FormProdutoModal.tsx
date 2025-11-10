@@ -46,6 +46,14 @@ export default function FormProdutoModal({ isOpen, onClose, onCreated }: Props) 
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: '' }));
   };
 
+  const handleClearValue = () => {
+    setFormData((prev) => ({
+      ...prev,
+      valor: '0',
+      valorDisplay: ''
+    }));
+  };
+
   const handleFileChange = (file: File | null) =>
     setFormData((prev) => ({ ...prev, anexo: file }));
 
@@ -196,22 +204,33 @@ export default function FormProdutoModal({ isOpen, onClose, onCreated }: Props) 
 
           {/* Valor */}
           <div>
-            <label className="block text-sm font-medium mb-1">Valor total</label>
+            <label className="block text-sm font-medium mb-1">Valor total (opcional)</label>
             <input
               type="text"
               inputMode="numeric"
               value={formData.valorDisplay}
               onChange={(e) => handleInputChange('valor', e.target.value)}
               onFocus={(e) => {
-                // Se o valor for R$ 0,00, limpa ao focar
                 if (formData.valorDisplay === 'R$ 0,00') {
-                  e.target.select();
+                  handleClearValue();
                 }
               }}
-              className="w-full px-3 py-2 border rounded-lg border-gray-300 font-medium"
+              onBlur={(e) => {
+                if (!e.target.value || e.target.value.trim() === '') {
+                  const result = formatCurrencyInput('0');
+                  setFormData((prev) => ({
+                    ...prev,
+                    valor: '0',
+                    valorDisplay: result.formatted
+                  }));
+                }
+              }}
+              className="w-full px-3 py-2 border rounded-lg border-gray-300 font-medium text-lg"
               placeholder="R$ 0,00"
             />
-            <p className="text-xs text-gray-500 mt-1">Informe o total pago por este produto — o Zé calcula por R$/L, R$/kg, etc.</p>
+            <p className="text-xs text-gray-500 mt-1">
+              Digite apenas números. Ex: 12550 = R$ 125,50 ou 250000 = R$ 2.500,00
+            </p>
           </div>
 
           {/* Lote e Validade */}

@@ -45,6 +45,14 @@ export default function FormMaquinaModal({ isOpen, onClose, onCreated }: Props) 
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: '' }));
   };
 
+  const handleClearValue = () => {
+    setFormData((prev) => ({
+      ...prev,
+      valor_compra: '0',
+      valor_compra_display: ''
+    }));
+  };
+
   const handleFileChange = (field: 'anexo' | 'documento_maquina', file: File | null) => {
     setValidationMessage(null);
 
@@ -270,13 +278,25 @@ export default function FormMaquinaModal({ isOpen, onClose, onCreated }: Props) 
               onChange={(e) => handleInputChange('valor_compra', e.target.value)}
               onFocus={(e) => {
                 if (formData.valor_compra_display === 'R$ 0,00') {
-                  e.target.select();
+                  handleClearValue();
                 }
               }}
-              className="w-full px-3 py-2 border rounded-lg border-gray-300 font-medium"
+              onBlur={(e) => {
+                if (!e.target.value || e.target.value.trim() === '') {
+                  const result = formatCurrencyInput('0');
+                  setFormData((prev) => ({
+                    ...prev,
+                    valor_compra: '0',
+                    valor_compra_display: result.formatted
+                  }));
+                }
+              }}
+              className="w-full px-3 py-2 border rounded-lg border-gray-300 font-medium text-lg"
               placeholder="R$ 0,00"
             />
-            <p className="text-xs text-gray-500 mt-1">Digite apenas os números. Ex: 25000000 = R$ 250.000,00</p>
+            <p className="text-xs text-gray-500 mt-1">
+              Digite apenas números. Ex: 25000000 = R$ 250.000,00 ou 12550 = R$ 125,50
+            </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
