@@ -196,7 +196,7 @@ export default function FormProdutoModal({ isOpen, onClose, onCreated }: Props) 
 
           {/* Valor */}
           <div>
-            <label className="block text-sm font-medium mb-1">Valor unitário (opcional)</label>
+            <label className="block text-sm font-medium mb-1">Valor total</label>
             <input
               type="text"
               inputMode="numeric"
@@ -211,7 +211,7 @@ export default function FormProdutoModal({ isOpen, onClose, onCreated }: Props) 
               className="w-full px-3 py-2 border rounded-lg border-gray-300 font-medium"
               placeholder="R$ 0,00"
             />
-            <p className="text-xs text-gray-500 mt-1">Digite apenas os números. Ex: 12000 = R$ 120,00</p>
+            <p className="text-xs text-gray-500 mt-1">💰 Informe o total pago por este produto — o Zé calcula por R$/L, R$/kg, etc.</p>
           </div>
 
           {/* Lote e Validade */}
