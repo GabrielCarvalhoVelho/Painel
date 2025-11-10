@@ -2,7 +2,7 @@
 import { supabase } from '../lib/supabase';
 import { AuthService } from './authService';
 import { ActivityService } from './activityService';
-import { convertToStandardUnit } from '../lib/unitConverter';
+import { convertToStandardUnit, convertFromStandardUnit } from '../lib/unitConverter';
 
 export interface ProdutoEstoque {
   id: number;
@@ -140,7 +140,7 @@ export class EstoqueService {
 
     const { data: produtos, error: produtosError } = await supabase
       .from('estoque_de_produtos')
-      .select('id, valor_total, valor_unitario, quantidade_em_estoque')
+      .select('id, valor_total, valor_unitario, quantidade_em_estoque, unidade_de_medida, unidade_valor_original')
       .eq('user_id', userId);
 
     if (produtosError) {
@@ -200,10 +200,52 @@ export class EstoqueService {
       console.log('📊 Nenhuma movimentação encontrada');
     }
 
+    const { data: lancamentos, error: lancamentosError } = await supabase
+      .from('lancamento_produtos')
+      .select('produto_id, quantidade_val, quantidade_un')
+      .in('produto_id', produtos.map(p => p.id));
+
+    let valorProdutosUsados = 0;
+
+    if (lancamentosError) {
+      console.warn('⚠️ Erro ao buscar lançamentos de produtos:', lancamentosError);
+    } else if (lancamentos && lancamentos.length > 0) {
+      console.log(`🌾 Processando ${lancamentos.length} produtos usados em atividades`);
+
+      for (const lancamento of lancamentos) {
+        const produto = produtos.find(p => p.id === lancamento.produto_id);
+
+        if (produto && produto.valor_unitario) {
+          const quantidadeUsada = Number(lancamento.quantidade_val) || 0;
+          const unidadeLancamento = lancamento.quantidade_un || produto.unidade_de_medida;
+          const valorUnitario = Number(produto.valor_unitario) || 0;
+          const unidadeValorOriginal = produto.unidade_valor_original || produto.unidade_de_medida;
+
+          let quantidadeConvertida = quantidadeUsada;
+
+          if (unidadeLancamento !== unidadeValorOriginal) {
+            quantidadeConvertida = convertFromStandardUnit(
+              quantidadeUsada,
+              unidadeLancamento,
+              unidadeValorOriginal
+            );
+          }
+
+          const valorUsado = quantidadeConvertida * valorUnitario;
+          valorProdutosUsados += valorUsado;
+
+          console.log(`  🌱 Produto usado: ${quantidadeUsada} ${unidadeLancamento} → ${quantidadeConvertida.toFixed(2)} ${unidadeValorOriginal} × R$ ${valorUnitario.toFixed(2)} = R$ ${valorUsado.toFixed(2)}`);
+        }
+      }
+    } else {
+      console.log('🌾 Nenhum produto usado em atividades encontrado');
+    }
+
     console.log(`💸 Total de saídas: R$ ${valorSaidas.toFixed(2)}`);
     console.log(`💵 Total de entradas adicionais: R$ ${valorEntradas.toFixed(2)}`);
+    console.log(`🌾 Total de produtos usados: R$ ${valorProdutosUsados.toFixed(2)}`);
 
-    const valorTotalEstoque = valorTotalProdutos + valorEntradas - valorSaidas;
+    const valorTotalEstoque = valorTotalProdutos + valorEntradas - valorSaidas - valorProdutosUsados;
 
     console.log(`🏦 Valor total em estoque: R$ ${Math.max(0, valorTotalEstoque).toFixed(2)}`);
 
