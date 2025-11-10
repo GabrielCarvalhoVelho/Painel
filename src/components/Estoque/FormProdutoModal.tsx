@@ -168,14 +168,12 @@ export default function FormProdutoModal({ isOpen, onClose, onCreated }: Props) 
             >
               <option value="">Selecione...</option>
               <option value="ton">ton (tonelada)</option>
-              <option value="saca">saca (60 kg)</option>
               <option value="kg">kg</option>
               <option value="g">g</option>
+              <option value="mg">mg</option>
               <option value="L">L</option>
               <option value="mL">mL</option>
-              <option value="cx">cx (caixa)</option>
               <option value="un">un (unidade)</option>
-              <option value="galão">galão</option>
             </select>
           </div>
 

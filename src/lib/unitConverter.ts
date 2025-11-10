@@ -1,11 +1,10 @@
-export type MassUnit = 'ton' | 'saca' | 'kg' | 'g' | 'mg';
+export type MassUnit = 'ton' | 'kg' | 'g' | 'mg';
 export type VolumeUnit = 'L' | 'mL';
-export type OtherUnit = 'cx' | 'un' | 'galão';
+export type OtherUnit = 'un';
 export type Unit = MassUnit | VolumeUnit | OtherUnit;
 
 const MASS_TO_MG: Record<MassUnit, number> = {
   'ton': 1_000_000_000,
-  'saca': 60_000_000,
   'kg': 1_000_000,
   'g': 1_000,
   'mg': 1,
@@ -17,7 +16,7 @@ const VOLUME_TO_ML: Record<VolumeUnit, number> = {
 };
 
 export function isMassUnit(unit: string): unit is MassUnit {
-  return ['ton', 'saca', 'kg', 'g', 'mg'].includes(unit);
+  return ['ton', 'kg', 'g', 'mg'].includes(unit);
 }
 
 export function isVolumeUnit(unit: string): unit is VolumeUnit {
@@ -25,7 +24,7 @@ export function isVolumeUnit(unit: string): unit is VolumeUnit {
 }
 
 export function isOtherUnit(unit: string): unit is OtherUnit {
-  return ['cx', 'un', 'galão'].includes(unit);
+  return unit === 'un';
 }
 
 export function convertToStandardUnit(quantidade: number, unidade: string): { quantidade: number; unidade: string } {
@@ -80,12 +79,6 @@ export function getBestDisplayUnit(quantidadeMgOrMl: number, unidadePadrao: 'mg'
         quantidade: Number(tons.toFixed(tons >= 10 ? 1 : 2)),
         unidade: 'ton'
       };
-    }
-    if (quantidadeMgOrMl >= 60_000_000) {
-      const sacas = quantidadeMgOrMl / 60_000_000;
-      if (Math.abs(sacas - Math.round(sacas)) < 0.01) {
-        return { quantidade: Math.round(sacas), unidade: 'saca' };
-      }
     }
     if (quantidadeMgOrMl >= 1_000_000) {
       const kg = quantidadeMgOrMl / 1_000_000;
