@@ -1,5 +1,6 @@
 // src/services/agruparProdutosService.ts
 import { ProdutoEstoque } from "./estoqueService";
+import { convertToStandardUnit, getBestDisplayUnit, isMassUnit, isVolumeUnit } from '../lib/unitConverter';
 
 function normalizeName(name: string | null | undefined): string {
   if (!name || typeof name !== 'string') {
@@ -63,6 +64,8 @@ export interface ProdutoAgrupado {
   produtos: ProdutoEstoque[];
   mediaPreco: number;
   totalEstoque: number;
+  totalEstoqueDisplay: number;
+  unidadeDisplay: string;
   marcas: string[];
   categorias: string[];
   unidades: string[];
@@ -117,7 +120,37 @@ export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
     const produtosEmEstoque = grupo.filter(p => (p.quantidade ?? 0) > 0 && p.valor !== null);
     const totalPreco = produtosEmEstoque.reduce((sum, p) => sum + (p.valor ?? 0), 0);
     const media = produtosEmEstoque.length > 0 ? totalPreco / produtosEmEstoque.length : 0;
-    const totalEstoque = produtosEmEstoque.reduce((sum, p) => sum + (p.quantidade ?? 0), 0);
+
+    const primeiraUnidade = grupo[0].unidade;
+    let totalEstoqueEmUnidadePadrao = 0;
+    let unidadePadrao: 'mg' | 'mL' | null = null;
+
+    if (isMassUnit(primeiraUnidade)) {
+      unidadePadrao = 'mg';
+      produtosEmEstoque.forEach(p => {
+        const converted = convertToStandardUnit(p.quantidade ?? 0, p.unidade);
+        totalEstoqueEmUnidadePadrao += converted.quantidade;
+      });
+    } else if (isVolumeUnit(primeiraUnidade)) {
+      unidadePadrao = 'mL';
+      produtosEmEstoque.forEach(p => {
+        const converted = convertToStandardUnit(p.quantidade ?? 0, p.unidade);
+        totalEstoqueEmUnidadePadrao += converted.quantidade;
+      });
+    } else {
+      totalEstoqueEmUnidadePadrao = produtosEmEstoque.reduce((sum, p) => sum + (p.quantidade ?? 0), 0);
+    }
+
+    let totalEstoqueDisplay = totalEstoqueEmUnidadePadrao;
+    let unidadeDisplay = primeiraUnidade;
+
+    if (unidadePadrao) {
+      const displayResult = getBestDisplayUnit(totalEstoqueEmUnidadePadrao, unidadePadrao);
+      totalEstoqueDisplay = displayResult.quantidade;
+      unidadeDisplay = displayResult.unidade;
+    }
+
+    const totalEstoque = totalEstoqueEmUnidadePadrao;
 
     const marcas = Array.from(new Set(grupo.map(p => p.marca)));
     const categorias = Array.from(new Set(grupo.map(p => p.categoria)));
@@ -146,6 +179,8 @@ export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
       produtos: grupo,
       mediaPreco: media,
       totalEstoque,
+      totalEstoqueDisplay,
+      unidadeDisplay,
       marcas,
       categorias,
       unidades,

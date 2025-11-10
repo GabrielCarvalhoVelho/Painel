@@ -8,6 +8,7 @@ import ActivityAttachmentModal from '../ManejoAgricola/ActivityAttachmentModal';
 import ActivityDetailModal from '../ManejoAgricola/ActivityDetailModal';
 import Pagination from './Pagination';
 import { formatUnitAbbreviated } from '../../lib/formatUnit';
+import { autoScaleQuantity } from '../../lib/unitConverter';
 
 interface Props {
   isOpen: boolean;
@@ -318,9 +319,15 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
                 {product?.nome}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-1 md:gap-4 text-sm text-gray-600 mt-2">
-                <span className="whitespace-nowrap"><strong>Total Entradas:</strong> {totalEntradas} {formatUnitAbbreviated(product?.produtos[0]?.unidade)}</span>
-                <span className="whitespace-nowrap"><strong>Total Saídas:</strong> {totalSaidas} {formatUnitAbbreviated(product?.produtos[0]?.unidade)}</span>
-                <span className="whitespace-nowrap"><strong>Em estoque:</strong> {product?.totalEstoque} {formatUnitAbbreviated(product?.produtos[0]?.unidade)}</span>
+                <span className="whitespace-nowrap"><strong>Total Entradas:</strong> {(() => {
+                  const scaled = autoScaleQuantity(totalEntradas, product?.produtos[0]?.unidade || 'un');
+                  return `${scaled.quantidade} ${formatUnitAbbreviated(scaled.unidade)}`;
+                })()}</span>
+                <span className="whitespace-nowrap"><strong>Total Saídas:</strong> {(() => {
+                  const scaled = autoScaleQuantity(totalSaidas, product?.produtos[0]?.unidade || 'un');
+                  return `${scaled.quantidade} ${formatUnitAbbreviated(scaled.unidade)}`;
+                })()}</span>
+                <span className="whitespace-nowrap"><strong>Em estoque:</strong> {product?.totalEstoqueDisplay} {formatUnitAbbreviated(product?.unidadeDisplay || product?.produtos[0]?.unidade)}</span>
               </div>
               
             </div>
@@ -372,6 +379,7 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
                                     const badgeLabel = isLanc ? 'Aplicação' : (m.tipo === 'entrada' ? 'Entrada' : 'Saída');
                                     const qty = isLanc ? (m.quantidade_val ?? 0) : (m.quantidade ?? 0);
                                     const unit = isLanc ? (m.quantidade_un || m.unidade) : m.unidade;
+                                    const scaled = autoScaleQuantity(qty, unit);
 
                                     return (
                                       <>
@@ -379,7 +387,7 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
                                           {badgeLabel}
                                         </span>
                                         <span className="font-medium text-gray-900 whitespace-nowrap">
-                                          {qty} {formatUnitAbbreviated(unit)}
+                                          {scaled.quantidade} {formatUnitAbbreviated(scaled.unidade)}
                                         </span>
                                       </>
                                     );
@@ -396,13 +404,16 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
                           )}
 
                           {/* Se for lançamento (aplicação) mostramos atividade, quantidade usada/un e custo calculado */}
-                          {m._source === 'lancamento' && (
-                            <div className="text-sm text-gray-600 space-y-1 mt-2">
-                              <div><strong>Atividade:</strong> {m.nome_atividade || '—'}</div>
-                              <div><strong>Quantidade usada:</strong> {m.quantidade_val ?? 0} {m.quantidade_un || m.unidade}</div>
-                              <div><strong>Custo do produto usado:</strong> {m.custo_calculado != null ? `R$ ${Number(m.custo_calculado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—'}</div>
-                            </div>
-                          )}
+                          {m._source === 'lancamento' && (() => {
+                            const qtyUsed = autoScaleQuantity(m.quantidade_val ?? 0, m.quantidade_un || m.unidade);
+                            return (
+                              <div className="text-sm text-gray-600 space-y-1 mt-2">
+                                <div><strong>Atividade:</strong> {m.nome_atividade || '—'}</div>
+                                <div><strong>Quantidade usada:</strong> {qtyUsed.quantidade} {qtyUsed.unidade}</div>
+                                <div><strong>Custo do produto usado:</strong> {m.custo_calculado != null ? `R$ ${Number(m.custo_calculado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—'}</div>
+                              </div>
+                            );
+                          })()}
 
                           {m.tipo === 'entrada' && (
                             <div className="text-sm text-gray-600 space-y-1 mt-2">

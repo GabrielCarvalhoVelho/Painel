@@ -2,6 +2,7 @@
 import { X } from "lucide-react";
 import { ProdutoEstoque } from "../../services/estoqueService";
 import { ProdutoAgrupado } from "../../services/agruparProdutosService";
+import { autoScaleQuantity } from "../../lib/unitConverter";
 
 interface RemoveQuantityModalProps {
   isOpen: boolean;
@@ -85,21 +86,27 @@ export default function RemoveQuantityModal({
               setQuantidade(1);
             }}
           >
-            {productGroup.produtos.map(p => (
-              <option key={p.id} value={p.id}>
-                {p.fornecedor || 'Fornecedor desconhecido'} • Marca: {p.marca || '—'} • Lote: {p.lote || '—'} • Disponível: {p.quantidade} {p.unidade}
-              </option>
-            ))}
+            {productGroup.produtos.map(p => {
+              const scaledQty = autoScaleQuantity(p.quantidade, p.unidade);
+              return (
+                <option key={p.id} value={p.id}>
+                  {p.fornecedor || 'Fornecedor desconhecido'} • Marca: {p.marca || '—'} • Lote: {p.lote || '—'} • Disponível: {scaledQty.quantidade} {scaledQty.unidade}
+                </option>
+              );
+            })}
           </select>
         </div>
-        {selectedProduto && (
-          <p className="text-sm text-gray-600 mb-4">
-            Quantidade disponível:{" "}
-            <strong>
-              {estoqueAtual} {selectedProduto.unidade}
-            </strong>
-          </p>
-        )}
+        {selectedProduto && (() => {
+          const scaled = autoScaleQuantity(estoqueAtual, selectedProduto.unidade);
+          return (
+            <p className="text-sm text-gray-600 mb-4">
+              Quantidade disponível:{" "}
+              <strong>
+                {scaled.quantidade} {scaled.unidade}
+              </strong>
+            </p>
+          );
+        })()}
 
         {/* Input */}
         <div className="flex items-center gap-2 mb-4">

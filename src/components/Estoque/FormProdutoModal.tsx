@@ -191,6 +191,9 @@ export default function FormProdutoModal({ isOpen, onClose, onCreated }: Props) 
               placeholder="Ex.: 12,5 L ou 300 kg"
               required
             />
+            <p className="text-xs text-gray-500 mt-1">
+              Dica: Quantidades serão automaticamente convertidas para exibição (ex.: 40000 mL = 40 L, 2000 g = 2 kg)
+            </p>
           </div>
 
           {/* Valor */}

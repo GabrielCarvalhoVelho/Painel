@@ -53,7 +53,7 @@ export default function ListaProdutosMobile({
               <div>
                 <p className="text-gray-500">Qtd.</p>
                 <p className="font-bold">
-                  {item.totalEstoque} {formatUnitFull(item.unidades[0])}
+                  {item.totalEstoqueDisplay} {formatUnitFull(item.unidadeDisplay)}
                 </p>
               </div>
               <div>

@@ -75,7 +75,11 @@ export function convertFromStandardUnit(
 export function getBestDisplayUnit(quantidadeMgOrMl: number, unidadePadrao: 'mg' | 'mL'): { quantidade: number; unidade: string } {
   if (unidadePadrao === 'mg') {
     if (quantidadeMgOrMl >= 1_000_000_000) {
-      return { quantidade: quantidadeMgOrMl / 1_000_000_000, unidade: 'ton' };
+      const tons = quantidadeMgOrMl / 1_000_000_000;
+      return {
+        quantidade: Number(tons.toFixed(tons >= 10 ? 1 : 2)),
+        unidade: 'ton'
+      };
     }
     if (quantidadeMgOrMl >= 60_000_000) {
       const sacas = quantidadeMgOrMl / 60_000_000;
@@ -84,19 +88,37 @@ export function getBestDisplayUnit(quantidadeMgOrMl: number, unidadePadrao: 'mg'
       }
     }
     if (quantidadeMgOrMl >= 1_000_000) {
-      return { quantidade: quantidadeMgOrMl / 1_000_000, unidade: 'kg' };
+      const kg = quantidadeMgOrMl / 1_000_000;
+      return {
+        quantidade: Number(kg.toFixed(kg >= 10 ? 1 : 2)),
+        unidade: 'kg'
+      };
     }
     if (quantidadeMgOrMl >= 1_000) {
-      return { quantidade: quantidadeMgOrMl / 1_000, unidade: 'g' };
+      const g = quantidadeMgOrMl / 1_000;
+      return {
+        quantidade: Number(g.toFixed(g >= 10 ? 1 : 2)),
+        unidade: 'g'
+      };
     }
-    return { quantidade: quantidadeMgOrMl, unidade: 'mg' };
+    return {
+      quantidade: Number(quantidadeMgOrMl.toFixed(2)),
+      unidade: 'mg'
+    };
   }
 
   if (unidadePadrao === 'mL') {
     if (quantidadeMgOrMl >= 1_000) {
-      return { quantidade: quantidadeMgOrMl / 1_000, unidade: 'L' };
+      const liters = quantidadeMgOrMl / 1_000;
+      return {
+        quantidade: Number(liters.toFixed(liters >= 10 ? 1 : 2)),
+        unidade: 'L'
+      };
     }
-    return { quantidade: quantidadeMgOrMl, unidade: 'mL' };
+    return {
+      quantidade: Number(quantidadeMgOrMl.toFixed(2)),
+      unidade: 'mL'
+    };
   }
 
   return { quantidade: quantidadeMgOrMl, unidade: unidadePadrao };
@@ -105,4 +127,19 @@ export function getBestDisplayUnit(quantidadeMgOrMl: number, unidadePadrao: 'mg'
 export function formatQuantityWithUnit(quantidade: number, unidade: string): string {
   const formatted = quantidade % 1 === 0 ? quantidade.toString() : quantidade.toFixed(2);
   return `${formatted} ${unidade}`;
+}
+
+export function autoScaleQuantity(quantidade: number, unidade: string): { quantidade: number; unidade: string } {
+  const standardized = convertToStandardUnit(quantidade, unidade);
+
+  if (standardized.unidade === 'mg' || standardized.unidade === 'mL') {
+    return getBestDisplayUnit(standardized.quantidade, standardized.unidade);
+  }
+
+  return { quantidade, unidade };
+}
+
+export function formatQuantityAutoScaled(quantidade: number, unidade: string): string {
+  const scaled = autoScaleQuantity(quantidade, unidade);
+  return formatQuantityWithUnit(scaled.quantidade, scaled.unidade);
 }

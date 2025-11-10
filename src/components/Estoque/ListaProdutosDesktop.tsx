@@ -56,7 +56,7 @@ export default function ListaProdutosDesktop({
               <div className="text-center">
                 <p className="text-xs text-gray-500">Quantidade</p>
                 <p className="text-lg font-bold text-[#092f20]">
-                  {item.totalEstoque} {formatUnitFull(item.unidades[0])}
+                  {item.totalEstoqueDisplay} {formatUnitFull(item.unidadeDisplay)}
                 </p>
               </div>
               <div className="text-center">
