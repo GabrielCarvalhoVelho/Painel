@@ -79,6 +79,8 @@ export interface ProdutoAgrupado {
     registro_mapa: string|null;
     ids: number[];
   }[];
+  unidadeValorOriginal: string | null;
+  mediaPrecoOriginal: number | null;
 }
 
 export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
@@ -180,6 +182,18 @@ export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
       fornecedoresMap[key].ids.push(p.id);
     });
 
+    const unidadesOriginais = produtosEmEstoque
+      .map(p => p.unidade_valor_original)
+      .filter(u => u != null && u !== '');
+
+    const unidadeValorOriginal = unidadesOriginais.length > 0
+      ? unidadesOriginais.sort((a, b) =>
+          unidadesOriginais.filter(u => u === a).length - unidadesOriginais.filter(u => u === b).length
+        ).pop() || null
+      : null;
+
+    const mediaPrecoOriginal = unidadeValorOriginal ? media : null;
+
     return {
       nome: nomeMaisComum,
       produtos: grupo,
@@ -193,7 +207,9 @@ export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
       unidades,
       lotes,
       validades,
-      fornecedores: Object.values(fornecedoresMap)
+      fornecedores: Object.values(fornecedoresMap),
+      unidadeValorOriginal,
+      mediaPrecoOriginal
     };
   });
 }

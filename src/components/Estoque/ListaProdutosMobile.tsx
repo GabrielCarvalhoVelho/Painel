@@ -63,6 +63,11 @@ export default function ListaProdutosMobile({
                     ? `R$ ${Number(item.mediaPrecoDisplay).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                     : "—"}
                 </p>
+                {item.unidadeValorOriginal && item.mediaPrecoOriginal != null && (
+                  <p className="text-[10px] text-gray-500 mt-0.5">
+                    R$ {Number(item.mediaPrecoOriginal).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / {item.unidadeValorOriginal}
+                  </p>
+                )}
               </div>
             </div>
 

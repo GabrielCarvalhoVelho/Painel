@@ -66,6 +66,11 @@ export default function ListaProdutosDesktop({
                     ? `R$ ${Number(item.mediaPrecoDisplay).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                     : "—"}
                 </p>
+                {item.unidadeValorOriginal && item.mediaPrecoOriginal != null && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    R$ {Number(item.mediaPrecoOriginal).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / {item.unidadeValorOriginal}
+                  </p>
+                )}
               </div>
             </div>
 
