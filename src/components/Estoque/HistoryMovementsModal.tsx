@@ -8,7 +8,7 @@ import ActivityAttachmentModal from '../ManejoAgricola/ActivityAttachmentModal';
 import ActivityDetailModal from '../ManejoAgricola/ActivityDetailModal';
 import Pagination from './Pagination';
 import { formatUnitAbbreviated } from '../../lib/formatUnit';
-import { autoScaleQuantity } from '../../lib/unitConverter';
+import { autoScaleQuantity, convertFromStandardUnit, isMassUnit, isVolumeUnit } from '../../lib/unitConverter';
 
 interface Props {
   isOpen: boolean;
@@ -135,7 +135,24 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
         const quantidade_val = l.quantidade_val ?? 0;
         const unidade_quant = l.quantidade_un || produtoInfo?.unidade || 'un';
         const valorUnitario = produtoInfo?.valor ?? null;
-        const custoCalculado = valorUnitario != null ? Number(valorUnitario) * Number(quantidade_val) : null;
+
+        let custoCalculado = null;
+        if (valorUnitario != null && quantidade_val > 0) {
+          const unidadeValorOriginal = produtoInfo?.unidade_valor_original || produtoInfo?.unidade || 'un';
+
+          let quantidadeParaCalculo = quantidade_val;
+
+          if (isMassUnit(unidade_quant) && unidade_quant !== unidadeValorOriginal) {
+            quantidadeParaCalculo = convertFromStandardUnit(quantidade_val, 'mg', unidadeValorOriginal);
+          } else if (isVolumeUnit(unidade_quant) && unidade_quant !== unidadeValorOriginal) {
+            quantidadeParaCalculo = convertFromStandardUnit(quantidade_val, 'mL', unidadeValorOriginal);
+          } else if (unidade_quant !== unidadeValorOriginal && (isMassUnit(unidadeValorOriginal) || isVolumeUnit(unidadeValorOriginal))) {
+            const standardUnit = isMassUnit(unidadeValorOriginal) ? 'mg' : 'mL';
+            quantidadeParaCalculo = convertFromStandardUnit(quantidade_val, standardUnit, unidadeValorOriginal);
+          }
+
+          custoCalculado = Number(valorUnitario) * quantidadeParaCalculo;
+        }
 
         const mapped = {
           id: l.id,
