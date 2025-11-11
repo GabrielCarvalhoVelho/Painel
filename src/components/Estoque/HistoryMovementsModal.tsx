@@ -335,15 +335,16 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
 
   const formatValidity = (validadeStr: string | null) => {
     if (!validadeStr) return '—';
-    
-    const date = new Date(validadeStr);
-    const defaultDate = new Date('2000-01-01');
 
-    // Se a data for 01/01/2000, retorna "-"
-    if (date.getTime() === defaultDate.getTime()) {
+    const date = new Date(validadeStr);
+    const defaultDate1 = new Date('1999-12-31');
+    const defaultDate2 = new Date('2000-01-01');
+
+    // Se a data for 31/12/1999 ou 01/01/2000, retorna "-" (datas padrão para "sem validade")
+    if (date.getTime() === defaultDate1.getTime() || date.getTime() === defaultDate2.getTime()) {
       return '—';
     }
-    
+
     return date.toLocaleDateString('pt-BR');
   };
 
