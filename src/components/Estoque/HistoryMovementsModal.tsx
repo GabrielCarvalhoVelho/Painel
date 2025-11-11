@@ -143,13 +143,24 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
 
           let quantidadeParaCalculo = quantidade_val;
 
-          if (isMassUnit(unidade_quant) && unidade_quant !== unidadeValorOriginal) {
-            quantidadeParaCalculo = convertFromStandardUnit(quantidade_val, 'mg', unidadeValorOriginal);
-          } else if (isVolumeUnit(unidade_quant) && unidade_quant !== unidadeValorOriginal) {
-            quantidadeParaCalculo = convertFromStandardUnit(quantidade_val, 'mL', unidadeValorOriginal);
-          } else if (unidade_quant !== unidadeValorOriginal && (isMassUnit(unidadeValorOriginal) || isVolumeUnit(unidadeValorOriginal))) {
-            const standardUnit = isMassUnit(unidadeValorOriginal) ? 'mg' : 'mL';
-            quantidadeParaCalculo = convertFromStandardUnit(quantidade_val, standardUnit, unidadeValorOriginal);
+          // Se as unidades são diferentes, precisamos converter
+          if (unidade_quant !== unidadeValorOriginal) {
+            // Caso 1: ambas são unidades de massa
+            if (isMassUnit(unidade_quant) && isMassUnit(unidadeValorOriginal)) {
+              // Converter quantidade_val de unidade_quant para mg (padrão)
+              const quantidadeEmMg = convertToStandardUnit(quantidade_val, unidade_quant).quantidade;
+              // Converter de mg para unidadeValorOriginal
+              quantidadeParaCalculo = convertFromStandardUnit(quantidadeEmMg, 'mg', unidadeValorOriginal);
+            }
+            // Caso 2: ambas são unidades de volume
+            else if (isVolumeUnit(unidade_quant) && isVolumeUnit(unidadeValorOriginal)) {
+              // Converter quantidade_val de unidade_quant para mL (padrão)
+              const quantidadeEmMl = convertToStandardUnit(quantidade_val, unidade_quant).quantidade;
+              // Converter de mL para unidadeValorOriginal
+              quantidadeParaCalculo = convertFromStandardUnit(quantidadeEmMl, 'mL', unidadeValorOriginal);
+            }
+            // Caso 3: tipos incompatíveis (massa vs volume ou vs 'un') - manter quantidade original
+            // Isso evita conversões incorretas quando as unidades não são compatíveis
           }
 
           custoCalculado = Number(valorUnitario) * quantidadeParaCalculo;
