@@ -77,13 +77,19 @@ export default function FormProdutoModal({ isOpen, onClose, onCreated }: Props) 
       const user = AuthService.getInstance().getCurrentUser();
       if (!user) throw new Error('Usuário não autenticado');
 
+      const valorTotalEmReais = formData.valor ? Number(formData.valor) / 100 : 0;
+
+      console.log('🔍 Debug FormProdutoModal - Valores:');
+      console.log(`  - formData.valor (centavos): ${formData.valor}`);
+      console.log(`  - valorTotalEmReais: R$ ${valorTotalEmReais.toFixed(2)}`);
+
       const novoProduto = await EstoqueService.addProduto({
         nome_produto: formData.nome,
         marca: formData.marca,
         categoria: formData.categoria,
         unidade: formData.unidade,
         quantidade: Number(formData.quantidade),
-        valor: formData.valor ? Number(formData.valor) : null,
+        valor: valorTotalEmReais,
         lote: formData.lote || null,
         validade: formData.validade || null,
         fornecedor: formData.fornecedor || null,
@@ -204,7 +210,7 @@ export default function FormProdutoModal({ isOpen, onClose, onCreated }: Props) 
 
           {/* Valor */}
           <div>
-            <label className="block text-sm font-medium mb-1">Valor total (opcional)</label>
+            <label className="block text-sm font-medium mb-1">Valor total da compra (opcional)</label>
             <input
               type="text"
               inputMode="numeric"
@@ -229,7 +235,7 @@ export default function FormProdutoModal({ isOpen, onClose, onCreated }: Props) 
               placeholder="R$ 0,00"
             />
             <p className="text-xs text-gray-500 mt-1">
-              Digite apenas números. Ex: 12550 = R$ 125,50 ou 250000 = R$ 2.500,00
+              Valor total pago pela quantidade em estoque. Ex: Comprou 200 kg por R$ 450,00 → digite 45000
             </p>
           </div>
 
