@@ -312,14 +312,13 @@ export class EstoqueService {
     const converted = convertToStandardUnit(produto.quantidade, produto.unidade);
 
     const valorTotal = produto.valor || 0;
-    const valorUnitario = produto.quantidade > 0 ? valorTotal / produto.quantidade : 0;
+    const valorUnitarioPorUnidadeOriginal = produto.quantidade > 0 ? valorTotal / produto.quantidade : 0;
 
     console.log('📊 Cálculo de valores do produto:');
     console.log(`  - Quantidade original: ${produto.quantidade} ${produto.unidade}`);
     console.log(`  - Quantidade convertida: ${converted.quantidade} ${converted.unidade}`);
-    console.log(`  - Valor total recebido: ${valorTotal}`);
-    console.log(`  - Valor total tratado: R$ ${valorTotal.toFixed(2)}`);
-    console.log(`  - Valor unitário calculado: R$ ${valorUnitario.toFixed(6)} por ${produto.unidade}`);
+    console.log(`  - Valor total: R$ ${valorTotal.toFixed(2)}`);
+    console.log(`  - Valor unitário por ${produto.unidade}: R$ ${valorUnitarioPorUnidadeOriginal.toFixed(6)}`);
 
     const { data, error } = await supabase
       .from('estoque_de_produtos')
@@ -331,7 +330,7 @@ export class EstoqueService {
           categoria: produto.categoria,
           unidade_de_medida: converted.unidade,
           quantidade_em_estoque: converted.quantidade,
-          valor_unitario: valorUnitario,
+          valor_unitario: valorUnitarioPorUnidadeOriginal,
           valor_total: valorTotal,
           unidade_valor_original: produto.unidade,
           lote: produto.lote,
