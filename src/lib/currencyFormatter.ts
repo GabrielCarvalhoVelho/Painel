@@ -136,6 +136,61 @@ export const formatCurrencyInput = (value: string): {
 };
 
 /**
+ * Formata input de valor total permitindo entrada decimal natural
+ * Usuário pode digitar "450" ou "450,00" e será interpretado como R$ 450,00
+ * Aceita vírgula ou ponto como separador decimal
+ *
+ * @param value - Valor digitado pelo usuário (ex: "450", "450,00", "450.50")
+ * @returns Objeto com valor formatado e numérico
+ */
+export const formatDecimalCurrencyInput = (value: string): {
+  formatted: string;
+  numeric: number;
+} => {
+  // Remove espaços e R$
+  let cleanValue = value.replace(/R\$/g, '').replace(/\s/g, '');
+
+  // Se vazio, retorna 0
+  if (!cleanValue || cleanValue === '') {
+    return {
+      formatted: 'R$ 0,00',
+      numeric: 0
+    };
+  }
+
+  // Substitui vírgula por ponto para parseFloat
+  cleanValue = cleanValue.replace(/\./g, '').replace(',', '.');
+
+  // Remove caracteres não numéricos exceto ponto decimal
+  cleanValue = cleanValue.replace(/[^\d.]/g, '');
+
+  // Garante apenas um ponto decimal
+  const parts = cleanValue.split('.');
+  if (parts.length > 2) {
+    cleanValue = parts[0] + '.' + parts.slice(1).join('');
+  }
+
+  // Converte para número
+  const numericValue = parseFloat(cleanValue);
+
+  // Se não for um número válido, retorna 0
+  if (isNaN(numericValue)) {
+    return {
+      formatted: 'R$ 0,00',
+      numeric: 0
+    };
+  }
+
+  // Formata para exibição
+  const formatted = formatCurrency(numericValue);
+
+  return {
+    formatted,
+    numeric: numericValue
+  };
+};
+
+/**
  * Converte um valor salvo no banco de dados para formato de exibição no input
  * @param dbValue - Valor do banco (pode ser number ou string)
  * @returns Objeto com valores formatados para uso no input

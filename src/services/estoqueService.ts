@@ -317,7 +317,7 @@ export class EstoqueService {
     console.log(`  - Quantidade original: ${produto.quantidade} ${produto.unidade}`);
     console.log(`  - Quantidade convertida: ${converted.quantidade} ${converted.unidade}`);
     console.log(`  - Valor total informado: R$ ${valorTotal.toFixed(2)}`);
-    console.log(`  - Valor unitário calculado: R$ ${valorUnitario.toFixed(4)} por ${produto.unidade}`);
+    console.log(`  - Valor unitário calculado: R$ ${valorUnitario.toFixed(6)} por ${produto.unidade}`);
 
     const { data, error } = await supabase
       .from('estoque_de_produtos')
