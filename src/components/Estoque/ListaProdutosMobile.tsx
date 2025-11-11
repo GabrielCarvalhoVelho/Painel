@@ -60,12 +60,18 @@ export default function ListaProdutosMobile({
                 <p className="text-gray-500">Valor Méd.</p>
                 <p className="font-bold text-[#397738]">
                   {item.mediaPrecoDisplay != null
-                    ? `R$ ${Number(item.mediaPrecoDisplay).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                    ? `R$ ${Number(item.mediaPrecoDisplay).toLocaleString("pt-BR", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: item.mediaPrecoDisplay < 1 ? 4 : 2
+                      })}`
                     : "—"}
                 </p>
                 {item.unidadeValorOriginal && item.mediaPrecoOriginal != null && (
                   <p className="text-[10px] text-gray-500 mt-0.5">
-                    R$ {Number(item.mediaPrecoOriginal).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / {item.unidadeValorOriginal}
+                    R$ {Number(item.mediaPrecoOriginal).toLocaleString("pt-BR", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: item.mediaPrecoOriginal < 1 ? 4 : 2
+                    })} / {item.unidadeValorOriginal}
                   </p>
                 )}
               </div>

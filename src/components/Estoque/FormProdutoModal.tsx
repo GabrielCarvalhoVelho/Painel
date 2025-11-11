@@ -77,13 +77,19 @@ export default function FormProdutoModal({ isOpen, onClose, onCreated }: Props) 
       const user = AuthService.getInstance().getCurrentUser();
       if (!user) throw new Error('Usuário não autenticado');
 
+      const valorTotalEmReais = formData.valor ? Number(formData.valor) / 100 : 0;
+
+      console.log('🔍 Debug FormProdutoModal - Valores:');
+      console.log(`  - formData.valor (centavos): ${formData.valor}`);
+      console.log(`  - valorTotalEmReais: R$ ${valorTotalEmReais.toFixed(2)}`);
+
       const novoProduto = await EstoqueService.addProduto({
         nome_produto: formData.nome,
         marca: formData.marca,
         categoria: formData.categoria,
         unidade: formData.unidade,
         quantidade: Number(formData.quantidade),
-        valor: formData.valor ? Number(formData.valor) : null,
+        valor: valorTotalEmReais,
         lote: formData.lote || null,
         validade: formData.validade || null,
         fornecedor: formData.fornecedor || null,
