@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import { ProdutoEstoque } from "../../services/estoqueService";
 import { ProdutoAgrupado } from "../../services/agruparProdutosService";
 import { autoScaleQuantity, convertValueToDisplayUnit } from "../../lib/unitConverter";
+import { formatSmartCurrency } from "../../lib/currencyFormatter";
 
 interface RemoveQuantityModalProps {
   isOpen: boolean;
@@ -115,7 +116,7 @@ export default function RemoveQuantityModal({
                 <p className="text-sm text-gray-600">
                   Valor unitário:{" "}
                   <strong className="text-[#397738]">
-                    R$ {Number(valorConvertido).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / {scaled.unidade}
+                    {formatSmartCurrency(Number(valorConvertido))} / {scaled.unidade}
                   </strong>
                 </p>
               )}

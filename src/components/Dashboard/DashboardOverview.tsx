@@ -28,6 +28,7 @@ import { UserService } from '../../services/userService';
 import { FinanceService, ResumoFinanceiro, DadosGrafico, OverallBalance, ResumoMensalFinanceiro } from '../../services/financeService';
 import { ActivityService } from '../../services/activityService';
 import { CotacaoService } from '../../services/cotacaoService';
+import { formatSmartCurrency } from '../../lib/currencyFormatter';
 import { TalhaoService } from '../../services/talhaoService';
 import { Usuario, TransacaoFinanceira } from '../../lib/supabase';
 
@@ -317,11 +318,8 @@ export default function DashboardOverview() {
     subtitle: 'Custo por saca estimado',
     value: (
       <span className="text-sm md:text-base font-medium whitespace-nowrap">
-        {producaoTotal > 0 
-          ? `R$ ${custoMedioSaca.toLocaleString('pt-BR', { 
-              minimumFractionDigits: 2, 
-              maximumFractionDigits: 2 
-            })}/sc` 
+        {producaoTotal > 0
+          ? `${formatSmartCurrency(custoMedioSaca)}/sc`
           : 'N/A'
         }
       </span>
@@ -341,11 +339,8 @@ export default function DashboardOverview() {
     subtitle: 'Custo por hectare estimado',
     value: (
       <span className="text-sm md:text-base font-medium whitespace-nowrap">
-        {areaCultivada > 0 
-          ? `R$ ${custoMedioHectar.toLocaleString('pt-BR', { 
-              minimumFractionDigits: 2, 
-              maximumFractionDigits: 2 
-            })}/ha` 
+        {areaCultivada > 0
+          ? `${formatSmartCurrency(custoMedioHectar)}/ha`
           : 'N/A'
         }
       </span>

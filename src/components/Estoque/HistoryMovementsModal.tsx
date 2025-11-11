@@ -9,6 +9,7 @@ import ActivityDetailModal from '../ManejoAgricola/ActivityDetailModal';
 import Pagination from './Pagination';
 import { formatUnitAbbreviated } from '../../lib/formatUnit';
 import { autoScaleQuantity, convertFromStandardUnit, isMassUnit, isVolumeUnit } from '../../lib/unitConverter';
+import { formatSmartCurrency } from '../../lib/currencyFormatter';
 
 interface Props {
   isOpen: boolean;
@@ -427,7 +428,7 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
                               <div className="text-sm text-gray-600 space-y-1 mt-2">
                                 <div><strong>Atividade:</strong> {m.nome_atividade || '—'}</div>
                                 <div><strong>Quantidade usada:</strong> {qtyUsed.quantidade} {qtyUsed.unidade}</div>
-                                <div><strong>Custo do produto usado:</strong> {m.custo_calculado != null ? `R$ ${Number(m.custo_calculado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—'}</div>
+                                <div><strong>Custo do produto usado:</strong> {m.custo_calculado != null ? formatSmartCurrency(Number(m.custo_calculado)) : '—'}</div>
                               </div>
                             );
                           })()}
@@ -439,14 +440,14 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
                               <div><strong>Lote:</strong> {m.lote || '—'}</div>
                               <div><strong>Validade:</strong> {formatValidity(m.validade)}</div>
                               {m.valor && (
-                                <div><strong>Valor unitário:</strong> R$ {Number(m.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+                                <div><strong>Valor unitário:</strong> {formatSmartCurrency(Number(m.valor))}</div>
                               )}
                             </div>
                           )}
 
                           {m.tipo === 'saida' && m.valor && m._source !== 'lancamento' && (
                             <div className="text-sm text-gray-600 space-y-1 mt-2">
-                              <div><strong>Valor total da saída:</strong> R$ {(Number(m.valor) * m.quantidade).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+                              <div><strong>Valor total da saída:</strong> {formatSmartCurrency(Number(m.valor) * m.quantidade)}</div>
                             </div>
                           )}
                         </div>

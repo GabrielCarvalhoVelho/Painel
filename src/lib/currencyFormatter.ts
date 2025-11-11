@@ -1,6 +1,53 @@
 // src/lib/currencyFormatter.ts
 
 /**
+ * Calcula a quantidade ideal de casas decimais para exibir um valor
+ * Se os 2 primeiros decimais são zero (0,00), expande até encontrar dígito diferente de zero
+ * @param value - Valor numérico
+ * @returns Número de casas decimais (entre 2 e 6)
+ */
+export const getOptimalDecimalPlaces = (value: number): number => {
+  if (isNaN(value) || value === 0) return 2;
+
+  const absValue = Math.abs(value);
+
+  if (absValue >= 0.01) {
+    return 2;
+  }
+
+  for (let decimals = 3; decimals <= 6; decimals++) {
+    const threshold = Math.pow(10, -decimals);
+    if (absValue >= threshold) {
+      return decimals;
+    }
+  }
+
+  return 6;
+};
+
+/**
+ * Formata um valor numérico para o formato de moeda brasileira com decimais dinâmicos
+ * Para valores >= R$ 0,01: exibe 2 casas decimais (R$ 1.234,56)
+ * Para valores < R$ 0,01: expande decimais até mostrar valor significativo (R$ 0,0002)
+ * @param value - Valor decimal
+ * @returns String formatada no padrão brasileiro
+ */
+export const formatSmartCurrency = (value: number | string): string => {
+  const numValue = typeof value === 'string' ? parseFloat(value) : value;
+
+  if (isNaN(numValue)) return 'R$ 0,00';
+
+  const decimalPlaces = getOptimalDecimalPlaces(numValue);
+
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    minimumFractionDigits: decimalPlaces,
+    maximumFractionDigits: decimalPlaces,
+  }).format(numValue);
+};
+
+/**
  * Formata um valor numérico para o formato de moeda brasileira (R$ 1.000,00)
  * @param value - Valor decimal (ex: 1234.56)
  * @returns String formatada no padrão brasileiro (ex: "R$ 1.234,56")

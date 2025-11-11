@@ -1,6 +1,7 @@
 // src/components/Estoque/ListaProdutosDesktop.tsx
 import { ProdutoAgrupado } from '../../services/agruparProdutosService';
 import { formatUnitFull } from '../../lib/formatUnit';
+import { formatSmartCurrency } from '../../lib/currencyFormatter';
 
 type ModalParams = {
   isOpen: boolean;
@@ -63,12 +64,12 @@ export default function ListaProdutosDesktop({
                 <p className="text-xs text-gray-500">Valor Médio</p>
                 <p className="text-lg font-bold text-[#397738]">
                   {item.mediaPrecoDisplay != null
-                    ? `R$ ${Number(item.mediaPrecoDisplay).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                    ? formatSmartCurrency(Number(item.mediaPrecoDisplay))
                     : "—"}
                 </p>
                 {item.unidadeValorOriginal && item.mediaPrecoOriginal != null && (
                   <p className="text-xs text-gray-500 mt-1">
-                    R$ {Number(item.mediaPrecoOriginal).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / {item.unidadeValorOriginal}
+                    {formatSmartCurrency(Number(item.mediaPrecoOriginal))} / {item.unidadeValorOriginal}
                   </p>
                 )}
               </div>
