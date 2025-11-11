@@ -65,7 +65,7 @@ export default function ListaProdutosDesktop({
                   {item.mediaPrecoDisplay != null
                     ? `R$ ${Number(item.mediaPrecoDisplay).toLocaleString("pt-BR", {
                         minimumFractionDigits: 2,
-                        maximumFractionDigits: item.mediaPrecoDisplay < 1 ? 4 : 2
+                        maximumFractionDigits: item.mediaPrecoDisplay < 0.01 ? 6 : (item.mediaPrecoDisplay < 1 ? 4 : 2)
                       })}`
                     : "—"}
                 </p>
@@ -73,7 +73,7 @@ export default function ListaProdutosDesktop({
                   <p className="text-xs text-gray-500 mt-1">
                     R$ {Number(item.mediaPrecoOriginal).toLocaleString("pt-BR", {
                       minimumFractionDigits: 2,
-                      maximumFractionDigits: item.mediaPrecoOriginal < 1 ? 4 : 2
+                      maximumFractionDigits: item.mediaPrecoOriginal < 0.01 ? 6 : (item.mediaPrecoOriginal < 1 ? 4 : 2)
                     })} / {item.unidadeValorOriginal}
                   </p>
                 )}
