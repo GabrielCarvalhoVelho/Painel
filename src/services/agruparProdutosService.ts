@@ -120,10 +120,9 @@ export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
       nomes.filter(n => n === a).length - nomes.filter(n => n === b).length
     ).pop() || grupo[0].nome_produto;
 
-    const produtosEmEstoque = grupo.filter(p => (p.quantidade ?? 0) > 0);
-    const produtosComPreco = produtosEmEstoque.filter(p => p.valor !== null);
-    const totalPreco = produtosComPreco.reduce((sum, p) => sum + (p.valor ?? 0), 0);
-    const media = produtosComPreco.length > 0 ? totalPreco / produtosComPreco.length : 0;
+    const produtosEmEstoque = grupo.filter(p => (p.quantidade ?? 0) > 0 && p.valor !== null);
+    const totalPreco = produtosEmEstoque.reduce((sum, p) => sum + (p.valor ?? 0), 0);
+    const media = produtosEmEstoque.length > 0 ? totalPreco / produtosEmEstoque.length : 0;
 
     let mediaPrecoConvertido = media;
 
@@ -147,21 +146,15 @@ export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
       totalEstoqueEmUnidadePadrao = produtosEmEstoque.reduce((sum, p) => sum + (p.quantidade ?? 0), 0);
     }
 
-    const unidadesUsadas = produtosEmEstoque.map(p => p.unidade);
-    const unidadeMaisComum = unidadesUsadas.sort((a, b) =>
-      unidadesUsadas.filter(u => u === a).length - unidadesUsadas.filter(u => u === b).length
-    ).pop() || primeiraUnidade;
-
     let totalEstoqueDisplay = totalEstoqueEmUnidadePadrao;
-    let unidadeDisplay = unidadeMaisComum;
+    let unidadeDisplay = primeiraUnidade;
 
     if (unidadePadrao) {
-      totalEstoqueDisplay = convertFromStandardUnit(
-        totalEstoqueEmUnidadePadrao,
-        unidadePadrao,
-        unidadeMaisComum
-      );
+      const displayResult = getBestDisplayUnit(totalEstoqueEmUnidadePadrao, unidadePadrao);
+      totalEstoqueDisplay = displayResult.quantidade;
+      unidadeDisplay = displayResult.unidade;
 
+      // Usa o valor original sem conversão
       mediaPrecoConvertido = media;
     }
 
@@ -189,7 +182,7 @@ export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
       fornecedoresMap[key].ids.push(p.id);
     });
 
-    const unidadesOriginais = produtosComPreco
+    const unidadesOriginais = produtosEmEstoque
       .map(p => p.unidade_valor_original)
       .filter(u => u != null && u !== '');
 
@@ -199,7 +192,7 @@ export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
         ).pop() || null
       : null;
 
-    const mediaPrecoOriginal = unidadeValorOriginal && media > 0 ? media : null;
+    const mediaPrecoOriginal = unidadeValorOriginal ? media : null;
 
     return {
       nome: nomeMaisComum,

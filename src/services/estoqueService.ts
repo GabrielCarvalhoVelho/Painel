@@ -42,7 +42,6 @@ export interface MovimentacaoExpandida extends MovimentacaoEstoque {
   fornecedor: string | null;
   registro_mapa: string | null;
   produto_created_at: string;
-  unidade_valor_original?: string | null;
 }
 
 // Tipo para representar um registro de lancamento_produtos (com join em lancamentos_agricolas)
@@ -478,8 +477,7 @@ export class EstoqueService {
           validade,
           fornecedor,
           registro_mapa,
-          created_at,
-          unidade_valor_original
+          created_at
         )
       `)
       .eq('produto_id', produtoId)
@@ -510,7 +508,6 @@ export class EstoqueService {
       fornecedor: mov.produto.fornecedor,
       registro_mapa: mov.produto.registro_mapa,
       produto_created_at: mov.produto.created_at,
-      unidade_valor_original: mov.produto.unidade_valor_original,
     }));
 
     const totalCount = count || 0;
