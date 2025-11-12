@@ -468,11 +468,16 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
                           {m.tipo === 'entrada' && (
                             <div className="text-sm text-gray-600 space-y-1 mt-2">
                               <div><strong>Marca:</strong> {m.marca || '—'}</div>
+                              <div><strong>Categoria:</strong> {m.categoria || '—'}</div>
                               <div><strong>Fornecedor:</strong> {m.fornecedor || '—'}</div>
                               <div><strong>Lote:</strong> {m.lote || '—'}</div>
                               <div><strong>Validade:</strong> {formatValidity(m.validade)}</div>
+                              <div><strong>Registro MAPA:</strong> {m.registro_mapa || '—'}</div>
                               {m.valor && (
-                                <div><strong>Valor unitário:</strong> {formatSmartCurrency(Number(m.valor))}</div>
+                                <>
+                                  <div><strong>Valor unitário:</strong> {formatSmartCurrency(Number(m.valor))} / {m.unidade}</div>
+                                  <div><strong>Valor total da compra:</strong> {formatSmartCurrency(Number(m.valor) * m.quantidade)}</div>
+                                </>
                               )}
                             </div>
                           )}
