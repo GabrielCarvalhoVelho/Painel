@@ -121,8 +121,19 @@ export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
     ).pop() || grupo[0].nome_produto;
 
     const produtosEmEstoque = grupo.filter(p => (p.quantidade ?? 0) > 0 && p.valor !== null);
-    const totalPreco = produtosEmEstoque.reduce((sum, p) => sum + (p.valor ?? 0), 0);
-    const media = produtosEmEstoque.length > 0 ? totalPreco / produtosEmEstoque.length : 0;
+
+    // Calculate weighted average: (sum of value × quantity) / (sum of quantity)
+    let totalValorPonderado = 0;
+    let totalQuantidadePonderada = 0;
+
+    produtosEmEstoque.forEach(p => {
+      const quantidade = p.quantidade ?? 0;
+      const valor = p.valor ?? 0;
+      totalValorPonderado += valor * quantidade;
+      totalQuantidadePonderada += quantidade;
+    });
+
+    const media = totalQuantidadePonderada > 0 ? totalValorPonderado / totalQuantidadePonderada : 0;
 
     let mediaPrecoConvertido = media;
 
