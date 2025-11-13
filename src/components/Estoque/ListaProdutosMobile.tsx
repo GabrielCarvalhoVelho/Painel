@@ -60,8 +60,8 @@ export default function ListaProdutosMobile({
               <div className="text-right">
                 <p className="text-gray-500">Valor Méd.</p>
                 <p className="font-bold text-[#397738]">
-                  {item.mediaPrecoDisplay != null
-                    ? `${formatSmartCurrency(Number(item.mediaPrecoDisplay))} / ${formatUnitFull(item.unidadeDisplay)}`
+                  {item.mediaPrecoDisplay != null && item.unidadeValorOriginal
+                    ? `${formatSmartCurrency(Number(item.mediaPrecoDisplay))} / ${formatUnitFull(item.unidadeValorOriginal)}`
                     : "—"}
                 </p>
               </div>

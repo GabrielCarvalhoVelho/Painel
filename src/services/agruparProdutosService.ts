@@ -164,20 +164,6 @@ export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
       const displayResult = getBestDisplayUnit(totalEstoqueEmUnidadePadrao, unidadePadrao);
       totalEstoqueDisplay = displayResult.quantidade;
       unidadeDisplay = displayResult.unidade;
-
-      // Convert the unit value from standard unit (mg/mL) to display unit
-      // media is price per mg or mL, we need to convert it to price per display unit
-      if (unidadePadrao === 'mg' && isMassUnit(displayResult.unidade)) {
-        // Convert from price/mg to price/displayUnit
-        const mgPerDisplayUnit = convertToStandardUnit(1, displayResult.unidade).quantidade;
-        mediaPrecoConvertido = media * mgPerDisplayUnit;
-      } else if (unidadePadrao === 'mL' && isVolumeUnit(displayResult.unidade)) {
-        // Convert from price/mL to price/displayUnit
-        const mlPerDisplayUnit = convertToStandardUnit(1, displayResult.unidade).quantidade;
-        mediaPrecoConvertido = media * mlPerDisplayUnit;
-      } else {
-        mediaPrecoConvertido = media;
-      }
     }
 
     const totalEstoque = totalEstoqueEmUnidadePadrao;
@@ -214,7 +200,23 @@ export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
         ).pop() || null
       : null;
 
+    // Convert media (price per mg/mL) to price per unidade_valor_original
+    // media is a weighted average of valor_unitario (stored as price per standard unit)
+    // We need to convert it to the original unit the user entered
     const mediaPrecoOriginal = unidadeValorOriginal ? media : null;
+
+    if (unidadeValorOriginal && unidadePadrao) {
+      // Convert from price per standard unit to price per original unit
+      if (unidadePadrao === 'mg' && isMassUnit(unidadeValorOriginal)) {
+        const mgPerOriginalUnit = convertToStandardUnit(1, unidadeValorOriginal).quantidade;
+        mediaPrecoConvertido = media * mgPerOriginalUnit;
+      } else if (unidadePadrao === 'mL' && isVolumeUnit(unidadeValorOriginal)) {
+        const mlPerOriginalUnit = convertToStandardUnit(1, unidadeValorOriginal).quantidade;
+        mediaPrecoConvertido = media * mlPerOriginalUnit;
+      } else {
+        mediaPrecoConvertido = media;
+      }
+    }
 
     return {
       nome: nomeMaisComum,

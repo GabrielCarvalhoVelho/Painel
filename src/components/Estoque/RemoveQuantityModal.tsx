@@ -99,11 +99,28 @@ export default function RemoveQuantityModal({
         </div>
         {selectedProduto && (() => {
           const scaled = autoScaleQuantity(estoqueAtual, selectedProduto.unidade);
-          const valorConvertido = convertValueToDisplayUnit(
-            selectedProduto.valor,
-            selectedProduto.unidade_valor_original || selectedProduto.unidade,
-            scaled.unidade
-          );
+          const unidadeOriginal = selectedProduto.unidade_valor_original || selectedProduto.unidade;
+
+          // selectedProduto.valor is stored as price per standard unit (mg or mL)
+          // We need to convert it to price per original unit
+          const valorPorUnidadePadrao = selectedProduto.valor;
+          let valorConvertido = valorPorUnidadePadrao;
+
+          if (valorPorUnidadePadrao) {
+            // Determine standard unit based on product unit type
+            const isVolume = ['L', 'mL'].includes(selectedProduto.unidade);
+            const isMass = ['ton', 'kg', 'g', 'mg'].includes(selectedProduto.unidade);
+
+            if (isMass && unidadeOriginal) {
+              // valor is price per mg, convert to price per original unit
+              // Example: if original is kg, we need to multiply by 1,000,000 (mg per kg)
+              valorConvertido = convertValueToDisplayUnit(valorPorUnidadePadrao, 'mg', unidadeOriginal);
+            } else if (isVolume && unidadeOriginal) {
+              // valor is price per mL, convert to price per original unit
+              valorConvertido = convertValueToDisplayUnit(valorPorUnidadePadrao, 'mL', unidadeOriginal);
+            }
+          }
+
           return (
             <div className="mb-4 space-y-1">
               <p className="text-sm text-gray-600">
@@ -116,7 +133,7 @@ export default function RemoveQuantityModal({
                 <p className="text-sm text-gray-600">
                   Valor unitário:{" "}
                   <strong className="text-[#397738]">
-                    {formatSmartCurrency(Number(valorConvertido))} / {scaled.unidade}
+                    {formatSmartCurrency(Number(valorConvertido))} / {unidadeOriginal}
                   </strong>
                 </p>
               )}

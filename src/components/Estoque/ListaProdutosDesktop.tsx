@@ -63,8 +63,8 @@ export default function ListaProdutosDesktop({
               <div className="text-center">
                 <p className="text-xs text-gray-500">Valor Médio</p>
                 <p className="text-lg font-bold text-[#397738]">
-                  {item.mediaPrecoDisplay != null
-                    ? `${formatSmartCurrency(Number(item.mediaPrecoDisplay))} / ${formatUnitFull(item.unidadeDisplay)}`
+                  {item.mediaPrecoDisplay != null && item.unidadeValorOriginal
+                    ? `${formatSmartCurrency(Number(item.mediaPrecoDisplay))} / ${formatUnitFull(item.unidadeValorOriginal)}`
                     : "—"}
                 </p>
               </div>
