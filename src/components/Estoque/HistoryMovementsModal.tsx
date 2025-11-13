@@ -238,18 +238,13 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
       }
 
   // Agora que temos movimentações e lançamentos no `allMovements`, podemos
-      // reconstituir a entrada inicial original para cada produto que não tem
+      // adicionar a entrada inicial original para cada produto que não tem
       // uma movimentação do tipo 'entrada' registrada. A quantidade original
-      // é: estoque_atual (p.quantidade) + total_saidas_do_produto.
+      // vem diretamente do campo quantidade_inicial do banco de dados.
       for (const p of product.produtos) {
         const hasEntradaRegistrada = allMovements.some(m => m.produto_id === p.id && m.tipo === 'entrada' && m._source !== 'entrada_inicial');
         if (!hasEntradaRegistrada) {
-          // total de saídas para este produto (considerando movimentações e lançamentos)
-          const totalSaidasProduto = allMovements
-            .filter(m => m.produto_id === p.id && m.tipo === 'saida')
-            .reduce((s, m) => s + (Number(m.quantidade) || 0), 0);
-
-          const quantidadeOriginal = (Number(p.quantidade) || 0) + totalSaidasProduto;
+          const quantidadeOriginal = Number(p.quantidade_inicial) || 0;
 
           if (quantidadeOriginal > 0) {
             const entradaInicial = {
