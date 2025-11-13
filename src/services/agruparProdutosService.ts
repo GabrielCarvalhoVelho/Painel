@@ -1,6 +1,6 @@
 // src/services/agruparProdutosService.ts
 import { ProdutoEstoque } from "./estoqueService";
-import { convertToStandardUnit, getBestDisplayUnit, isMassUnit, isVolumeUnit, convertValueToDisplayUnit } from '../lib/unitConverter';
+import { convertToStandardUnit, getBestDisplayUnit, isMassUnit, isVolumeUnit, convertValueToDisplayUnit, convertValueFromStandardUnit } from '../lib/unitConverter';
 
 function normalizeName(name: string | null | undefined): string {
   if (!name || typeof name !== 'string') {
@@ -135,6 +135,13 @@ export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
 
     const media = totalQuantidadePonderada > 0 ? totalValorPonderado / totalQuantidadePonderada : 0;
 
+    console.log('📊 Cálculo de Média Ponderada:', {
+      totalValorPonderado,
+      totalQuantidadePonderada,
+      mediaPorUnidadePadrao: media,
+      grupo: grupo[0].nome_produto
+    });
+
     let mediaPrecoConvertido = media;
 
     const primeiraUnidade = grupo[0].unidade;
@@ -200,22 +207,24 @@ export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
         ).pop() || null
       : null;
 
-    // Convert media (price per mg/mL) to price per unidade_valor_original
-    // media is a weighted average of valor_unitario (stored as price per standard unit)
-    // We need to convert it to the original unit the user entered
+    // CORREÇÃO PRINCIPAL:
+    // O valor_unitario no banco está armazenado por mg ou mL (unidade padrão)
+    // Precisamos converter para a unidade original que o usuário informou
+    // Exemplo: se unidade_valor_original = 'kg', multiplicamos por 1.000.000
     const mediaPrecoOriginal = unidadeValorOriginal ? media : null;
 
-    if (unidadeValorOriginal && unidadePadrao) {
-      // Convert from price per standard unit to price per original unit
-      if (unidadePadrao === 'mg' && isMassUnit(unidadeValorOriginal)) {
-        const mgPerOriginalUnit = convertToStandardUnit(1, unidadeValorOriginal).quantidade;
-        mediaPrecoConvertido = media * mgPerOriginalUnit;
-      } else if (unidadePadrao === 'mL' && isVolumeUnit(unidadeValorOriginal)) {
-        const mlPerOriginalUnit = convertToStandardUnit(1, unidadeValorOriginal).quantidade;
-        mediaPrecoConvertido = media * mlPerOriginalUnit;
-      } else {
-        mediaPrecoConvertido = media;
-      }
+    if (unidadeValorOriginal) {
+      mediaPrecoConvertido = convertValueFromStandardUnit(media, unidadeValorOriginal);
+
+      console.log('💰 Conversão de Valor:', {
+        mediaEmUnidadePadrao: media,
+        unidadeValorOriginal,
+        mediaPrecoConvertido,
+        fatorAplicado: mediaPrecoConvertido / media
+      });
+    } else {
+      mediaPrecoConvertido = media;
+      console.log('⚠️ Nenhuma unidade_valor_original definida, usando valor padrão');
     }
 
     return {

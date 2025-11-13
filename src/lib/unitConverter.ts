@@ -171,3 +171,35 @@ export function convertValueToDisplayUnit(
 
   return convertValueBetweenUnits(valor, unidadeValorOriginal, unidadeDisplay);
 }
+
+/**
+ * Converte um valor unitário da unidade padrão (mg ou mL) para a unidade original
+ *
+ * Exemplo: Se valor_unitario = 0.001 (em mg) e unidade_original = 'kg'
+ *          Retorna: 0.001 × 1.000.000 = 1000 (valor por kg)
+ *
+ * @param valorPorUnidadePadrao - Valor por mg ou mL (como armazenado no banco)
+ * @param unidadeOriginal - Unidade original informada pelo usuário (ton, kg, L, etc)
+ * @returns Valor convertido para a unidade original
+ */
+export function convertValueFromStandardUnit(
+  valorPorUnidadePadrao: number,
+  unidadeOriginal: string
+): number {
+  if (!unidadeOriginal) return valorPorUnidadePadrao;
+
+  // Para unidades de massa (ton, kg, g, mg)
+  if (isMassUnit(unidadeOriginal)) {
+    const fatorConversao = MASS_TO_MG[unidadeOriginal];
+    return valorPorUnidadePadrao * fatorConversao;
+  }
+
+  // Para unidades de volume (L, mL)
+  if (isVolumeUnit(unidadeOriginal)) {
+    const fatorConversao = VOLUME_TO_ML[unidadeOriginal];
+    return valorPorUnidadePadrao * fatorConversao;
+  }
+
+  // Para outras unidades (un), retorna o valor sem conversão
+  return valorPorUnidadePadrao;
+}
