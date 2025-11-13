@@ -525,50 +525,9 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
                           })()}
 
                           {m.tipo === 'entrada' && (() => {
+                            // ✅ SIMPLIFICADO: usar valor_unitario diretamente (já contém valor_total)
+                            const valorUnitario = m.valor;
                             const unidadeValorOriginal = m.unidade_valor_original || m.unidade;
-                            let valorDisplay = null;
-                            let unidadeValorDisplay = unidadeValorOriginal;
-
-                            // Se for entrada inicial e tivermos valor_total e quantidade_inicial
-                            if (m._source === 'entrada_inicial' && m.valor_total != null && m.quantidade_inicial > 0) {
-                              // Calcular valor unitário: valor_total / quantidade_inicial
-                              const valorUnitarioCalculado = m.valor_total / m.quantidade_inicial;
-                              
-                              // Converter para unidade original se necessário
-                              const unidadeAtual = m.unidade;
-                              
-                              if (unidadeAtual !== unidadeValorOriginal) {
-                                if (isMassUnit(unidadeAtual) && isMassUnit(unidadeValorOriginal)) {
-                                  const fatorConversao = convertToStandardUnit(1, unidadeValorOriginal).quantidade;
-                                  valorDisplay = valorUnitarioCalculado * fatorConversao;
-                                } else if (isVolumeUnit(unidadeAtual) && isVolumeUnit(unidadeValorOriginal)) {
-                                  const fatorConversao = convertToStandardUnit(1, unidadeValorOriginal).quantidade;
-                                  valorDisplay = valorUnitarioCalculado * fatorConversao;
-                                } else {
-                                  valorDisplay = valorUnitarioCalculado;
-                                }
-                              } else {
-                                valorDisplay = valorUnitarioCalculado;
-                              }
-                            }
-                            // Para outras entradas (não iniciais), usar a lógica anterior
-                            else if (m.valor !== null && m.valor !== undefined) {
-                              const unidadePadrao = m.unidade;
-                              
-                              if (unidadePadrao !== unidadeValorOriginal) {
-                                if (isMassUnit(unidadePadrao) && isMassUnit(unidadeValorOriginal)) {
-                                  const fatorConversao = convertToStandardUnit(1, unidadeValorOriginal).quantidade;
-                                  valorDisplay = m.valor * fatorConversao;
-                                } else if (isVolumeUnit(unidadePadrao) && isVolumeUnit(unidadeValorOriginal)) {
-                                  const fatorConversao = convertToStandardUnit(1, unidadeValorOriginal).quantidade;
-                                  valorDisplay = m.valor * fatorConversao;
-                                } else {
-                                  valorDisplay = m.valor;
-                                }
-                              } else {
-                                valorDisplay = m.valor;
-                              }
-                            }
 
                             return (
                               <div className="text-sm text-gray-600 space-y-1 mt-2">
@@ -578,8 +537,8 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
                                 <div><strong>Lote:</strong> {m.lote || '—'}</div>
                                 <div><strong>Validade:</strong> {formatValidity(m.validade)}</div>
                                 <div><strong>Registro MAPA:</strong> {m.registro_mapa || '—'}</div>
-                                {valorDisplay !== null && valorDisplay !== undefined && (
-                                  <div><strong>Valor:</strong> {formatSmartCurrency(Number(valorDisplay))} / {unidadeValorDisplay}</div>
+                                {valorUnitario !== null && valorUnitario !== undefined && valorUnitario > 0 && (
+                                  <div><strong>Valor:</strong> {formatSmartCurrency(Number(valorUnitario))} / {unidadeValorOriginal}</div>
                                 )}
                               </div>
                             );

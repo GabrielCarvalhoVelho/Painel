@@ -1,6 +1,6 @@
 // src/services/agruparProdutosService.ts
 import { ProdutoEstoque } from "./estoqueService";
-import { convertToStandardUnit, getBestDisplayUnit, isMassUnit, isVolumeUnit, convertValueFromStandardUnit } from '../lib/unitConverter';
+import { convertToStandardUnit, convertFromStandardUnit, getBestDisplayUnit, isMassUnit, isVolumeUnit } from '../lib/unitConverter';
 
 function normalizeName(name: string | null | undefined): string {
   if (!name || typeof name !== 'string') {
@@ -115,6 +115,13 @@ export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
   }
 
   return Object.values(grupos).map(grupo => {
+    // 1️⃣ ORDENAR produtos por created_at (mais antigo primeiro)
+    grupo.sort((a, b) => {
+      const dateA = new Date(a.created_at || 0).getTime();
+      const dateB = new Date(b.created_at || 0).getTime();
+      return dateA - dateB;
+    });
+
     const nomes = grupo.map(p => p.nome_produto);
     const nomeMaisComum = nomes.sort((a, b) =>
       nomes.filter(n => n === a).length - nomes.filter(n => n === b).length
@@ -124,49 +131,101 @@ export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
     const produtosComValor = grupo.filter(p => p.valor !== null && p.valor > 0);
     const produtosEmEstoque = grupo.filter(p => (p.quantidade ?? 0) > 0 && p.valor !== null);
 
-    // Calcular média usando valor_total / quantidade_inicial quando disponível
-    // Isso garante que usamos o valor original informado pelo usuário
-    let somaValoresOriginais = 0;
-    let quantidadeProdutosComValorOriginal = 0;
+    // 2️⃣ DETERMINAR unidade de referência (primeiro produto = mais antigo)
+    const produtoMaisAntigo = grupo[0];
+    const unidadeReferencia = produtoMaisAntigo.unidade_valor_original || produtoMaisAntigo.unidade;
+
+    console.log('🎯 Unidade de Referência (produto mais antigo):', {
+      grupo: grupo[0].nome_produto,
+      produtoMaisAntigo: produtoMaisAntigo.nome_produto,
+      created_at: produtoMaisAntigo.created_at,
+      unidadeReferencia
+    });
+
+    // 3️⃣ CONVERTER e CALCULAR média ponderada
+    // Fórmula: soma(quantidade × valor) ÷ soma(quantidade)
+    let somaCustoTotal = 0;
+    let somaQuantidadeTotal = 0;
 
     produtosComValor.forEach(p => {
-      let valorUnitarioOriginal = p.valor ?? 0;
-      
-      // Se temos valor_total e quantidade_inicial, recalcular o valor unitário original
-      if (p.valor_total != null && p.quantidade_inicial > 0) {
-        valorUnitarioOriginal = p.valor_total / p.quantidade_inicial;
+      const valorPorUnidadeOriginal = p.valor ?? 0; // Já é valor por unidade!
+      if (valorPorUnidadeOriginal <= 0) return;
+
+      const unidadeOriginalProduto = p.unidade_valor_original || p.unidade;
+      const quantidadeInicial = p.quantidade_inicial ?? 0;
+      if (quantidadeInicial <= 0) return;
+
+      // 🎯 PASSO 1: Converter quantidade_inicial (mg/mL) para unidade de referência
+      let quantidadeConvertida = quantidadeInicial;
+      if (isMassUnit(unidadeReferencia)) {
+        quantidadeConvertida = convertFromStandardUnit(quantidadeInicial, 'mg', unidadeReferencia);
+      } else if (isVolumeUnit(unidadeReferencia)) {
+        quantidadeConvertida = convertFromStandardUnit(quantidadeInicial, 'mL', unidadeReferencia);
       }
+
+      // 🎯 PASSO 2: Converter valor unitário para unidade de referência
+      let valorConvertido = valorPorUnidadeOriginal;
       
-      if (valorUnitarioOriginal > 0) {
-        somaValoresOriginais += valorUnitarioOriginal;
-        quantidadeProdutosComValorOriginal++;
+      if (unidadeOriginalProduto !== unidadeReferencia) {
+        const ehMassaOrigem = isMassUnit(unidadeOriginalProduto);
+        const ehMassaDestino = isMassUnit(unidadeReferencia);
+        const ehVolumeOrigem = isVolumeUnit(unidadeOriginalProduto);
+        const ehVolumeDestino = isVolumeUnit(unidadeReferencia);
+
+        if (ehMassaOrigem && ehMassaDestino) {
+          // Converter R$/unidade_original → R$/unidade_referencia
+          // Exemplo: R$ 3,50/kg → R$ 3.500/ton
+          // 1 ton = 1000 kg, então R$/ton = R$/kg × 1000
+          const umUnidadeOriginalEmMg = convertToStandardUnit(1, unidadeOriginalProduto).quantidade;
+          const umUnidadeReferenciaEmMg = convertToStandardUnit(1, unidadeReferencia).quantidade;
+          const fator = umUnidadeReferenciaEmMg / umUnidadeOriginalEmMg;
+          
+          valorConvertido = valorPorUnidadeOriginal * fator;
+          
+          console.log('🔢 Conversão de Valor:', {
+            produto: p.nome_produto,
+            de: `R$ ${valorPorUnidadeOriginal.toFixed(2)}/${unidadeOriginalProduto}`,
+            para: `R$ ${valorConvertido.toFixed(2)}/${unidadeReferencia}`,
+            fator,
+            calculo: `${valorPorUnidadeOriginal.toFixed(2)} × ${fator} = ${valorConvertido.toFixed(2)}`
+          });
+        } else if (ehVolumeOrigem && ehVolumeDestino) {
+          const umUnidadeOriginalEmML = convertToStandardUnit(1, unidadeOriginalProduto).quantidade;
+          const umUnidadeReferenciaEmML = convertToStandardUnit(1, unidadeReferencia).quantidade;
+          const fator = umUnidadeReferenciaEmML / umUnidadeOriginalEmML;
+          valorConvertido = valorPorUnidadeOriginal * fator;
+        }
       }
+
+      // 🎯 PASSO 3: Calcular custo total
+      const custoTotalProduto = quantidadeConvertida * valorConvertido;
+
+      console.log('💰 Cálculo Ponderado:', {
+        produto: p.nome_produto,
+        valorOriginal: `R$ ${valorPorUnidadeOriginal.toFixed(2)}/${unidadeOriginalProduto}`,
+        quantidadeConvertida: `${quantidadeConvertida.toFixed(2)} ${unidadeReferencia}`,
+        valorConvertido: `R$ ${valorConvertido.toFixed(2)}/${unidadeReferencia}`,
+        custoTotal: `R$ ${custoTotalProduto.toFixed(2)}`,
+        calculo: `${quantidadeConvertida.toFixed(2)} ${unidadeReferencia} × R$ ${valorConvertido.toFixed(2)}/${unidadeReferencia} = R$ ${custoTotalProduto.toFixed(2)}`
+      });
+
+      somaCustoTotal += custoTotalProduto;
+      somaQuantidadeTotal += quantidadeConvertida;
     });
 
-    const media = quantidadeProdutosComValorOriginal > 0 
-      ? somaValoresOriginais / quantidadeProdutosComValorOriginal 
+    // 4️⃣ CALCULAR média ponderada
+    const media = somaQuantidadeTotal > 0 
+      ? somaCustoTotal / somaQuantidadeTotal 
       : 0;
 
-    console.log('📊 Cálculo de Média Aritmética:', {
+    console.log('📊 Média Ponderada Final:', {
       totalProdutosNoGrupo: grupo.length,
       produtosComValor: produtosComValor.length,
-      somaValoresOriginais,
-      quantidadeProdutosComValorOriginal,
-      mediaCalculada: media,
-      grupo: grupo[0].nome_produto,
-      detalhes: produtosComValor.map(p => ({
-        id: p.id,
-        nome: p.nome_produto,
-        valor: p.valor,
-        valor_total: p.valor_total,
-        quantidade_inicial: p.quantidade_inicial,
-        valorUnitarioCalculado: p.valor_total != null && p.quantidade_inicial > 0 
-          ? p.valor_total / p.quantidade_inicial 
-          : p.valor
-      }))
+      somaCustoTotal: `R$ ${somaCustoTotal.toFixed(2)}`,
+      somaQuantidadeTotal: `${somaQuantidadeTotal.toFixed(2)} ${unidadeReferencia}`,
+      mediaPonderada: `R$ ${media.toFixed(2)}/${unidadeReferencia}`,
+      grupo: grupo[0].nome_produto
     });
-
-    let mediaPrecoConvertido = media;
 
     const primeiraUnidade = grupo[0].unidade;
     let totalEstoqueEmUnidadePadrao = 0;
@@ -221,41 +280,12 @@ export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
       fornecedoresMap[key].ids.push(p.id);
     });
 
-    const unidadesOriginais = produtosEmEstoque
-      .map(p => p.unidade_valor_original)
-      .filter(u => u != null && u !== '');
-
-    const unidadeValorOriginal = unidadesOriginais.length > 0
-      ? unidadesOriginais.sort((a, b) =>
-          unidadesOriginais.filter(u => u === a).length - unidadesOriginais.filter(u => u === b).length
-        ).pop() || null
-      : null;
-
-    // CORREÇÃO PRINCIPAL:
-    // O valor_unitario no banco está armazenado por mg ou mL (unidade padrão)
-    // Precisamos converter para a unidade original que o usuário informou
-    // Exemplo: se unidade_valor_original = 'kg', multiplicamos por 1.000.000
-    const mediaPrecoOriginal = unidadeValorOriginal ? media : null;
-
-    if (unidadeValorOriginal) {
-      mediaPrecoConvertido = convertValueFromStandardUnit(media, unidadeValorOriginal);
-
-      console.log('💰 Conversão de Valor:', {
-        mediaEmUnidadePadrao: media,
-        unidadeValorOriginal,
-        mediaPrecoConvertido,
-        fatorAplicado: mediaPrecoConvertido / media
-      });
-    } else {
-      mediaPrecoConvertido = media;
-      console.log('⚠️ Nenhuma unidade_valor_original definida, usando valor padrão');
-    }
-
+    // ✅ Usar unidadeReferencia já calculada (do produto mais antigo)
     return {
       nome: nomeMaisComum,
       produtos: grupo,
       mediaPreco: media,
-      mediaPrecoDisplay: mediaPrecoConvertido,
+      mediaPrecoDisplay: media,
       totalEstoque,
       totalEstoqueDisplay,
       unidadeDisplay,
@@ -265,8 +295,8 @@ export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
       lotes,
       validades,
       fornecedores: Object.values(fornecedoresMap),
-      unidadeValorOriginal,
-      mediaPrecoOriginal
+      unidadeValorOriginal: unidadeReferencia,
+      mediaPrecoOriginal: media
     };
   });
 }
