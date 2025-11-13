@@ -121,18 +121,8 @@ export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
     ).pop() || grupo[0].nome_produto;
 
     const produtosEmEstoque = grupo.filter(p => (p.quantidade ?? 0) > 0 && p.valor !== null);
-
-    let totalValor = 0;
-    let totalQuantidade = 0;
-
-    produtosEmEstoque.forEach(p => {
-      const quantidade = p.quantidade ?? 0;
-      const valorUnitario = p.valor ?? 0;
-      totalValor += quantidade * valorUnitario;
-      totalQuantidade += quantidade;
-    });
-
-    const media = totalQuantidade > 0 ? totalValor / totalQuantidade : 0;
+    const totalPreco = produtosEmEstoque.reduce((sum, p) => sum + (p.valor ?? 0), 0);
+    const media = produtosEmEstoque.length > 0 ? totalPreco / produtosEmEstoque.length : 0;
 
     let mediaPrecoConvertido = media;
 
@@ -164,8 +154,8 @@ export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
       totalEstoqueDisplay = displayResult.quantidade;
       unidadeDisplay = displayResult.unidade;
 
-      const fatorConversao = totalEstoqueDisplay / totalEstoqueEmUnidadePadrao;
-      mediaPrecoConvertido = media * fatorConversao;
+      // Usa o valor original sem conversão
+      mediaPrecoConvertido = media;
     }
 
     const totalEstoque = totalEstoqueEmUnidadePadrao;

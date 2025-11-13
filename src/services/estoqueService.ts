@@ -153,18 +153,101 @@ export class EstoqueService {
       return 0;
     }
 
-    // Calcular valor total baseado na quantidade ATUAL em estoque
-    let valorTotalEstoque = 0;
+    let valorTotalProdutos = 0;
     for (const produto of produtos) {
-      const quantidadeAtual = Number(produto.quantidade_em_estoque) || 0;
-      const valorUnitario = Number(produto.valor_unitario) || 0;
-      const valorProduto = quantidadeAtual * valorUnitario;
-      valorTotalEstoque += valorProduto;
-
-      console.log(`  📦 ${produto.id}: ${quantidadeAtual} × R$ ${valorUnitario.toFixed(6)} = R$ ${valorProduto.toFixed(2)}`);
+      const valorTotalProduto = Number(produto.valor_total) || 0;
+      valorTotalProdutos += valorTotalProduto;
     }
 
-    console.log(`💰 Valor total em estoque: R$ ${valorTotalEstoque.toFixed(2)}`);
+    console.log(`💰 Valor total inicial dos produtos: R$ ${valorTotalProdutos.toFixed(2)}`);
+
+    const { data: movimentacoes, error: movimentacoesError } = await supabase
+      .from('movimentacoes_estoque')
+      .select('produto_id, tipo, quantidade')
+      .eq('user_id', userId);
+
+    if (movimentacoesError) {
+      console.error('❌ Erro ao buscar movimentações:', movimentacoesError);
+      throw movimentacoesError;
+    }
+
+    let valorSaidas = 0;
+    let valorEntradas = 0;
+
+    if (movimentacoes && movimentacoes.length > 0) {
+      console.log(`📊 Processando ${movimentacoes.length} movimentações`);
+
+      for (const mov of movimentacoes) {
+        const produto = produtos.find(p => p.id === mov.produto_id);
+
+        if (produto && produto.valor_unitario) {
+          const quantidade = Number(mov.quantidade) || 0;
+          const valorUnitario = Number(produto.valor_unitario) || 0;
+          const valorMovimento = quantidade * valorUnitario;
+
+          if (mov.tipo === 'saida') {
+            valorSaidas += valorMovimento;
+            console.log(`  ➖ Saída: ${quantidade} × R$ ${valorUnitario.toFixed(2)} = R$ ${valorMovimento.toFixed(2)}`);
+          } else if (mov.tipo === 'entrada') {
+            valorEntradas += valorMovimento;
+            console.log(`  ➕ Entrada: ${quantidade} × R$ ${valorUnitario.toFixed(2)} = R$ ${valorMovimento.toFixed(2)}`);
+          }
+        } else {
+          console.warn(`⚠️ Produto ${mov.produto_id} não encontrado ou sem valor unitário`);
+        }
+      }
+    } else {
+      console.log('📊 Nenhuma movimentação encontrada');
+    }
+
+    const { data: lancamentos, error: lancamentosError } = await supabase
+      .from('lancamento_produtos')
+      .select('produto_id, quantidade_val, quantidade_un')
+      .in('produto_id', produtos.map(p => p.id));
+
+    let valorProdutosUsados = 0;
+
+    if (lancamentosError) {
+      console.warn('⚠️ Erro ao buscar lançamentos de produtos:', lancamentosError);
+    } else if (lancamentos && lancamentos.length > 0) {
+      console.log(`🌾 Processando ${lancamentos.length} produtos usados em atividades`);
+
+      for (const lancamento of lancamentos) {
+        const produto = produtos.find(p => p.id === lancamento.produto_id);
+
+        if (produto && produto.valor_unitario) {
+          const quantidadeUsada = Number(lancamento.quantidade_val) || 0;
+          const unidadeLancamento = lancamento.quantidade_un || produto.unidade_de_medida;
+          const valorUnitario = Number(produto.valor_unitario) || 0;
+          const unidadeValorOriginal = produto.unidade_valor_original || produto.unidade_de_medida;
+
+          let quantidadeConvertida = quantidadeUsada;
+
+          if (unidadeLancamento !== unidadeValorOriginal) {
+            quantidadeConvertida = convertFromStandardUnit(
+              quantidadeUsada,
+              unidadeLancamento,
+              unidadeValorOriginal
+            );
+          }
+
+          const valorUsado = quantidadeConvertida * valorUnitario;
+          valorProdutosUsados += valorUsado;
+
+          console.log(`  🌱 Produto usado: ${quantidadeUsada} ${unidadeLancamento} → ${quantidadeConvertida.toFixed(2)} ${unidadeValorOriginal} × R$ ${valorUnitario.toFixed(2)} = R$ ${valorUsado.toFixed(2)}`);
+        }
+      }
+    } else {
+      console.log('🌾 Nenhum produto usado em atividades encontrado');
+    }
+
+    console.log(`💸 Total de saídas: R$ ${valorSaidas.toFixed(2)}`);
+    console.log(`💵 Total de entradas adicionais: R$ ${valorEntradas.toFixed(2)}`);
+    console.log(`🌾 Total de produtos usados: R$ ${valorProdutosUsados.toFixed(2)}`);
+
+    const valorTotalEstoque = valorTotalProdutos + valorEntradas - valorSaidas - valorProdutosUsados;
+
+    console.log(`🏦 Valor total em estoque: R$ ${Math.max(0, valorTotalEstoque).toFixed(2)}`);
 
     return Math.max(0, valorTotalEstoque);
   }
@@ -175,7 +258,7 @@ export class EstoqueService {
     categoria: string,
     unidade: string,
     quantidade: number,
-    valorTotal: number,
+    valor: number,
     lote?: string,
     validade?: string,
     fornecedor?: string,
@@ -184,7 +267,7 @@ export class EstoqueService {
     const userId = await this.getCurrentUserId();
 
     const converted = convertToStandardUnit(quantidade, unidade);
-    const valorUnitario = converted.quantidade > 0 ? valorTotal / converted.quantidade : 0;
+    const valorTotal = converted.quantidade * valor;
 
     const { error } = await supabase
       .from('estoque_de_produtos')
@@ -196,7 +279,7 @@ export class EstoqueService {
           categoria,
           unidade_de_medida: converted.unidade,
           quantidade_em_estoque: converted.quantidade,
-          valor_unitario: valorUnitario,
+          valor_unitario: valor,
           valor_total: valorTotal,
           unidade_valor_original: unidade,
           lote: lote || null,
@@ -228,13 +311,13 @@ export class EstoqueService {
 
     const converted = convertToStandardUnit(produto.quantidade, produto.unidade);
     const valorTotal = produto.valor || 0;
-    const valorUnitario = converted.quantidade > 0 ? valorTotal / converted.quantidade : 0;
+    const valorUnitario = produto.quantidade > 0 ? valorTotal / produto.quantidade : 0;
 
     console.log('📊 Cálculo de valores do produto:');
     console.log(`  - Quantidade original: ${produto.quantidade} ${produto.unidade}`);
     console.log(`  - Quantidade convertida: ${converted.quantidade} ${converted.unidade}`);
     console.log(`  - Valor total informado: R$ ${valorTotal.toFixed(2)}`);
-    console.log(`  - Valor unitário calculado: R$ ${valorUnitario.toFixed(10)} por ${converted.unidade}`);
+    console.log(`  - Valor unitário calculado: R$ ${valorUnitario.toFixed(6)} por ${produto.unidade}`);
 
     const { data, error } = await supabase
       .from('estoque_de_produtos')

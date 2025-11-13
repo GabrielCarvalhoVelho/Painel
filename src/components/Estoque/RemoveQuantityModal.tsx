@@ -139,6 +139,13 @@ export default function RemoveQuantityModal({
           </p>
         </div>
 
+        {/* Texto informativo sobre FIFO */}
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-xs text-blue-800">
+            ℹ️ A remoção será feita automaticamente dos lotes mais antigos (FIFO)
+          </p>
+        </div>
+
         {/* Seletor de Unidade */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-[#092f20] mb-1">
