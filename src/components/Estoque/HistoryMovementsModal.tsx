@@ -8,7 +8,7 @@ import ActivityAttachmentModal from '../ManejoAgricola/ActivityAttachmentModal';
 import ActivityDetailModal from '../ManejoAgricola/ActivityDetailModal';
 import Pagination from './Pagination';
 import { formatUnitAbbreviated } from '../../lib/formatUnit';
-import { autoScaleQuantity, convertFromStandardUnit, convertToStandardUnit, isMassUnit, isVolumeUnit, convertValueToDisplayUnit } from '../../lib/unitConverter';
+import { autoScaleQuantity, convertFromStandardUnit, convertToStandardUnit, isMassUnit, isVolumeUnit } from '../../lib/unitConverter';
 import { formatSmartCurrency } from '../../lib/currencyFormatter';
 
 interface Props {
@@ -468,18 +468,35 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
 
                           {m.tipo === 'entrada' && (() => {
                             const unidadeValorOriginal = m.unidade_valor_original || m.unidade;
-                            const scaled = autoScaleQuantity(m.quantidade, m.unidade);
 
                             let valorDisplay = null;
-                            let unidadeValorDisplay = scaled.unidade;
+                            let unidadeValorDisplay = unidadeValorOriginal;
 
                             if (m.valor !== null && m.valor !== undefined) {
-                              if (scaled.unidade !== unidadeValorOriginal) {
-                                valorDisplay = convertValueToDisplayUnit(m.valor, unidadeValorOriginal, scaled.unidade);
+                              // m.valor está na unidade padrão (mg/mL)
+                              // Precisamos converter para unidade_valor_original
+                              
+                              const unidadePadrao = m.unidade; // mg ou mL
+                              
+                              if (unidadePadrao !== unidadeValorOriginal) {
+                                // Converter valor da unidade padrão para unidade original
+                                // Se unidade padrão é mg e original é kg:
+                                // - Fator = 1.000.000 (1 kg = 1.000.000 mg)
+                                // - Valor em kg = valor em mg × 1.000.000
+                                
+                                if (isMassUnit(unidadePadrao) && isMassUnit(unidadeValorOriginal)) {
+                                  // Converter 1 unidade original para unidade padrão para obter o fator
+                                  const fatorConversao = convertToStandardUnit(1, unidadeValorOriginal).quantidade;
+                                  valorDisplay = m.valor * fatorConversao;
+                                } else if (isVolumeUnit(unidadePadrao) && isVolumeUnit(unidadeValorOriginal)) {
+                                  const fatorConversao = convertToStandardUnit(1, unidadeValorOriginal).quantidade;
+                                  valorDisplay = m.valor * fatorConversao;
+                                } else {
+                                  valorDisplay = m.valor;
+                                }
                               } else {
                                 valorDisplay = m.valor;
                               }
-                              unidadeValorDisplay = scaled.unidade;
                             }
 
                             return (
