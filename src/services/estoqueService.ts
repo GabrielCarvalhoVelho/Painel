@@ -2,7 +2,7 @@
 import { supabase } from '../lib/supabase';
 import { AuthService } from './authService';
 import { ActivityService } from './activityService';
-import { convertToStandardUnit, convertFromStandardUnit } from '../lib/unitConverter';
+import { convertToStandardUnit } from '../lib/unitConverter';
 
 export interface ProdutoEstoque {
   id: number;
@@ -147,7 +147,7 @@ export class EstoqueService {
 
     const { data: produtos, error: produtosError } = await supabase
       .from('estoque_de_produtos')
-      .select('id, valor_total, valor_unitario, quantidade_em_estoque, unidade_de_medida, unidade_valor_original')
+      .select('id, valor_total, valor_unitario, quantidade_em_estoque, quantidade_inicial, unidade_de_medida, unidade_valor_original')
       .eq('user_id', userId);
 
     if (produtosError) {
@@ -187,20 +187,23 @@ export class EstoqueService {
       for (const mov of movimentacoes) {
         const produto = produtos.find(p => p.id === mov.produto_id);
 
-        if (produto && produto.valor_unitario) {
-          const quantidade = Number(mov.quantidade) || 0;
-          const valorUnitario = Number(produto.valor_unitario) || 0;
-          const valorMovimento = quantidade * valorUnitario;
+        if (produto && produto.valor_total) {
+          const quantidadeMovimento = Number(mov.quantidade) || 0;
+          const valorTotal = Number(produto.valor_total) || 0;
+          const quantidadeInicial = Number((produto as any).quantidade_inicial) || 1;
+          
+          // Calcular proporção: (valor_total / quantidade_inicial) × quantidade_movimento
+          const valorMovimento = (valorTotal / quantidadeInicial) * quantidadeMovimento;
 
           if (mov.tipo === 'saida') {
             valorSaidas += valorMovimento;
-            console.log(`  ➖ Saída: ${quantidade} × R$ ${valorUnitario.toFixed(2)} = R$ ${valorMovimento.toFixed(2)}`);
+            console.log(`  ➖ Saída: ${quantidadeMovimento} × (R$ ${valorTotal.toFixed(2)} / ${quantidadeInicial}) = R$ ${valorMovimento.toFixed(2)}`);
           } else if (mov.tipo === 'entrada') {
             valorEntradas += valorMovimento;
-            console.log(`  ➕ Entrada: ${quantidade} × R$ ${valorUnitario.toFixed(2)} = R$ ${valorMovimento.toFixed(2)}`);
+            console.log(`  ➕ Entrada: ${quantidadeMovimento} × (R$ ${valorTotal.toFixed(2)} / ${quantidadeInicial}) = R$ ${valorMovimento.toFixed(2)}`);
           }
         } else {
-          console.warn(`⚠️ Produto ${mov.produto_id} não encontrado ou sem valor unitário`);
+          console.warn(`⚠️ Produto ${mov.produto_id} não encontrado ou sem valor total`);
         }
       }
     } else {
@@ -222,26 +225,16 @@ export class EstoqueService {
       for (const lancamento of lancamentos) {
         const produto = produtos.find(p => p.id === lancamento.produto_id);
 
-        if (produto && produto.valor_unitario) {
+        if (produto && produto.valor_total) {
           const quantidadeUsada = Number(lancamento.quantidade_val) || 0;
-          const unidadeLancamento = lancamento.quantidade_un || produto.unidade_de_medida;
-          const valorUnitario = Number(produto.valor_unitario) || 0;
-          const unidadeValorOriginal = produto.unidade_valor_original || produto.unidade_de_medida;
+          const valorTotal = Number(produto.valor_total) || 0;
+          const quantidadeInicial = Number((produto as any).quantidade_inicial) || 1;
 
-          let quantidadeConvertida = quantidadeUsada;
-
-          if (unidadeLancamento !== unidadeValorOriginal) {
-            quantidadeConvertida = convertFromStandardUnit(
-              quantidadeUsada,
-              unidadeLancamento,
-              unidadeValorOriginal
-            );
-          }
-
-          const valorUsado = quantidadeConvertida * valorUnitario;
+          // Calcular proporção: (valor_total / quantidade_inicial) × quantidade_usada
+          const valorUsado = (valorTotal / quantidadeInicial) * quantidadeUsada;
           valorProdutosUsados += valorUsado;
 
-          console.log(`  🌱 Produto usado: ${quantidadeUsada} ${unidadeLancamento} → ${quantidadeConvertida.toFixed(2)} ${unidadeValorOriginal} × R$ ${valorUnitario.toFixed(2)} = R$ ${valorUsado.toFixed(2)}`);
+          console.log(`  🌱 Produto usado: ${quantidadeUsada} × (R$ ${valorTotal.toFixed(2)} / ${quantidadeInicial}) = R$ ${valorUsado.toFixed(2)}`);
         }
       }
     } else {
