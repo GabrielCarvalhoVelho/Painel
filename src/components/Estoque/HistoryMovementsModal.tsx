@@ -15,9 +15,10 @@ interface Props {
   isOpen: boolean;
   product: ProdutoAgrupado | null;
   onClose: () => void;
+  onProdutosUpdate?: () => Promise<void>; // Callback para atualizar produtos após mudanças
 }
 
-export default function HistoryMovementsModal({ isOpen, product, onClose }: Props) {
+export default function HistoryMovementsModal({ isOpen, product, onClose, onProdutosUpdate }: Props) {
   // items pode conter movimentacoes (MovimentacaoExpandida) e lançamentos (normalizados)
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -58,16 +59,35 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
     if (!product) return;
 
     try {
-      // Primeiro, somamos todas as entradas e saídas registradas nas movimentações por produto
+      // ✅ CONVERTER todas as quantidades para unidade padrão (mg ou mL)
+      // pois o banco pode ter valores em diferentes unidades (ton, kg, g, mg)
       let allSaidas = 0;
       let allEntradas = 0;
+
+      // Determinar a unidade padrão com base no primeiro produto
+      const primeiraUnidade = product.produtos[0]?.unidade || 'un';
+      const unidadePadrao = isMassUnit(primeiraUnidade) ? 'mg' : (isVolumeUnit(primeiraUnidade) ? 'mL' : null);
 
       for (const p of product.produtos) {
         try {
           const resp = await EstoqueService.getMovimentacoesExpandidas(p.id, 1, 1000);
           const data = resp?.data || [];
-          const saidas = data.filter(m => m.tipo === 'saida').reduce((sum, m) => sum + m.quantidade, 0);
-          const entradas = data.filter(m => m.tipo === 'entrada').reduce((sum, m) => sum + m.quantidade, 0);
+          
+          // Converter cada movimentação para unidade padrão antes de somar
+          const saidas = data
+            .filter(m => m.tipo === 'saida')
+            .reduce((sum, m) => {
+              const converted = convertToStandardUnit(m.quantidade, m.unidade);
+              return sum + converted.quantidade;
+            }, 0);
+          
+          const entradas = data
+            .filter(m => m.tipo === 'entrada')
+            .reduce((sum, m) => {
+              const converted = convertToStandardUnit(m.quantidade, m.unidade);
+              return sum + converted.quantidade;
+            }, 0);
+          
           allSaidas += saidas;
           allEntradas += entradas;
         } catch (err) {
@@ -80,8 +100,10 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
         const produtoIds = product.produtos.map(p => p.id);
         const lancamentos = await EstoqueService.getLancamentosPorProdutos(produtoIds);
         for (const l of lancamentos) {
-          const q = l.quantidade_val || 0;
-          allSaidas += q; // lançamentos são consumos (saídas)
+          const quantidade = l.quantidade_val || 0;
+          const unidade = l.quantidade_un || 'un';
+          const converted = convertToStandardUnit(quantidade, unidade);
+          allSaidas += converted.quantidade;
         }
       } catch (err) {
         console.error('Erro ao buscar lançamentos para totais:', err);
@@ -101,9 +123,16 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
 
         if (!hasEntradaRegistrada) {
           const quantidadeInicial = Number(p.quantidade_inicial) || 0;
-          allEntradas += quantidadeInicial;
+          const converted = convertToStandardUnit(quantidadeInicial, p.unidade);
+          allEntradas += converted.quantidade;
         }
       }
+
+      console.log('📊 Totais calculados (unidade padrão):', {
+        totalEntradas: allEntradas,
+        totalSaidas: allSaidas,
+        unidadePadrao
+      });
 
       setTotalEntradas(allEntradas);
       setTotalSaidas(allSaidas);
@@ -429,11 +458,17 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-1 md:gap-4 text-sm text-gray-600 mt-2">
                 <span className="whitespace-nowrap"><strong>Total Entradas:</strong> {(() => {
-                  const scaled = autoScaleQuantity(totalEntradas, product?.produtos[0]?.unidade || 'un');
+                  // totalEntradas já está em unidade padrão (mg ou mL)
+                  const primeiraUnidade = product?.produtos[0]?.unidade || 'un';
+                  const unidadePadrao = isMassUnit(primeiraUnidade) ? 'mg' : (isVolumeUnit(primeiraUnidade) ? 'mL' : primeiraUnidade);
+                  const scaled = autoScaleQuantity(totalEntradas, unidadePadrao);
                   return `${scaled.quantidade} ${formatUnitAbbreviated(scaled.unidade)}`;
                 })()}</span>
                 <span className="whitespace-nowrap"><strong>Total Saídas:</strong> {(() => {
-                  const scaled = autoScaleQuantity(totalSaidas, product?.produtos[0]?.unidade || 'un');
+                  // totalSaidas já está em unidade padrão (mg ou mL)
+                  const primeiraUnidade = product?.produtos[0]?.unidade || 'un';
+                  const unidadePadrao = isMassUnit(primeiraUnidade) ? 'mg' : (isVolumeUnit(primeiraUnidade) ? 'mL' : primeiraUnidade);
+                  const scaled = autoScaleQuantity(totalSaidas, unidadePadrao);
                   return `${scaled.quantidade} ${formatUnitAbbreviated(scaled.unidade)}`;
                 })()}</span>
                 <span className="whitespace-nowrap"><strong>Em estoque:</strong> {product?.totalEstoqueDisplay} {formatUnitAbbreviated(product?.unidadeDisplay || product?.produtos[0]?.unidade)}</span>

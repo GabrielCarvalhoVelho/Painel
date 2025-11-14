@@ -82,6 +82,28 @@ export default function EstoquePanel() {
       }
     };
     carregar();
+
+    // 🔄 Auto-atualização a cada 30 segundos para pegar valores atualizados pelo trigger
+    const intervalo = setInterval(async () => {
+      try {
+        const authService = AuthService.getInstance();
+        const user = authService.getCurrentUser();
+        if (!user) return;
+
+        console.log('🔄 Atualizando estoque automaticamente...');
+        const dados = await EstoqueService.getProdutos();
+        setProdutos(dados);
+        setProdutosAgrupados(agruparProdutos(dados));
+
+        const valorTotal = await EstoqueService.calcularValorTotalEstoque();
+        setResumoEstoque(prev => ({ ...prev, valorTotal }));
+      } catch (error) {
+        console.error("❌ Erro ao atualizar estoque automaticamente:", error);
+      }
+    }, 30000); // 30 segundos
+
+    // Limpar intervalo ao desmontar
+    return () => clearInterval(intervalo);
   }, []);
 
   // � Sempre que a lista de produtos mudar, reagrupa para atualizar a UI automaticamente
@@ -292,6 +314,16 @@ export default function EstoquePanel() {
         isOpen={historyModal.isOpen}
         product={historyModal.product}
         onClose={() => setHistoryModal({ isOpen: false, product: null })}
+        onProdutosUpdate={async () => {
+          // 🔄 Recarrega produtos para pegar valores atualizados pelo trigger
+          const produtosAtualizados = await EstoqueService.getProdutos();
+          setProdutos(produtosAtualizados);
+          setProdutosAgrupados(agruparProdutos(produtosAtualizados));
+          
+          // Recalcula valor total
+          const valorTotal = await EstoqueService.calcularValorTotalEstoque();
+          setResumoEstoque(prev => ({ ...prev, valorTotal }));
+        }}
       />
     </div>
     </>
