@@ -99,12 +99,44 @@ Atualmente o componente utiliza dados mockados para demonstração. Para integra
 
 ## 📱 Responsividade
 
-| Largura | Comportamento |
-|---------|---------------|
-| ≥1280px | Cards 2x2 + tabela completa |
-| 1024-1279px | Cards empilhados |
-| ≤1024px | Scroll horizontal na tabela |
-| ≤768px | Layout tipo acordeão |
+### 🖥️ Desktop (≥ 1024px - classe `lg:`)
+- **Layout**: Tabela horizontal completa
+- **Colunas visíveis**: Todas (Talhão, 5 macrogrupos, Total, R$/ha)
+- **Interação**: Hover nas linhas + click para drill-down
+- **Scroll**: Nenhum (tudo visível)
+
+### 📱 Mobile (≤ 1023px)
+- **Layout**: Cards verticais individuais por talhão
+- **Sem scroll horizontal**: Layout 100% fluído e vertical
+- **Estrutura de cada card**:
+  - **Header**:
+    - Nome do talhão (título em destaque)
+    - Área em hectares
+    - Total consolidado (valor grande)
+    - Custo por hectare (verde, destaque)
+  - **Body** (lista vertical de macrogrupos):
+    - Insumos (bullet verde `#00A651`)
+    - Operacional (bullet verde-lima `#CADB2A`)
+    - Serviços/Logística (bullet verde médio `#86b646`)
+    - Administrativos (bullet verde escuro `#397738`)
+    - Outros (bullet cinza)
+  - **Footer**:
+    - Botão "Ver detalhes" (full width, verde)
+    - Ícone ChevronRight
+    - Abre painel lateral ao clicar
+
+### Breakpoints Utilizados
+| Largura | Classe Tailwind | Comportamento |
+|---------|----------------|---------------|
+| ≥1024px | `lg:block` / `lg:hidden` | Tabela desktop visível |
+| ≤1023px | Classes padrão | Cards mobile visíveis |
+
+### Implementação Técnica
+- **Desktop**: `<div className="hidden lg:block">` (tabela)
+- **Mobile**: `<div className="lg:hidden">` (cards)
+- **Mesmos dados**: Usa o array `custosPorTalhao` em ambas as views
+- **Mesma função**: `handleClickTalhao()` para abrir drill-down
+- **Sem lógica nova**: Apenas reorganização visual dos mesmos dados
 
 ## 🔧 Próximos Passos (Implementação Real)
 

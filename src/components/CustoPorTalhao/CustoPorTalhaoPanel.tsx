@@ -356,8 +356,8 @@ export default function CustoPorTalhaoPanel() {
         </div>
       </div>
 
-      {/* Tabela Principal */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      {/* Tabela Principal - Desktop (≥1024px) */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hidden lg:block">
         <h3 className="text-lg font-bold text-[#004417] mb-4">Custo por Talhão</h3>
         
         <div className="overflow-x-auto">
@@ -401,6 +401,81 @@ export default function CustoPorTalhaoPanel() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Cards Mobile - Vertical (≤1023px) */}
+      <div className="lg:hidden space-y-4">
+        {custosPorTalhao.map((talhao, index) => (
+          <div
+            key={index}
+            className="bg-white rounded-xl shadow-sm border border-gray-100 p-5"
+          >
+            {/* Header do Card */}
+            <div className="flex items-start justify-between mb-4 pb-4 border-b border-gray-100">
+              <div>
+                <h4 className="text-lg font-bold text-[#004417]">{talhao.talhao}</h4>
+                <p className="text-sm text-gray-600 mt-1">Área: {talhao.area} ha</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-gray-500 font-medium">Total</p>
+                <p className="text-xl font-bold text-[#004417]">{formatCurrency(talhao.total)}</p>
+                <p className="text-sm font-semibold text-[#00A651] mt-1">{formatCurrency(talhao.custoHa)}/ha</p>
+              </div>
+            </div>
+
+            {/* Macrogrupos */}
+            <div className="space-y-3 mb-4">
+              <div className="flex items-center justify-between py-2 border-b border-gray-50">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-[#00A651]"></div>
+                  <span className="text-sm font-medium text-gray-700">Insumos</span>
+                </div>
+                <span className="text-sm font-semibold text-[#004417]">{formatCurrency(talhao.insumos)}</span>
+              </div>
+
+              <div className="flex items-center justify-between py-2 border-b border-gray-50">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-[#CADB2A]"></div>
+                  <span className="text-sm font-medium text-gray-700">Operacional</span>
+                </div>
+                <span className="text-sm font-semibold text-[#004417]">{formatCurrency(talhao.operacional)}</span>
+              </div>
+
+              <div className="flex items-center justify-between py-2 border-b border-gray-50">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-[#86b646]"></div>
+                  <span className="text-sm font-medium text-gray-700">Serviços/Logística</span>
+                </div>
+                <span className="text-sm font-semibold text-[#004417]">{formatCurrency(talhao.servicosLogistica)}</span>
+              </div>
+
+              <div className="flex items-center justify-between py-2 border-b border-gray-50">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-[#397738]"></div>
+                  <span className="text-sm font-medium text-gray-700">Administrativos</span>
+                </div>
+                <span className="text-sm font-semibold text-[#004417]">{formatCurrency(talhao.administrativos)}</span>
+              </div>
+
+              <div className="flex items-center justify-between py-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-gray-400"></div>
+                  <span className="text-sm font-medium text-gray-700">Outros</span>
+                </div>
+                <span className="text-sm font-semibold text-[#004417]">{formatCurrency(talhao.outros)}</span>
+              </div>
+            </div>
+
+            {/* Botão Ver Detalhes */}
+            <button
+              onClick={() => handleClickTalhao(talhao)}
+              className="w-full px-4 py-2.5 bg-[#00A651] text-white font-semibold rounded-lg hover:bg-[#004417] transition-colors duration-200 flex items-center justify-center gap-2"
+            >
+              Ver detalhes
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        ))}
       </div>
 
       {/* Painel Lateral (Drill-down) */}
