@@ -21,6 +21,7 @@ export interface ProdutoEstoque {
   unidade_valor_original?: string | null; // unidade que o valor foi originalmente inserido
   quantidade_inicial: number; // quantidade original informada no cadastro
   valor_total?: number | null; // valor total do produto (valor_unitario × quantidade_inicial)
+  valor_medio?: number | null; // valor médio calculado pela function do banco
 }
 
 export interface MovimentacaoEstoque {
@@ -109,7 +110,8 @@ export class EstoqueService {
         registro_mapa,
         unidade_valor_original,
         quantidade_inicial,
-        valor_total
+        valor_total,
+        valor_medio
       `)
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
@@ -137,6 +139,7 @@ export class EstoqueService {
       unidade_valor_original: produto.unidade_valor_original,
       quantidade_inicial: produto.quantidade_inicial,
       valor_total: produto.valor_total,
+      valor_medio: produto.valor_medio,
     }));
 
     return produtosMapeados;

@@ -1,6 +1,6 @@
 // src/services/agruparProdutosService.ts
 import { ProdutoEstoque } from "./estoqueService";
-import { convertToStandardUnit, convertFromStandardUnit, getBestDisplayUnit, isMassUnit, isVolumeUnit } from '../lib/unitConverter';
+import { convertToStandardUnit, getBestDisplayUnit, isMassUnit, isVolumeUnit } from '../lib/unitConverter';
 
 function normalizeName(name: string | null | undefined): string {
   if (!name || typeof name !== 'string') {
@@ -127,104 +127,24 @@ export function agruparProdutos(produtos: ProdutoEstoque[]): ProdutoAgrupado[] {
       nomes.filter(n => n === a).length - nomes.filter(n => n === b).length
     ).pop() || grupo[0].nome_produto;
 
-    // Considerar TODOS os produtos do grupo que possuem valor, não apenas os em estoque
-    const produtosComValor = grupo.filter(p => p.valor !== null && p.valor > 0);
-    const produtosEmEstoque = grupo.filter(p => (p.quantidade ?? 0) > 0 && p.valor !== null);
+    const produtosEmEstoque = grupo.filter(p => (p.quantidade ?? 0) > 0);
 
-    // 2️⃣ DETERMINAR unidade de referência (primeiro produto = mais antigo)
+    // 2️⃣ USAR valor_medio do banco de dados (calculado automaticamente pela function)
     const produtoMaisAntigo = grupo[0];
     const unidadeReferencia = produtoMaisAntigo.unidade_valor_original || produtoMaisAntigo.unidade;
+    
+    // Buscar o valor_medio do primeiro produto com estoque (ou o mais antigo se nenhum tiver)
+    const produtoComValorMedio = produtosEmEstoque.find(p => p.valor_medio != null && p.valor_medio > 0) 
+      || grupo.find(p => p.valor_medio != null && p.valor_medio > 0)
+      || produtoMaisAntigo;
+    
+    const media = produtoComValorMedio?.valor_medio ?? 0;
 
-    console.log('🎯 Unidade de Referência (produto mais antigo):', {
+    console.log('💰 Usando valor_medio do banco:', {
       grupo: grupo[0].nome_produto,
-      produtoMaisAntigo: produtoMaisAntigo.nome_produto,
-      created_at: produtoMaisAntigo.created_at,
-      unidadeReferencia
-    });
-
-    // 3️⃣ CONVERTER e CALCULAR média ponderada
-    // Fórmula: soma(quantidade × valor) ÷ soma(quantidade)
-    let somaCustoTotal = 0;
-    let somaQuantidadeTotal = 0;
-
-    produtosComValor.forEach(p => {
-      const valorPorUnidadeOriginal = p.valor ?? 0; // Já é valor por unidade!
-      if (valorPorUnidadeOriginal <= 0) return;
-
-      const unidadeOriginalProduto = p.unidade_valor_original || p.unidade;
-      const quantidadeInicial = p.quantidade_inicial ?? 0;
-      if (quantidadeInicial <= 0) return;
-
-      // 🎯 PASSO 1: Converter quantidade_inicial (mg/mL) para unidade de referência
-      let quantidadeConvertida = quantidadeInicial;
-      if (isMassUnit(unidadeReferencia)) {
-        quantidadeConvertida = convertFromStandardUnit(quantidadeInicial, 'mg', unidadeReferencia);
-      } else if (isVolumeUnit(unidadeReferencia)) {
-        quantidadeConvertida = convertFromStandardUnit(quantidadeInicial, 'mL', unidadeReferencia);
-      }
-
-      // 🎯 PASSO 2: Converter valor unitário para unidade de referência
-      let valorConvertido = valorPorUnidadeOriginal;
-      
-      if (unidadeOriginalProduto !== unidadeReferencia) {
-        const ehMassaOrigem = isMassUnit(unidadeOriginalProduto);
-        const ehMassaDestino = isMassUnit(unidadeReferencia);
-        const ehVolumeOrigem = isVolumeUnit(unidadeOriginalProduto);
-        const ehVolumeDestino = isVolumeUnit(unidadeReferencia);
-
-        if (ehMassaOrigem && ehMassaDestino) {
-          // Converter R$/unidade_original → R$/unidade_referencia
-          // Exemplo: R$ 3,50/kg → R$ 3.500/ton
-          // 1 ton = 1000 kg, então R$/ton = R$/kg × 1000
-          const umUnidadeOriginalEmMg = convertToStandardUnit(1, unidadeOriginalProduto).quantidade;
-          const umUnidadeReferenciaEmMg = convertToStandardUnit(1, unidadeReferencia).quantidade;
-          const fator = umUnidadeReferenciaEmMg / umUnidadeOriginalEmMg;
-          
-          valorConvertido = valorPorUnidadeOriginal * fator;
-          
-          console.log('🔢 Conversão de Valor:', {
-            produto: p.nome_produto,
-            de: `R$ ${valorPorUnidadeOriginal.toFixed(2)}/${unidadeOriginalProduto}`,
-            para: `R$ ${valorConvertido.toFixed(2)}/${unidadeReferencia}`,
-            fator,
-            calculo: `${valorPorUnidadeOriginal.toFixed(2)} × ${fator} = ${valorConvertido.toFixed(2)}`
-          });
-        } else if (ehVolumeOrigem && ehVolumeDestino) {
-          const umUnidadeOriginalEmML = convertToStandardUnit(1, unidadeOriginalProduto).quantidade;
-          const umUnidadeReferenciaEmML = convertToStandardUnit(1, unidadeReferencia).quantidade;
-          const fator = umUnidadeReferenciaEmML / umUnidadeOriginalEmML;
-          valorConvertido = valorPorUnidadeOriginal * fator;
-        }
-      }
-
-      // 🎯 PASSO 3: Calcular custo total
-      const custoTotalProduto = quantidadeConvertida * valorConvertido;
-
-      console.log('💰 Cálculo Ponderado:', {
-        produto: p.nome_produto,
-        valorOriginal: `R$ ${valorPorUnidadeOriginal.toFixed(2)}/${unidadeOriginalProduto}`,
-        quantidadeConvertida: `${quantidadeConvertida.toFixed(2)} ${unidadeReferencia}`,
-        valorConvertido: `R$ ${valorConvertido.toFixed(2)}/${unidadeReferencia}`,
-        custoTotal: `R$ ${custoTotalProduto.toFixed(2)}`,
-        calculo: `${quantidadeConvertida.toFixed(2)} ${unidadeReferencia} × R$ ${valorConvertido.toFixed(2)}/${unidadeReferencia} = R$ ${custoTotalProduto.toFixed(2)}`
-      });
-
-      somaCustoTotal += custoTotalProduto;
-      somaQuantidadeTotal += quantidadeConvertida;
-    });
-
-    // 4️⃣ CALCULAR média ponderada
-    const media = somaQuantidadeTotal > 0 
-      ? somaCustoTotal / somaQuantidadeTotal 
-      : 0;
-
-    console.log('📊 Média Ponderada Final:', {
-      totalProdutosNoGrupo: grupo.length,
-      produtosComValor: produtosComValor.length,
-      somaCustoTotal: `R$ ${somaCustoTotal.toFixed(2)}`,
-      somaQuantidadeTotal: `${somaQuantidadeTotal.toFixed(2)} ${unidadeReferencia}`,
-      mediaPonderada: `R$ ${media.toFixed(2)}/${unidadeReferencia}`,
-      grupo: grupo[0].nome_produto
+      valor_medio: media,
+      unidadeReferencia,
+      produto_id: produtoComValorMedio?.id
     });
 
     const primeiraUnidade = grupo[0].unidade;

@@ -544,23 +544,19 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
                             );
                           })()}
 
-                          {m.tipo === 'saida' && m.valor && m._source !== 'lancamento' && (() => {
-                            // m.valor está como valor por unidade padrão (mg/mL)
-                            // m.quantidade está na unidade padrão (mg/mL)
-                            // unidade_valor_original é a unidade em que o valor foi cadastrado
-                            
+                          {m.tipo === 'saida' && m._source !== 'lancamento' && (() => {
                             const produtoOrigem = product?.produtos.find(p => p.id === m.produto_id);
-                            const unidadeValorOriginal = produtoOrigem?.unidade_valor_original || m.unidade;
-                            const valorTotal = produtoOrigem?.valor_total || null;
-                            const quantidadeInicial = produtoOrigem?.quantidade_inicial || 0;
+                            
+                            // Usar valor_medio do banco de dados
+                            const valorMedio = produtoOrigem?.valor_medio || 0;
+                            const unidadeValorOriginal = produtoOrigem?.unidade_valor_original || produtoOrigem?.unidade || m.unidade;
+                            const unidadePadrao = produtoOrigem?.unidade || m.unidade; // mg ou mL
                             
                             let valorTotalSaida = 0;
                             
-                            if (valorTotal && quantidadeInicial > 0) {
-                              // Usar valor_total e quantidade_inicial para calcular
-                              // valor_total / quantidade_inicial = valor por unidade padrão
-                              // Converter quantidade da saída para unidade original
-                              const unidadePadrao = produtoOrigem?.unidade || m.unidade;
+                            if (valorMedio > 0) {
+                              // m.quantidade está na unidade padrão (mg/mL)
+                              // Converter para unidade_valor_original onde o valor_medio está referenciado
                               let quantidadeSaidaConvertida = m.quantidade;
                               
                               if (unidadePadrao !== unidadeValorOriginal) {
@@ -571,18 +567,8 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
                                 }
                               }
                               
-                              // Calcular valor unitário na unidade original
-                              let quantidadeInicialConvertida = quantidadeInicial;
-                              if (unidadePadrao !== unidadeValorOriginal) {
-                                if (isMassUnit(unidadePadrao) && isMassUnit(unidadeValorOriginal)) {
-                                  quantidadeInicialConvertida = convertFromStandardUnit(quantidadeInicial, 'mg', unidadeValorOriginal);
-                                } else if (isVolumeUnit(unidadePadrao) && isVolumeUnit(unidadeValorOriginal)) {
-                                  quantidadeInicialConvertida = convertFromStandardUnit(quantidadeInicial, 'mL', unidadeValorOriginal);
-                                }
-                              }
-                              
-                              const valorUnitarioOriginal = valorTotal / quantidadeInicialConvertida;
-                              valorTotalSaida = valorUnitarioOriginal * quantidadeSaidaConvertida;
+                              // Custo da saída = valor_medio × quantidade convertida
+                              valorTotalSaida = valorMedio * quantidadeSaidaConvertida;
                             }
 
                             return valorTotalSaida > 0 ? (
