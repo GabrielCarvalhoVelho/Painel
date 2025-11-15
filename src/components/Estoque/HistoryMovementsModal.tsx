@@ -449,41 +449,41 @@ export default function HistoryMovementsModal({ isOpen, product, onClose, onProd
   return (
     <>
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-md shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-[0_4px_12px_rgba(0,68,23,0.1)] w-full max-w-[760px] max-h-[90vh] flex flex-col overflow-hidden">
 
-          <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-gray-50 to-gray-100">
-            <div>
-              <h3 className="text-xl font-bold text-gray-900">
+          <div className="flex items-center justify-between p-6 border-b border-[rgba(0,68,23,0.08)]">
+            <div className="flex-1">
+              <h3 className="text-[18px] font-bold text-[#004417] mb-3">
                 {product?.nome}
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-1 md:gap-4 text-sm text-gray-600 mt-2">
-                <span className="whitespace-nowrap"><strong>Total Entradas:</strong> {(() => {
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4 text-[14px] text-[rgba(0,68,23,0.8)]">
+                <div className="whitespace-nowrap"><strong className="font-semibold">Total Entradas:</strong> <span className="font-bold text-[#004417]">{(() => {
                   // totalEntradas já está em unidade padrão (mg ou mL)
                   const primeiraUnidade = product?.produtos[0]?.unidade || 'un';
                   const unidadePadrao = isMassUnit(primeiraUnidade) ? 'mg' : (isVolumeUnit(primeiraUnidade) ? 'mL' : primeiraUnidade);
                   const scaled = autoScaleQuantity(totalEntradas, unidadePadrao);
                   return `${scaled.quantidade} ${formatUnitAbbreviated(scaled.unidade)}`;
-                })()}</span>
-                <span className="whitespace-nowrap"><strong>Total Saídas:</strong> {(() => {
+                })()}</span></div>
+                <div className="whitespace-nowrap"><strong className="font-semibold">Total Saídas:</strong> <span className="font-bold text-[#004417]">{(() => {
                   // totalSaidas já está em unidade padrão (mg ou mL)
                   const primeiraUnidade = product?.produtos[0]?.unidade || 'un';
                   const unidadePadrao = isMassUnit(primeiraUnidade) ? 'mg' : (isVolumeUnit(primeiraUnidade) ? 'mL' : primeiraUnidade);
                   const scaled = autoScaleQuantity(totalSaidas, unidadePadrao);
                   return `${scaled.quantidade} ${formatUnitAbbreviated(scaled.unidade)}`;
-                })()}</span>
-                <span className="whitespace-nowrap"><strong>Em estoque:</strong> {product?.totalEstoqueDisplay} {formatUnitAbbreviated(product?.unidadeDisplay || product?.produtos[0]?.unidade)}</span>
+                })()}</span></div>
+                <div className="whitespace-nowrap"><strong className="font-semibold">Em estoque:</strong> <span className="font-bold text-[#004417]">{product?.totalEstoqueDisplay} <span className="text-[rgba(0,68,23,0.7)] text-[13px]">{formatUnitAbbreviated(product?.unidadeDisplay || product?.produtos[0]?.unidade)}</span></span></div>
               </div>
               
             </div>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 p-1"
+              className="text-[rgba(0,68,23,0.5)] hover:text-[#00A651] p-1.5 rounded-lg transition-colors ml-4"
             >
               <X className="w-6 h-6" />
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6" data-modal-content>
+          <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-[rgba(0,166,81,0.3)] scrollbar-track-transparent" data-modal-content>
             {loading ? (
               <div className="text-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
@@ -507,19 +507,19 @@ export default function HistoryMovementsModal({ isOpen, product, onClose, onProd
                 {/* Original movement items */}
                 <div className="space-y-4">
                   {items.map((m) => (
-                    <div key={`${m.produto_id}-${m.id}`} className="border rounded-lg p-4 bg-gray-50 relative">
+                    <div key={`${m.produto_id}-${m.id}`} className="bg-white shadow-[0_2px_8px_rgba(0,68,23,0.04)] border border-[rgba(0,68,23,0.08)] rounded-xl p-5 relative mb-4">
                       <div className="flex items-start justify-between">
 
                         <div className="flex-1">
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-center justify-between mb-3">
                                 <div className="flex items-center gap-3">
                                   {(() => {
                                     const isLanc = m._source === 'lancamento';
                                     const badgeClass = isLanc
-                                      ? 'bg-red-100 text-red-700'
+                                      ? 'bg-[rgba(247,148,31,0.1)] text-[#F7941F]'
                                       : (m.tipo === 'entrada'
-                                        ? 'bg-[#397738]/10 text-[#397738]'
-                                        : 'bg-red-100 text-red-700');
+                                        ? 'bg-[rgba(0,166,81,0.1)] text-[#00A651]'
+                                        : 'bg-[rgba(247,148,31,0.1)] text-[#F7941F]');
                                     const badgeLabel = isLanc ? 'Aplicação' : (m.tipo === 'entrada' ? 'Entrada' : 'Saída');
                                     const qty = isLanc ? (m.quantidade_val ?? 0) : (m.quantidade ?? 0);
                                     const unit = isLanc ? (m.quantidade_un || m.unidade) : m.unidade;
@@ -527,34 +527,34 @@ export default function HistoryMovementsModal({ isOpen, product, onClose, onProd
 
                                     return (
                                       <>
-                                        <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${badgeClass}`}>
+                                        <span className={`inline-flex px-3 py-1 rounded-full text-[13px] font-medium ${badgeClass}`}>
                                           {badgeLabel}
                                         </span>
-                                        <span className="font-medium text-gray-900 whitespace-nowrap">
+                                        <span className="font-bold text-[#004417] text-[18px] whitespace-nowrap">
                                           {qtyUsed.quantidade} {qtyUsed.unidade}
                                         </span>
                                       </>
                                     );
                                   })()}
                                 </div>
-                            <div className="text-gray-500 text-xs text-right">
+                            <div className="text-[rgba(0,68,23,0.65)] text-[13px] text-right">
                               <div>{formatDate(m.created_at)}</div>
                               <div>{formatTime(m.created_at)}</div>
                             </div>
                           </div>
 
                           {m.observacao && (
-                            <p className="text-sm text-gray-600 mt-2">{m.observacao}</p>
+                            <p className="text-[13px] text-[rgba(0,68,23,0.85)] mt-2 mb-3">{m.observacao}</p>
                           )}
 
                           {/* Se for lançamento (aplicação) mostramos atividade, quantidade usada/un e custo calculado */}
                           {m._source === 'lancamento' && (() => {
                             const qtyUsed = autoScaleQuantity(m.quantidade_val ?? 0, m.quantidade_un || m.unidade);
                             return (
-                              <div className="text-sm text-gray-600 space-y-1 mt-2">
-                                <div><strong>Atividade:</strong> {m.nome_atividade || '—'}</div>
-                                <div><strong>Quantidade usada:</strong> {qtyUsed.quantidade} {qtyUsed.unidade}</div>
-                                <div><strong>Custo do produto usado:</strong> {m.custo_calculado != null ? formatSmartCurrency(Number(m.custo_calculado)) : '—'}</div>
+                              <div className="text-[13px] text-[rgba(0,68,23,0.85)] space-y-2 mt-2">
+                                <div><strong className="font-semibold text-[#004417]">Atividade:</strong> {m.nome_atividade || '—'}</div>
+                                <div><strong className="font-semibold text-[#004417]">Quantidade usada:</strong> {qtyUsed.quantidade} {qtyUsed.unidade}</div>
+                                <div><strong className="font-semibold text-[#004417]">Custo do produto usado:</strong> {m.custo_calculado != null ? formatSmartCurrency(Number(m.custo_calculado)) : '—'}</div>
                               </div>
                             );
                           })()}
@@ -565,15 +565,15 @@ export default function HistoryMovementsModal({ isOpen, product, onClose, onProd
                             const unidadeValorOriginal = m.unidade_valor_original || m.unidade;
 
                             return (
-                              <div className="text-sm text-gray-600 space-y-1 mt-2">
-                                <div><strong>Marca:</strong> {m.marca || '—'}</div>
-                                <div><strong>Categoria:</strong> {m.categoria || '—'}</div>
-                                <div><strong>Fornecedor:</strong> {m.fornecedor || '—'}</div>
-                                <div><strong>Lote:</strong> {m.lote || '—'}</div>
-                                <div><strong>Validade:</strong> {formatValidity(m.validade)}</div>
-                                <div><strong>Registro MAPA:</strong> {m.registro_mapa || '—'}</div>
+                              <div className="text-[13px] text-[rgba(0,68,23,0.85)] space-y-2 mt-2">
+                                <div><strong className="font-semibold text-[#004417]">Marca:</strong> {m.marca || '—'}</div>
+                                <div><strong className="font-semibold text-[#004417]">Categoria:</strong> {m.categoria || '—'}</div>
+                                <div><strong className="font-semibold text-[#004417]">Fornecedor:</strong> {m.fornecedor || '—'}</div>
+                                <div><strong className="font-semibold text-[#004417]">Lote:</strong> {m.lote || '—'}</div>
+                                <div><strong className="font-semibold text-[#004417]">Validade:</strong> {formatValidity(m.validade)}</div>
+                                <div><strong className="font-semibold text-[#004417]">Registro MAPA:</strong> {m.registro_mapa || '—'}</div>
                                 {valorUnitario !== null && valorUnitario !== undefined && valorUnitario > 0 && (
-                                  <div><strong>Valor:</strong> {formatSmartCurrency(Number(valorUnitario))} / {unidadeValorOriginal}</div>
+                                  <div><strong className="font-semibold text-[#004417]">Valor:</strong> {formatSmartCurrency(Number(valorUnitario))} / {unidadeValorOriginal}</div>
                                 )}
                               </div>
                             );
@@ -607,8 +607,8 @@ export default function HistoryMovementsModal({ isOpen, product, onClose, onProd
                             }
 
                             return valorTotalSaida > 0 ? (
-                              <div className="text-sm text-gray-600 space-y-1 mt-2">
-                                <div><strong>Valor total da saída:</strong> {formatSmartCurrency(valorTotalSaida)}</div>
+                              <div className="text-[13px] text-[rgba(0,68,23,0.85)] space-y-2 mt-2">
+                                <div><strong className="font-semibold text-[#004417]">Valor total da saída:</strong> {formatSmartCurrency(valorTotalSaida)}</div>
                               </div>
                             ) : null;
                           })()}
@@ -621,24 +621,24 @@ export default function HistoryMovementsModal({ isOpen, product, onClose, onProd
                             m.produto_id.toString(),
                             m.nome_produto || 'Produto'
                           )}
-                          className="absolute bottom-4 right-4 text-gray-600 hover:text-gray-800 transition-colors"
-                          title="Ver anexos"
+                          className="absolute bottom-4 right-4 text-[#004417] hover:text-[#00A651] transition-colors p-1.5 rounded-lg hover:bg-[rgba(0,166,81,0.08)]"
+                          title="Gerenciar Anexos"
                         >
-                          <Paperclip className="w-5 h-5" />
+                          <Paperclip className="w-[18px] h-[18px]" />
                         </button>
                       )}
                                           {m._source === 'lancamento' && m.atividade_id && (
                                             <div className="absolute bottom-4 right-4 flex items-center gap-2">
                                               <button
                                                 onClick={() => setActivityAttachmentModal({ isOpen: true, activityId: String(m.atividade_id), activityDescription: m.nome_atividade || 'Atividade' })}
-                                                className="p-2 text-gray-500 hover:text-[#397738] hover:bg-white rounded-lg transition-colors shadow-sm border border-gray-200"
+                                                className="p-2 text-[#004417] hover:text-[#00A651] hover:bg-[rgba(0,166,81,0.08)] rounded-lg transition-colors"
                                                 title="Gerenciar anexo da atividade"
                                               >
                                                 <Paperclip className="w-4 h-4" />
                                               </button>
                                               <button
                                                 onClick={() => setActivityDetailModal({ isOpen: true, activityId: String(m.atividade_id) })}
-                                                className="p-2 text-gray-500 hover:text-[#397738] hover:bg-white rounded-lg transition-colors shadow-sm border border-gray-200"
+                                                className="p-2 text-[#004417] hover:text-[#00A651] hover:bg-[rgba(0,166,81,0.08)] rounded-lg transition-colors"
                                                 title="Abrir atividade"
                                               >
                                                 <Plus className="w-4 h-4" />

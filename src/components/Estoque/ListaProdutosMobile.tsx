@@ -24,26 +24,26 @@ export default function ListaProdutosMobile({
   setRemoveModal,
 }: Props) {
   return (
-    <div className="block md:hidden bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <div className="block md:hidden bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-[rgba(0,68,23,0.08)] overflow-hidden">
       {/* Cabeçalho */}
-      <div className="px-4 py-3 border-b border-gray-200">
-        <h3 className="text-base font-semibold text-[#092f20]">Produtos em Estoque</h3>
+      <div className="px-4 py-4 border-b border-[rgba(0,68,23,0.08)]">
+        <h3 className="text-[16px] font-bold text-[#004417]">Produtos em Estoque</h3>
       </div>
 
       {/* Lista */}
-      <div className="divide-y divide-gray-100">
+      <div className="divide-y divide-[rgba(0,68,23,0.08)]">
         {produtos.map((item) => (
-          <div key={item.nome} className="p-4 space-y-3 hover:bg-[#8fa49d]/5">
+          <div key={item.nome} className="p-4 space-y-3 active:bg-[rgba(0,68,23,0.02)] transition-all">
             {/* Cabeçalho: ícone + nome */}
             <div className="flex items-center gap-3">
-              <div className="w-12 flex items-center justify-center">
+              <div className="w-11 h-11 flex items-center justify-center bg-[rgba(0,68,23,0.05)] rounded-xl">
                 {getCategoryIcon(item.categorias[0] || '')}
               </div>
               <div className="flex-1">
-                <h4 className="text-base font-semibold text-[#092f20] md:text-lg md:font-semibold">
+                <h4 className="text-[15px] font-bold text-[#004417] leading-tight">
                   {item.nome}
                 </h4>
-                <span className="text-[11px] font-medium text-[#397738]">
+                <span className="inline-block text-[12px] font-medium px-2 py-0.5 bg-[rgba(0,166,81,0.1)] text-[#00A651] rounded-xl mt-1">
                   {item.categorias.join(', ')}
                 </span>
               </div>
@@ -52,14 +52,14 @@ export default function ListaProdutosMobile({
             {/* Quantidade e Valor */}
             <div className="flex justify-between text-sm">
               <div>
-                <p className="text-gray-500">Qtd.</p>
-                <p className="font-bold">
-                  {item.totalEstoqueDisplay} {formatUnitFull(item.unidadeDisplay)}
+                <p className="text-[13px] text-[rgba(0,68,23,0.6)] mb-0.5">Qtd.</p>
+                <p className="text-[15px] font-semibold text-[#004417]">
+                  {item.totalEstoqueDisplay} <span className="text-[13px] text-[rgba(0,68,23,0.7)]">{formatUnitFull(item.unidadeDisplay)}</span>
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-gray-500">Valor Méd.</p>
-                <p className="font-bold text-[#397738]">
+                <p className="text-[13px] text-[rgba(0,68,23,0.6)] mb-0.5">Valor Méd.</p>
+                <p className="text-[15px] font-bold text-[#004417]">
                   {item.mediaPrecoDisplay != null && item.unidadeValorOriginal
                     ? `${formatSmartCurrency(Number(item.mediaPrecoDisplay))} / ${formatUnitFull(item.unidadeValorOriginal)}`
                     : "—"}
@@ -71,7 +71,7 @@ export default function ListaProdutosMobile({
             <div className="flex justify-end gap-2 pt-2">
               <button
                 onClick={() => setHistoryModal({ isOpen: true, product: item })}
-                className="px-2 py-1 bg-[#397738]/10 text-[#397738] hover:bg-[#397738]/10 rounded-lg border border-[#397738]/10 text-xs flex items-center gap-1"
+                className="px-3 py-1.5 bg-[rgba(0,68,23,0.05)] text-[#004417] active:bg-[rgba(0,166,81,0.12)] rounded-lg text-[13px] font-medium transition-all"
               >
                 Histórico
               </button>
@@ -83,7 +83,7 @@ export default function ListaProdutosMobile({
                     product: item
                   })
                 }
-                className="px-2 py-1 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg border border-red-200 text-xs flex items-center gap-1"
+                className="px-3 py-1.5 bg-[rgba(242,92,92,0.1)] text-[#F25C5C] active:bg-[rgba(242,92,92,0.15)] rounded-lg text-[13px] font-medium transition-all"
               >
                 Remover
               </button>

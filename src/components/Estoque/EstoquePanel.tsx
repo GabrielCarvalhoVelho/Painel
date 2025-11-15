@@ -118,17 +118,17 @@ export default function EstoquePanel() {
 
   // ...existing code...
 
-  // �📌 Ícone por categoria
+  // 📌 Ícone por categoria
   const getCategoryIcon = (categoria: string) => {
     const c = categoria.toLowerCase();
-    if (c.includes('fertilizante')) return <Sprout className="w-6 h-6 text-[#86b646]" />;
-    if (c.includes('corretivo')) return <Hammer className="w-6 h-6 text-[#8fa49d]" />;
-    if (c.includes('herbicida')) return <Package className="w-6 h-6 text-[#397738]" />;
-    if (c.includes('inseticida')) return <Bug className="w-6 h-6 text-[#86b646]" />;
-    if (c.includes('fungicida')) return <Microscope className="w-6 h-6 text-[#8fa49d]" />;
-    if (c.includes('foliar') || c.includes('nutricional')) return <Droplets className="w-6 h-6 text-[#397738]" />;
-    if (c.includes('adjuvante') || c.includes('óleo')) return <Droplets className="w-6 h-6 text-[#86b646]" />;
-    return <Package className="w-6 h-6 text-[#397738]" />;
+    if (c.includes('fertilizante')) return <Sprout className="w-6 h-6 text-[#004417]" />;
+    if (c.includes('corretivo')) return <Hammer className="w-6 h-6 text-[#004417]" />;
+    if (c.includes('herbicida')) return <Package className="w-6 h-6 text-[#004417]" />;
+    if (c.includes('inseticida')) return <Bug className="w-6 h-6 text-[#004417]" />;
+    if (c.includes('fungicida')) return <Microscope className="w-6 h-6 text-[#004417]" />;
+    if (c.includes('foliar') || c.includes('nutricional')) return <Droplets className="w-6 h-6 text-[#004417]" />;
+    if (c.includes('adjuvante') || c.includes('óleo')) return <Droplets className="w-6 h-6 text-[#004417]" />;
+    return <Package className="w-6 h-6 text-[#004417]" />;
   };
 
   // 🔎 Aplicação dos filtros e ordenação nos grupos (useMemo para evitar loops)
@@ -224,14 +224,14 @@ export default function EstoquePanel() {
           {!mostrarTodos ? (
             <button
               onClick={() => setMostrarTodos(true)}
-              className="px-4 py-2 text-sm font-semibold text-[#397738] bg-white border-2 border-[#86b646] rounded-lg hover:bg-[#86b646]/10 transition-colors"
+              className="px-6 py-2.5 text-[13px] font-semibold text-[#004417] bg-white border-2 border-[#00A651] rounded-xl hover:bg-[rgba(0,166,81,0.08)] transition-all"
             >
               Ver todos ({produtosAgrupadosFiltrados.length} grupos)
             </button>
           ) : (
             <button
               onClick={() => setMostrarTodos(false)}
-              className="px-4 py-2 text-sm font-semibold text-gray-600 bg-gray-50 border-2 border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
+              className="px-6 py-2.5 text-[13px] font-semibold text-[rgba(0,68,23,0.7)] bg-[rgba(0,68,23,0.03)] border-2 border-[rgba(0,68,23,0.1)] rounded-xl hover:bg-[rgba(0,68,23,0.05)] transition-all"
             >
               Ver menos
             </button>

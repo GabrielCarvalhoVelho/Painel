@@ -78,50 +78,56 @@ export default function RemoveQuantityModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-lg max-w-md w-full p-6">
+      <div className="bg-white rounded-2xl shadow-[0_4px_16px_rgba(0,68,23,0.1)] max-w-[520px] w-full p-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-[#092f20]">
+        <div className="flex items-center justify-between pb-4 mb-6 border-b border-[rgba(0,68,23,0.08)]">
+          <h3 className="text-[18px] font-bold text-[#004417]">
             Remover do Estoque
           </h3>
           <button
             onClick={onClose}
-            className="p-1 text-gray-500 hover:text-gray-700 rounded"
+            className="p-1.5 text-[rgba(0,68,23,0.5)] hover:text-[#00A651] rounded-lg transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Produto */}
-        <p className="text-sm text-gray-600 mb-4">
-          Produto: <strong>{productGroup.nome}</strong>
-        </p>
+        <div className="mb-4">
+          <p className="text-[14px] font-semibold text-[#004417] mb-1">Produto</p>
+          <p className="text-[16px] font-bold text-[#004417]">{productGroup.nome}</p>
+        </div>
 
         {/* Informações do Estoque */}
-        <div className="mb-4 p-3 bg-gray-50 rounded-lg space-y-2">
-          <p className="text-sm text-gray-600">
-            Quantidade disponível:{" "}
-            <strong>
-              {productGroup.totalEstoqueDisplay.toFixed(2)} {productGroup.unidadeDisplay}
-            </strong>
-          </p>
-          {productGroup.mediaPrecoOriginal !== null && productGroup.mediaPrecoOriginal > 0 && (
-            <p className="text-sm text-gray-600">
-              Valor médio:{" "}
-              <strong className="text-[#397738]">
-                {formatSmartCurrency(productGroup.mediaPrecoOriginal)} / {productGroup.unidadeValorOriginal}
-              </strong>
+        <div className="mb-6 flex justify-between items-center">
+          <div>
+            <p className="text-[14px] font-semibold text-[#004417] mb-1">
+              Quantidade disponível
             </p>
+            <p className="text-[16px] font-bold text-[#004417]">
+              {productGroup.totalEstoqueDisplay.toFixed(2)} {productGroup.unidadeDisplay}
+            </p>
+          </div>
+          {productGroup.mediaPrecoOriginal !== null && productGroup.mediaPrecoOriginal > 0 && (
+            <div className="text-right">
+              <p className="text-[14px] font-semibold text-[#004417] mb-1">
+                Valor unitário
+              </p>
+              <p className="text-[15px] font-bold text-[#00A651]">
+                {formatSmartCurrency(productGroup.mediaPrecoOriginal)}
+                <span className="text-[rgba(0,68,23,0.7)]"> / {productGroup.unidadeValorOriginal}</span>
+              </p>
+            </div>
           )}
         </div>
 
         {/* Seletor de Unidade */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-[#092f20] mb-1">
+        <div className="mb-5">
+          <label className="block text-[14px] font-semibold text-[#004417] mb-2">
             Unidade de Medida
           </label>
           <select
-            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#397738] focus:border-transparent"
+            className="w-full px-3 py-3 border border-[rgba(0,68,23,0.15)] rounded-xl bg-white text-[#004417] text-[14px] focus:ring-2 focus:ring-[#00A651] focus:border-transparent hover:border-[#00A651] transition-colors"
             value={unidadeSelecionada}
             onChange={(e) => setUnidadeSelecionada(e.target.value)}
           >
@@ -134,16 +140,16 @@ export default function RemoveQuantityModal({
         </div>
 
         {/* Input de Quantidade */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-[#092f20] mb-1">
+        <div className="mb-5">
+          <label className="block text-[14px] font-semibold text-[#004417] mb-2">
             Quantidade a Remover
           </label>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center bg-[rgba(0,68,23,0.03)] border border-[rgba(0,68,23,0.08)] rounded-xl h-12 overflow-hidden">
             <button
               onClick={handleDecrement}
-              className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg"
+              className="px-4 h-full bg-white hover:bg-[rgba(0,68,23,0.05)] text-[#004417] hover:text-[#00A651] text-[18px] font-bold transition-colors active:bg-[rgba(0,68,23,0.08)]"
             >
-              -
+              −
             </button>
             <input
               type="number"
@@ -151,18 +157,18 @@ export default function RemoveQuantityModal({
               min="0"
               value={quantidade}
               onChange={(e) => handleInputChange(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg text-center"
+              className="flex-1 px-3 text-center text-[16px] font-bold text-[#004417] bg-transparent border-none focus:outline-none"
             />
             <button
               onClick={handleIncrement}
-              className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg"
+              className="px-4 h-full bg-white hover:bg-[rgba(0,68,23,0.05)] text-[#004417] hover:text-[#00A651] text-[18px] font-bold transition-colors active:bg-[rgba(0,68,23,0.08)]"
             >
               +
             </button>
           </div>
           {/* Feedback visual da conversão */}
           {unidadeSelecionada !== unidadeReferencia && (
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-[12px] text-[rgba(0,68,23,0.6)] mt-2">
               = {quantidadeConvertida.toFixed(2)} {unidadeReferencia}
             </p>
           )}
@@ -170,40 +176,40 @@ export default function RemoveQuantityModal({
 
         {/* Validação */}
         {isInvalid && (
-          <p className="text-red-500 text-sm mb-3">
+          <p className="text-[#E74C3C] text-[13px] mb-4 font-medium">
             Valor inválido: deve ser maior que 0 e não pode exceder o estoque disponível.
           </p>
         )}
 
         {/* Observação */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-[#092f20] mb-1">
+        <div className="mb-6">
+          <label className="block text-[14px] font-semibold text-[#004417] mb-2">
             Observação (motivo da saída)
           </label>
           <textarea
             value={observacao}
             onChange={(e) => setObservacao(e.target.value)}
-            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#397738] focus:border-transparent border-gray-300"
+            className="w-full px-3 py-3 border border-[rgba(0,68,23,0.15)] rounded-xl bg-white text-[#004417] text-[14px] placeholder:text-[rgba(0,68,23,0.5)] focus:outline-none focus:ring-2 focus:ring-[rgba(0,166,81,0.15)] focus:border-[#00A651] hover:border-[#00A651] transition-colors resize-none"
             placeholder="Ex.: Produto vencido, uso na lavoura, ajuste de estoque..."
             rows={3}
           />
         </div>
 
         {/* Ações */}
-        <div className="flex justify-end gap-3">
+        <div className="flex justify-center gap-3 pt-2">
           <button
             onClick={onClose}
-            className="px-4 py-2 border rounded-lg text-gray-700 hover:bg-gray-50"
+            className="px-8 py-2.5 border border-[rgba(0,68,23,0.2)] rounded-xl text-[#004417] font-semibold hover:bg-[rgba(0,68,23,0.05)] transition-all duration-200"
           >
             Cancelar
           </button>
           <button
             onClick={() => onConfirm(quantidadeConvertida)}
             disabled={isInvalid}
-            className={`px-4 py-2 rounded-lg text-white ${
+            className={`px-8 py-2.5 rounded-xl font-semibold transition-all duration-200 ${
               isInvalid
-                ? "bg-gray-300 cursor-not-allowed"
-                : "bg-red-600 hover:bg-red-700"
+                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                : "bg-[#E74C3C] text-white hover:bg-[#C0392B]"
             }`}
           >
             Remover

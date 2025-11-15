@@ -5,12 +5,9 @@ import {
   Download,
   Upload,
   Trash2,
-  Paperclip,
   FileText,
   AlertCircle,
   CheckCircle,
-  FileCode,
-  Table,
   File
 } from 'lucide-react';
 import { AttachmentProductService, AttachmentFile } from '../../services/attachmentProductService';
@@ -215,21 +212,21 @@ export default function AttachmentProductModal({
       {/* Modal de confirmação customizado */}
       {confirmState.type && (
         <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/40">
-          <div className="bg-white rounded-xl shadow-lg max-w-sm w-full p-6 flex flex-col items-center">
-            <AlertCircle className="w-8 h-8 text-yellow-500 mb-2" />
-            <p className="text-base text-center mb-4 text-[#092f20] font-medium">
+          <div className="bg-white rounded-2xl shadow-[0_4px_12px_rgba(0,68,23,0.1)] max-w-sm w-full p-6 flex flex-col items-center">
+            <AlertCircle className="w-8 h-8 text-[#F7941F] mb-2" />
+            <p className="text-[14px] text-center mb-4 text-[#004417] font-medium">
               Atenção: ao confirmar, o arquivo{confirmState.type.startsWith('replace') ? ' atual' : ''} será excluído de forma definitiva do Painel da Fazenda e do nosso banco de dados. Deseja continuar?
             </p>
-            <div className="flex gap-4 mt-2">
+            <div className="flex gap-3 mt-2">
               <button
-                className="px-4 py-2 rounded-lg bg-[#f3f4f6] text-[#092f20] hover:bg-[#e5e7eb]"
+                className="px-6 py-2 rounded-xl bg-[rgba(0,68,23,0.05)] text-[#004417] hover:bg-[rgba(0,68,23,0.08)] font-semibold transition-all"
                 onClick={() => setConfirmState({ type: null })}
                 disabled={loading}
               >
                 Cancelar
               </button>
               <button
-                className="px-4 py-2 rounded-lg bg-[#ffeaea] text-[#b71c1c] hover:bg-[#ffd6d6]"
+                className="px-6 py-2 rounded-xl bg-[rgba(247,148,31,0.1)] text-[#F7941F] hover:bg-[rgba(247,148,31,0.15)] font-semibold transition-all"
                 onClick={confirmState.onConfirm}
                 disabled={loading}
               >
@@ -239,21 +236,16 @@ export default function AttachmentProductModal({
           </div>
         </div>
       )}
-      <div className="bg-white rounded-xl shadow-lg max-w-md w-full p-6">
+      <div className="bg-white rounded-2xl shadow-[0_4px_12px_rgba(0,68,23,0.1)] max-w-md w-full p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-[#86b646] to-[#397738] rounded-lg flex items-center justify-center">
-              <Paperclip className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-[#092f20]">Gerenciar Anexos</h3>
-              <p className="text-sm text-gray-600 truncate max-w-48">{productName}</p>
-            </div>
+          <div>
+            <h3 className="text-[18px] font-bold text-[#004417] mb-2">Gerenciar Anexos</h3>
+            <p className="text-[14px] text-[rgba(0,68,23,0.7)] truncate max-w-64">{productName}</p>
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-gray-500 hover:text-gray-700 rounded"
+            className="p-1.5 text-[rgba(0,68,23,0.5)] hover:text-[#00A651] rounded-lg transition-colors"
             disabled={loading}
             aria-label="Fechar"
           >
@@ -263,18 +255,18 @@ export default function AttachmentProductModal({
 
         {/* Mensagem de feedback */}
         {message && (
-          <div className={`mb-4 p-3 rounded-lg flex items-center space-x-2 ${
+          <div className={`mb-4 p-3 rounded-xl flex items-center space-x-2 ${
             message.type === 'success' 
-              ? 'bg-green-50 border border-green-200' 
-              : 'bg-red-50 border border-red-200'
+              ? 'bg-[rgba(0,166,81,0.1)] border border-[rgba(0,166,81,0.2)]' 
+              : 'bg-[rgba(247,148,31,0.1)] border border-[rgba(247,148,31,0.2)]'
           }`}>
             {message.type === 'success' ? (
-              <CheckCircle className="w-5 h-5 text-green-600" />
+              <CheckCircle className="w-5 h-5 text-[#00A651]" />
             ) : (
-              <AlertCircle className="w-5 h-5 text-red-600" />
+              <AlertCircle className="w-5 h-5 text-[#F7941F]" />
             )}
-            <span className={`text-sm ${
-              message.type === 'success' ? 'text-green-800' : 'text-red-800'
+            <span className={`text-[13px] font-medium ${
+              message.type === 'success' ? 'text-[#004417]' : 'text-[#004417]'
             }`}>
               {message.text}
             </span>
@@ -284,10 +276,10 @@ export default function AttachmentProductModal({
         {/* Área de anexos */}
         <div className="mb-6 space-y-4">
           {/* Botões de anexar sempre disponíveis para o tipo que não existe */}
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3">
             {!attachments.find(a => a.type === 'image') && (
               <button
-                className="flex items-center justify-center gap-2 bg-[#86b646] text-white py-2 rounded hover:bg-[#397738] transition-colors"
+                className="flex items-center justify-center gap-2 bg-[#00A651] text-white py-3 rounded-xl hover:bg-[#004417] transition-all duration-200 font-semibold h-12"
                 onClick={() => handleImageSelect(false)}
                 disabled={loading}
               >
@@ -296,7 +288,7 @@ export default function AttachmentProductModal({
             )}
             {!attachments.find(a => a.type === 'pdf') && (
               <button
-                className="flex items-center justify-center gap-2 bg-[#397738] text-white py-2 rounded hover:bg-[#86b646] transition-colors"
+                className="flex items-center justify-center gap-2 bg-[#004417] text-white py-3 rounded-xl hover:bg-[#006F2E] transition-all duration-200 font-semibold h-12"
                 onClick={() => handlePdfSelect(false)}
                 disabled={loading}
               >
@@ -307,15 +299,15 @@ export default function AttachmentProductModal({
 
           {/* Se houver imagem */}
           {attachments.find(a => a.type === 'image') && (
-            <div className="flex flex-col items-center gap-2 bg-gray-50 p-3 rounded-lg border">
+            <div className="flex flex-col items-center gap-3 bg-[rgba(0,68,23,0.02)] p-4 rounded-xl border border-[rgba(0,68,23,0.08)]">
               <img
                 src={attachments.find(a => a.type === 'image')?.url}
                 alt="Imagem anexada"
-                className="max-h-32 mb-2 rounded border"
+                className="max-h-32 mb-2 rounded-lg border border-[rgba(0,68,23,0.1)]"
               />
               <div className="flex gap-2 mb-2">
                 <button
-                  className="bg-[#f3f4f6] text-[#092f20] px-2 py-1 rounded hover:bg-[#e5e7eb] flex items-center gap-1 transition-colors"
+                  className="bg-[rgba(0,68,23,0.05)] text-[#004417] px-3 py-1.5 rounded-lg hover:bg-[rgba(0,68,23,0.08)] flex items-center gap-1.5 transition-all font-medium text-[13px]"
                   onClick={() => handleDownload('image')}
                   disabled={loading}
                 >
@@ -324,14 +316,14 @@ export default function AttachmentProductModal({
               </div>
               <div className="flex gap-2">
                 <button
-                  className="bg-[#eaf4ec] text-[#092f20] px-3 py-1 rounded hover:bg-[#d3e7d8] flex items-center gap-1 transition-colors"
+                  className="bg-[rgba(0,166,81,0.1)] text-[#00A651] px-3 py-1.5 rounded-lg hover:bg-[rgba(0,166,81,0.15)] flex items-center gap-1.5 transition-all font-medium text-[13px]"
                   onClick={() => handleImageSelect(true)}
                   disabled={loading}
                 >
                   <Upload className="w-4 h-4" /> Substituir Imagem
                 </button>
                 <button
-                  className="bg-[#ffeaea] text-[#b71c1c] px-3 py-1 rounded hover:bg-[#ffd6d6] flex items-center gap-1 transition-colors"
+                  className="bg-[rgba(247,148,31,0.1)] text-[#F7941F] px-3 py-1.5 rounded-lg hover:bg-[rgba(247,148,31,0.15)] flex items-center gap-1.5 transition-all font-medium text-[13px]"
                   onClick={handleDeleteImage}
                   disabled={loading}
                 >
@@ -343,7 +335,7 @@ export default function AttachmentProductModal({
 
           {/* Se houver PDF */}
           {attachments.find(a => a.type === 'pdf') && (
-            <div className="flex flex-col items-center gap-2 bg-gray-50 p-3 rounded-lg border">
+            <div className="flex flex-col items-center gap-3 bg-[rgba(0,68,23,0.02)] p-4 rounded-xl border border-[rgba(0,68,23,0.08)]">
               {(() => {
                 const attachment = attachments.find(a => a.type === 'pdf');
                 if (!attachment) return null;
@@ -357,13 +349,13 @@ export default function AttachmentProductModal({
                     <div className={iconColor}>
                       <FileIcon className="w-8 h-8" />
                     </div>
-                    <span className="font-medium text-[#092f20]">{fileLabel}</span>
+                    <span className="font-semibold text-[#004417] text-[14px]">{fileLabel}</span>
                   </div>
                 );
               })()}
               <div className="flex gap-2 mb-2">
                 <button
-                  className="bg-[#f3f4f6] text-[#092f20] px-2 py-1 rounded hover:bg-[#e5e7eb] flex items-center gap-1 transition-colors"
+                  className="bg-[rgba(0,68,23,0.05)] text-[#004417] px-3 py-1.5 rounded-lg hover:bg-[rgba(0,68,23,0.08)] flex items-center gap-1.5 transition-all font-medium text-[13px]"
                   onClick={() => handleDownload('pdf')}
                   disabled={loading}
                 >
@@ -372,14 +364,14 @@ export default function AttachmentProductModal({
               </div>
               <div className="flex gap-2">
                 <button
-                  className="bg-[#eaf4ec] text-[#092f20] px-3 py-1 rounded hover:bg-[#d3e7d8] flex items-center gap-1 transition-colors"
+                  className="bg-[rgba(0,166,81,0.1)] text-[#00A651] px-3 py-1.5 rounded-lg hover:bg-[rgba(0,166,81,0.15)] flex items-center gap-1.5 transition-all font-medium text-[13px]"
                   onClick={() => handlePdfSelect(true)}
                   disabled={loading}
                 >
                   <Upload className="w-4 h-4" /> Substituir Arquivo
                 </button>
                 <button
-                  className="bg-[#ffeaea] text-[#b71c1c] px-3 py-1 rounded hover:bg-[#ffd6d6] flex items-center gap-1 transition-colors"
+                  className="bg-[rgba(247,148,31,0.1)] text-[#F7941F] px-3 py-1.5 rounded-lg hover:bg-[rgba(247,148,31,0.15)] flex items-center gap-1.5 transition-all font-medium text-[13px]"
                   onClick={handleDeletePdf}
                   disabled={loading}
                 >

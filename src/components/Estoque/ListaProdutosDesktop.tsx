@@ -24,45 +24,45 @@ export default function ListaProdutosDesktop({
   setRemoveModal,
 }: Props) {
   return (
-    <div className="hidden md:block bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <div className="hidden md:block bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-[rgba(0,68,23,0.08)] overflow-hidden">
       {/* Cabeçalho */}
-      <div className="px-6 py-4 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-[#092f20]">Produtos em Estoque</h3>
+      <div className="px-6 py-5 border-b border-[rgba(0,68,23,0.08)]">
+        <h3 className="text-[16px] font-bold text-[#004417]">Produtos em Estoque</h3>
       </div>
 
       {/* Lista */}
-      <div>
+      <div className="divide-y divide-[rgba(0,68,23,0.08)]">
         {produtos.map((item) => (
           <div
             key={item.nome}
-            className="relative flex flex-col md:flex-row md:items-center gap-4 p-6 hover:bg-[#8fa49d]/5 border-t border-gray-100 first:border-t-0"
+            className="relative flex flex-col md:flex-row md:items-center gap-4 p-6 hover:bg-[rgba(0,68,23,0.02)] transition-all hover:scale-[1.005]"
           >
             {/* 1) ÍCONE */}
-            <div className="w-20 flex items-center justify-center">
+            <div className="w-12 h-12 flex items-center justify-center bg-[rgba(0,68,23,0.05)] rounded-xl">
               {getCategoryIcon(item.categorias[0] || '')}
             </div>
 
             {/* 2) NOME / CATEGORIA */}
             <div className="flex-1 min-w-0">
-              <h4 className="text-lg font-semibold text-[#092f20] truncate">
+              <h4 className="text-[15px] font-bold text-[#004417] truncate mb-1">
                 {item.nome}
               </h4>
-              <span className="text-xs font-medium px-2 py-0.5 bg-[#397738]/10 text-[#397738] rounded-full">
+              <span className="inline-block text-[12px] font-medium px-2 py-0.5 bg-[rgba(0,166,81,0.1)] text-[#00A651] rounded-xl">
                 {item.categorias.join(', ')}
               </span>
             </div>
 
             {/* 3) QUANTIDADE / VALOR MÉDIO */}
-            <div className="flex gap-6 shrink-0">
-              <div className="text-center">
-                <p className="text-xs text-gray-500">Quantidade</p>
-                <p className="text-lg font-bold text-[#092f20]">
-                  {item.totalEstoqueDisplay} {formatUnitFull(item.unidadeDisplay)}
+            <div className="flex gap-8 shrink-0">
+              <div>
+                <p className="text-[13px] text-[rgba(0,68,23,0.6)] mb-0.5">Quantidade</p>
+                <p className="text-[15px] font-semibold text-[#004417]">
+                  {item.totalEstoqueDisplay} <span className="text-[13px] text-[rgba(0,68,23,0.7)]">{formatUnitFull(item.unidadeDisplay)}</span>
                 </p>
               </div>
-              <div className="text-center">
-                <p className="text-xs text-gray-500">Valor Médio</p>
-                <p className="text-lg font-bold text-[#397738]">
+              <div>
+                <p className="text-[13px] text-[rgba(0,68,23,0.6)] mb-0.5">Valor Médio</p>
+                <p className="text-[15px] font-bold text-[#004417]">
                   {item.mediaPrecoDisplay != null && item.unidadeValorOriginal
                     ? `${formatSmartCurrency(Number(item.mediaPrecoDisplay))} / ${formatUnitFull(item.unidadeValorOriginal)}`
                     : "—"}            
@@ -74,7 +74,7 @@ export default function ListaProdutosDesktop({
             <div className="flex items-center justify-end gap-2 shrink-0">
               <button
                 onClick={() => setHistoryModal({ isOpen: true, product: item })}
-                className="px-3 py-1.5 bg-[#397738]/10 text-[#397738] hover:bg-[#397738]/10 rounded-lg border border-[#397738]/10 text-xs flex items-center gap-1"
+                className="px-3 py-2 bg-[rgba(0,68,23,0.05)] text-[#004417] hover:bg-[rgba(0,166,81,0.12)] rounded-lg text-[13px] font-medium transition-all"
               >
                 Histórico
               </button>
@@ -86,7 +86,7 @@ export default function ListaProdutosDesktop({
                     product: item
                   })
                 }
-                className="px-3 py-1.5 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg border border-red-200 text-xs flex items-center gap-1"
+                className="px-3 py-2 bg-[rgba(242,92,92,0.1)] text-[#F25C5C] hover:bg-[rgba(242,92,92,0.15)] rounded-lg text-[13px] font-medium transition-all"
               >
                 Remover
               </button>
