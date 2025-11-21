@@ -69,23 +69,23 @@ const loadWeatherData = async () => {
 
   const getAlertColor = (severity: string) => {
     switch (severity) {
-      case 'high': return 'bg-red-50 border-red-200 text-red-800';
-      case 'medium': return 'bg-[#86b646]/10 border-[#86b646]/30 text-[#86b646]';
-      case 'low': return 'bg-blue-50 border-blue-200 text-blue-800';
-      default: return 'bg-gray-50 border-gray-200 text-gray-800';
+      case 'high': return 'bg-red-50 border-0 text-red-800';
+      case 'medium': return 'bg-[rgba(0,166,81,0.06)] border-0 text-[#00A651]';
+      case 'low': return 'bg-[rgba(0,166,81,0.04)] border-0 text-[#004417]';
+      default: return 'bg-[rgba(0,166,81,0.06)] border-0 text-[#004417]';
     }
   };
 
   const getWeatherIconComponent = (iconCode: string) => {
     if (iconCode.includes('01')) return <Sun className="w-6 h-6 text-[#86b646]" />;
-    if (iconCode.includes('02') || iconCode.includes('03')) return <Cloud className="w-6 h-6 text-gray-600" />;
+    if (iconCode.includes('02') || iconCode.includes('03')) return <Cloud className="w-6 h-6 text-[#004417]/70" />;
     if (iconCode.includes('09') || iconCode.includes('10')) return <CloudRain className="w-6 h-6 text-[#397738]" />;
     return <Sun className="w-6 h-6 text-[#86b646]" />;
   };
 
   if (!city) {
     return (
-      <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-[rgba(0,68,23,0.08)] p-4 md:p-6">
+      <div className="bg-white rounded-xl shadow-card p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold text-[#004417]">Clima e Alertas</h3>
           <MapPin className="w-5 h-5 text-[#004417]/65" />
@@ -104,7 +104,7 @@ const loadWeatherData = async () => {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-[rgba(0,68,23,0.08)] p-4 md:p-6">
+      <div className="bg-white rounded-xl shadow-card p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold text-[#004417]">Clima e Alertas</h3>
           <RefreshCw className="w-5 h-5 text-[#00A651] animate-spin" />
@@ -121,7 +121,7 @@ const loadWeatherData = async () => {
 
   if (error || !weather) {
     return (
-      <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-[rgba(0,68,23,0.08)] p-4 md:p-6">
+      <div className="bg-white rounded-xl shadow-card p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold text-[#004417]">Clima e Alertas</h3>
           <button 
@@ -151,7 +151,7 @@ const loadWeatherData = async () => {
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-[rgba(0,68,23,0.08)] p-4 md:p-6">
+    <div className="bg-white rounded-xl shadow-card p-6">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-2">
           <h3 className="text-lg font-bold text-[#004417]">Clima e Alertas</h3>
@@ -169,7 +169,7 @@ const loadWeatherData = async () => {
         </button>
       </div>
 
-      {/* Clima Atual */}
+      {/* Clima Atual (mantido) */}
       <div className="bg-[#00A651]/10 p-4 rounded-xl mb-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center space-x-3">
@@ -198,7 +198,7 @@ const loadWeatherData = async () => {
             <span>{weather.pressure} hPa</span>
           </div>
           <div className="flex items-center space-x-2">
-            <Eye className="w-4 h-4 text-gray-500" />
+            <Eye className="w-4 h-4 text-[#004417]/70" />
             <span>{weather.visibility} km</span>
           </div>
           <div className="flex items-center space-x-2">
@@ -211,8 +211,8 @@ const loadWeatherData = async () => {
       {/* Previsão dos próximos dias */}
       {forecast.length > 0 && (
         <div className="mb-4">
-          <h4 className="text-sm font-medium text-[#092f20] mb-3">Previsão dos Próximos Dias</h4>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2">
+          <h4 className="text-sm font-medium text-[#004417] mb-3">Previsão dos Próximos Dias</h4>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
             {forecast
   .filter((day) => {
     // Parse the date string properly in local time
@@ -233,41 +233,41 @@ const loadWeatherData = async () => {
     
     const dayName = forecastDate.toLocaleDateString('pt-BR', { weekday: 'short' });
     
-    return (
-      <div key={index} className="text-center p-3 rounded-lg border-2 transition-all hover:shadow-md bg-gray-50 border-gray-200 hover:bg-gray-100">
-        <p className="text-xs text-gray-600 mb-1">
-          {dayName}
-        </p>
-        <p className="text-xs text-gray-500 mb-2">
-          {forecastDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
-        </p>
-        <div className="text-xl mb-2">
-          {WeatherService.getWeatherIcon(day.icon)}
-        </div>
-        <div className="text-xs mb-2">
-          <p className="font-medium text-[#092f20]">
-            {day.temperature.max}°
+      return (
+        <div key={index} className="text-center p-3 rounded-md transition-all bg-[rgba(0,166,81,0.04)] hover:shadow-md">
+          <p className="text-xs text-[#004417]/70 mb-1">
+            {dayName}
           </p>
-          <p className="text-gray-500">
-            {day.temperature.min}°
+          <p className="text-xs text-[#004417]/60 mb-2">
+            {forecastDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
           </p>
-        </div>
-        <p className="text-xs text-gray-600 mb-1 capitalize leading-tight">
-          {day.description}
-        </p>
-        <div className="flex items-center justify-center space-x-2 text-xs text-gray-500">
-          <div className="flex items-center space-x-1">
-            <Droplets className="w-3 h-3" />
-            <span>{day.humidity}%</span>
+          <div className="text-xl mb-2 text-[#00A651]">
+            {WeatherService.getWeatherIcon(day.icon)}
           </div>
-        </div>
-        {day.precipitation > 0 && (
-          <p className="text-xs text-[#397738] mt-1 font-medium">
-            🌧️ {day.precipitation}mm
+          <div className="text-xs mb-2">
+            <p className="font-medium text-[#004417]">
+              {day.temperature.max}°
+            </p>
+            <p className="text-[#004417]/65">
+              {day.temperature.min}°
+            </p>
+          </div>
+          <p className="text-xs text-[#004417]/70 mb-1 capitalize leading-tight">
+            {day.description}
           </p>
-        )}
-      </div>
-    );
+          <div className="flex items-center justify-center space-x-2 text-xs text-[#004417]/65">
+            <div className="flex items-center space-x-1">
+              <Droplets className="w-3 h-3 text-[#00A651]" />
+              <span>{day.humidity}%</span>
+            </div>
+          </div>
+          {day.precipitation > 0 && (
+            <p className="text-xs text-[#00A651] mt-1 font-medium">
+              🌧️ {day.precipitation}mm
+            </p>
+          )}
+        </div>
+      );
   })}
           </div>
         </div>
@@ -278,12 +278,12 @@ const loadWeatherData = async () => {
         <div className="space-y-3">
           <h4 className="text-sm font-medium text-[#092f20]">Alertas Técnicos</h4>
           {alerts.map((alert, index) => (
-            <div key={index} className={`p-3 rounded-lg border ${getAlertColor(alert.severity)}`}>
+            <div key={index} className={`p-3 rounded-md ${getAlertColor(alert.severity)}`}>
               <div className="flex items-start space-x-3">
                 <span className="text-lg">{alert.icon}</span>
                 <div className="flex-1">
                   <p className="font-medium text-sm">{alert.title}</p>
-                  <p className="text-sm mt-1">{alert.description}</p>
+                  <p className="text-sm mt-1 text-[#004417]/70">{alert.description}</p>
                 </div>
               </div>
             </div>
@@ -293,8 +293,8 @@ const loadWeatherData = async () => {
 
       {/* Última atualização */}
       {lastUpdate && (
-        <div className="mt-4 pt-3 border-t border-gray-200">
-          <p className="text-xs text-gray-500 text-center">
+        <div className="mt-4 pt-3 border-t border-[rgba(0,68,23,0.06)]">
+          <p className="text-xs text-[#004417]/70 text-center">
             Última atualização: {lastUpdate.toLocaleTimeString('pt-BR', { 
               hour: '2-digit', 
               minute: '2-digit' 

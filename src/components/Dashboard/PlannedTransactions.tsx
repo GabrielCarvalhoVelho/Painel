@@ -93,7 +93,7 @@ export default function PlannedTransactions({ transactions, proximas5 }: Planned
 
   return (
     <>
-      <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-[rgba(0,68,23,0.08)] p-4 md:p-6">
+      <div className="bg-white rounded-xl shadow-card p-6">
         <div className="grid grid-cols-3 items-center mb-4">
           <div>
             <h3 className="text-lg font-bold text-[#004417]">Transações Futuras</h3>
@@ -107,8 +107,8 @@ export default function PlannedTransactions({ transactions, proximas5 }: Planned
         
         <div className="space-y-4">
           {plannedTransactions.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
+            <div className="text-center py-8 text-[#004417]/70">
+              <Clock className="w-12 h-12 mx-auto mb-3 opacity-50 text-[#00A651]" />
               <p>Nenhuma transação agendada</p>
               <p className="text-sm">Programe transações via WhatsApp do ZÉ</p>
             </div>
@@ -119,11 +119,7 @@ export default function PlannedTransactions({ transactions, proximas5 }: Planned
               return (
                 <div
                   key={transaction.id_transacao}
-                  className={`relative p-4 rounded-xl border transition-all duration-200 hover:scale-[1.01] ${
-                    isIncome 
-                      ? 'bg-[#00A651]/5 border-[#00A651]/20' 
-                      : 'bg-[#F7941F]/5 border-[#F7941F]/20'
-                  }`}
+                  className="relative p-4 rounded-xl bg-white transition-all duration-200 hover:scale-[1.01]"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center space-x-3 pr-8">
@@ -139,8 +135,8 @@ export default function PlannedTransactions({ transactions, proximas5 }: Planned
                         )}
                       </div>
                     </div>
-                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                      isIncome ? 'bg-[#00A651]/20 text-[#00A651]' : 'bg-[#F7941F]/20 text-[#F7941F]'
+                    <span className={`text-xs px-2 py-1 rounded-md font-medium ${
+                      isIncome ? 'bg-[rgba(0,166,81,0.08)] text-[#00A651]' : 'bg-[rgba(247,148,31,0.08)] text-[#F7941F]'
                     }`}>
                       {isIncome ? 'Entrada' : 'Saída'}
                     </span>
@@ -193,7 +189,7 @@ export default function PlannedTransactions({ transactions, proximas5 }: Planned
                         transaction.id_transacao || '',
                         transaction.descricao || 'Transação'
                       )}
-                      className="p-2 text-[#004417]/65 hover:text-[#00A651] hover:bg-white rounded-lg transition-colors border border-[rgba(0,68,23,0.08)] flex-shrink-0"
+                      className="p-2 text-[#004417]/65 hover:text-[#00A651] hover:bg-white rounded-lg transition-colors border-0 flex-shrink-0"
                       title="Gerenciar anexo"
                     >
                       <Paperclip className="w-4 h-4" />

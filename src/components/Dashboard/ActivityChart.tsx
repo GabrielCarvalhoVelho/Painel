@@ -43,7 +43,7 @@ export default function ActivityChart({ activities }: ActivityChartProps) {
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white p-3 border border-[rgba(0,68,23,0.08)] rounded-lg shadow-[0_4px_10px_rgba(0,0,0,0.05)]">
+        <div className="bg-white p-3 rounded-lg shadow-[0_4px_10px_rgba(0,68,23,0.05)]">
           <p className="font-semibold text-[#004417]">{label}</p>
           <p className="text-sm text-[#00A651] font-medium">
             {payload[0].value} {payload[0].value === 1 ? 'atividade' : 'atividades'}
@@ -55,7 +55,7 @@ export default function ActivityChart({ activities }: ActivityChartProps) {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-[rgba(0,68,23,0.08)] p-6">
+    <div className="bg-white rounded-xl shadow-card p-6">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-bold text-[#004417]">Cronograma de Atividades</h3>
         <div className="text-sm text-[#004417]/65 font-medium">Últimos 30 dias</div>
@@ -96,7 +96,7 @@ export default function ActivityChart({ activities }: ActivityChartProps) {
         </div>
       ) : (
         <div className="h-64 flex items-center justify-center">
-          <p className="text-gray-500">Nenhuma atividade nos últimos 30 dias</p>
+          <p className="text-[#004417]/70">Nenhuma atividade nos últimos 30 dias</p>
         </div>
       )}
     </div>

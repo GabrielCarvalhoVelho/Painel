@@ -15,29 +15,29 @@ const StatsCard = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const changeTypeClasses = {
-    positive: 'text-[#00A651] bg-[#00A651]/10',
-    negative: 'text-[#F7941F] bg-[#F7941F]/10',
-    neutral: 'text-[#004417]/65 bg-gray-100'
+    positive: 'text-[#00A651] bg-[rgba(0,166,81,0.08)]',
+    negative: 'text-[#F7941F] bg-[rgba(247,148,31,0.08)]',
+    neutral: 'text-[#004417]/70 bg-[rgba(0,166,81,0.06)]'
   };
 
   return (
     <>
-      <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-[rgba(0,68,23,0.08)] p-5 relative transition-transform duration-200 hover:scale-[1.01]">
-        <div className="absolute top-5 right-5 w-10 h-10 bg-[#00A651]/20 rounded-lg flex items-center justify-center flex-shrink-0">
-          <Icon className="w-5 h-5 text-[#00A651]" />
+      <div className="bg-white rounded-xl shadow-card p-6 relative transition-transform duration-200 hover:scale-[1.01]">
+        <div className="absolute top-5 right-5 w-10 h-10 bg-[rgba(0,166,81,0.06)] rounded-md flex items-center justify-center flex-shrink-0">
+          <Icon className="w-5 h-5 text-[#004417]/90" />
         </div>
         
         {modalContent && (
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="absolute top-5 right-[72px] p-1 hover:bg-gray-100 rounded-full transition-colors group z-10"
-            aria-label="Mais informações"
-          >
-            <Info 
-              size={14} 
-              className="text-gray-400 group-hover:text-[#00A651] transition-colors" 
-            />
-          </button>
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="absolute top-5 right-[72px] p-1 hover:bg-[rgba(0,166,81,0.06)] rounded-full transition-colors group z-10"
+          aria-label="Mais informações"
+        >
+          <Info 
+            size={14} 
+            className="text-[#004417]/60 group-hover:text-[#00A651] transition-colors" 
+          />
+        </button>
         )}
         
         <div className="pr-16">
@@ -80,23 +80,23 @@ const StatsCard = ({
       >
         {modalContent ? modalContent : (
           <div className="space-y-3">
-            <div className="text-gray-700">
+            <div className="text-[#004417]/80">
               {typeof subtitle === 'string' ? (
                 <p>{subtitle}</p>
               ) : (
                 <div>{subtitle}</div>
               )}
             </div>
-            
-            <div className="bg-gray-50 p-3 rounded-lg">
-              <h4 className="text-sm font-medium text-gray-900 mb-1">
+
+            <div className="bg-white p-3 rounded-lg shadow-[0_1px_4px_rgba(0,68,23,0.04)]">
+              <h4 className="text-sm font-medium text-[#004417] mb-1">
                 Valor Atual:
               </h4>
-              <p className="text-lg font-bold text-gray-800">
+              <p className="text-lg font-bold text-[#004417]">
                 {value}
               </p>
               {change && (
-                <p className={`text-sm mt-1 ${(changeTypeClasses[changeType] || changeTypeClasses.neutral).split(' ')[0]}`}>
+                <p className={`text-sm mt-1 text-[#004417]/70`}>
                   {change}
                 </p>
               )}

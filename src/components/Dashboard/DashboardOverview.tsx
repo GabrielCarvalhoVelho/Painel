@@ -253,7 +253,7 @@ export default function DashboardOverview() {
   change: (
     <div className="flex flex-col">
      
-      <span className="text-sm text-gray-700">
+      <span className="text-sm text-[#004417]/70">
         Saldo projetado: {FinanceService.formatCurrency(overallBalance.totalBalance)}
       </span>
     </div>
@@ -262,7 +262,7 @@ export default function DashboardOverview() {
   icon: DollarSign,
   color: 'green',
   modalContent: (
-    <div className="text-gray-700">
+    <div className="text-[#004417]/80">
       <p>Saldo geral de todas as transações</p>
     </div>
   )
@@ -276,7 +276,7 @@ export default function DashboardOverview() {
     icon: Coffee,
     color: 'orange',
     modalContent: (
-      <div className="text-gray-700">
+      <div className="text-[#004417]/80">
         <p>Cotação Café (sc/60kg) — Cereja Descascado (referência Cooxupé).</p>
       </div>
     )
@@ -308,7 +308,7 @@ export default function DashboardOverview() {
   icon: BarChart3,
   color: 'green',
   modalContent: (
-    <div className="text-gray-700">
+    <div className="text-[#004417]/80">
       <p>Produtividade total estimada × cotação Cooxupé.</p>
     </div>
   )
@@ -329,7 +329,7 @@ export default function DashboardOverview() {
     icon: WheatDollarIcon,
     color: 'grey',
     modalContent: (
-      <div className="text-gray-700">
+      <div className="text-[#004417]/80">
         <p>Custo total ÷ produção total estimada.</p>
       </div>
     )
@@ -350,7 +350,7 @@ export default function DashboardOverview() {
     icon: LandPlotDollarIcon,
     color: 'red',
     modalContent: (
-      <div className="text-gray-700">
+      <div className="text-[#004417]/80">
         <p>Custo total ÷ área total cultivada (ha).</p>
       </div>
     )
@@ -358,7 +358,7 @@ export default function DashboardOverview() {
 ];
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-8">
       {process.env.NODE_ENV === 'development' && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
           <h4 className="font-medium text-yellow-800 mb-2">Debug Info:</h4>
@@ -372,19 +372,19 @@ export default function DashboardOverview() {
 
       {userData && <UserProfile user={userData} />}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
         {stats.map((stat, index) => (
           <StatsCard key={index} {...stat} />
         ))}
       </div>
     
       <div>
-        <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-[rgba(0,68,23,0.08)] p-4 md:p-6">
+        <div className="bg-white rounded-xl shadow-card p-6">
           <h3 className="text-lg font-bold text-[#004417] mb-4">
             Resumo Financeiro do Mês {isDataLoaded ? '' : '(Carregando...)'}
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-[#00A651]/10 p-4 rounded-xl">
+            <div className="bg-[rgba(0,166,81,0.06)] p-4 rounded-xl">
               <div className="flex items-center space-x-2 mb-3">
                 <TrendingUp className="w-4 h-4 text-[#00A651] flex-shrink-0" />
                 <span className="text-xs font-semibold text-[#004417]">Receitas</span>
@@ -393,7 +393,7 @@ export default function DashboardOverview() {
                 {FinanceService.formatCurrency(resumoMensalFinanceiro.totalReceitas)}
               </p>
             </div>
-            <div className="bg-[#F7941F]/10 p-4 rounded-xl">
+            <div className="bg-[rgba(247,148,31,0.06)] p-4 rounded-xl">
               <div className="flex items-center space-x-2 mb-3">
                 <TrendingDown className="w-4 h-4 text-[#F7941F] flex-shrink-0" />
                 <span className="text-xs font-semibold text-[#004417]">Despesas</span>
@@ -432,21 +432,21 @@ export default function DashboardOverview() {
       />
 
       {!isDataLoaded || (atividades.length === 0 && transacoes.length === 0) && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 text-center">
-          <div className="w-16 h-16 bg-[#86b646]/10 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Coffee className="w-8 h-8 text-[#86b646]" />
+        <div className="bg-white rounded-xl shadow-card p-6 text-center">
+          <div className="w-16 h-16 bg-[rgba(0,166,81,0.06)] rounded-full flex items-center justify-center mx-auto mb-4">
+            <Coffee className="w-8 h-8 text-[#00A651]" />
           </div>
-          <h3 className="text-lg font-semibold text-[#092f20] mb-2">
+          <h3 className="text-lg font-semibold text-[#004417] mb-2">
             {!isDataLoaded ? 'Carregando dados...' : 'Bem-vindo ao Zé · Solos.ag!'}
           </h3>
-          <p className="text-gray-600 mb-4">
+          <p className="text-[#004417]/70 mb-4">
             {!isDataLoaded 
               ? 'Conectando com o banco de dados para buscar suas informações.'
               : 'Seus dados aparecerão aqui conforme você for interagindo com o ZÉ via WhatsApp.'
             }
           </p>
-          <div className="bg-[#86b646]/10 p-4 rounded-lg">
-            <p className="text-sm text-[#397738]">
+          <div className="bg-[rgba(0,166,81,0.06)] p-4 rounded-lg">
+            <p className="text-sm text-[#00A651]">
               <strong>Dica:</strong> Comece enviando informações sobre sua fazenda, 
               lançamentos financeiros ou atividades agrícolas no WhatsApp do ZÉ.
             </p>
