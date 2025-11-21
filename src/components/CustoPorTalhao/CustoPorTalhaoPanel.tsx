@@ -63,6 +63,7 @@ import { AuthService } from '../../services/authService';
     const [detalhesCusto, setDetalhesCusto] = useState<DetalheCusto[]>([]);
     const [painelLateralAberto, setPainelLateralAberto] = useState(false);
     const [modalPendenciasAberto, setModalPendenciasAberto] = useState(false);
+    const [openCards, setOpenCards] = useState<Record<string, boolean>>({});
 
     // Mock data - substituir por chamadas reais ao serviço
     const totalCustos = 285000;
@@ -187,11 +188,11 @@ import { AuthService } from '../../services/authService';
             <BarChart3 className="w-8 h-8" />
             Custo por Talhão (Competência por Área)
           </h1>
-          <p className="text-gray-600 mt-1">Custos agrícolas consolidados por área e macrogrupo</p>
+          <p className="text-[#1d3a2d] mt-1">Custos agrícolas consolidados por área e macrogrupo</p>
         </div>
 
         {/* Filtros */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div className="bg-white rounded-xl shadow-sm p-6" style={{ border: '1px solid rgba(0,0,0,0.06)' }}>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
             <div>
               <label className="block text-sm font-semibold text-[#004417] mb-2">
@@ -200,7 +201,8 @@ import { AuthService } from '../../services/authService';
               <select
                 value={filtros.safra}
                 onChange={(e) => setFiltros({ ...filtros, safra: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent"
+                className="w-full px-3 py-2 rounded-lg bg-white text-[#1d3a2d] appearance-none focus:ring-2 focus:ring-[#00A651] focus:border-transparent pr-3"
+                style={{ border: '1px solid rgba(0,0,0,0.06)' }}
               >
                 <option value="2024/2025">2024/2025</option>
                 <option value="2023/2024">2023/2024</option>
@@ -215,7 +217,8 @@ import { AuthService } from '../../services/authService';
               <select
                 value={filtros.fazenda}
                 onChange={(e) => setFiltros({ ...filtros, fazenda: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent"
+                className="w-full px-3 py-2 rounded-lg bg-white text-[#1d3a2d] appearance-none focus:ring-2 focus:ring-[#00A651] focus:border-transparent pr-3"
+                style={{ border: '1px solid rgba(0,0,0,0.06)' }}
               >
                 <option value="">Todas as fazendas</option>
                 <option value="fazenda1">Fazenda Santa Maria</option>
@@ -234,7 +237,8 @@ import { AuthService } from '../../services/authService';
                   const values = Array.from(e.target.selectedOptions, option => option.value);
                   setFiltros({ ...filtros, talhoes: values });
                 }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent"
+                className="w-full px-3 py-2 rounded-lg bg-white text-[#1d3a2d] appearance-none focus:ring-2 focus:ring-[#00A651] focus:border-transparent pr-3"
+                style={{ border: '1px solid rgba(0,0,0,0.06)' }}
               >
                 <option value="talhao1">Talhão 1A</option>
                 <option value="talhao2">Talhão 2B</option>
@@ -249,7 +253,8 @@ import { AuthService } from '../../services/authService';
               <select
                 value={filtros.macrogrupo}
                 onChange={(e) => setFiltros({ ...filtros, macrogrupo: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent"
+                className="w-full px-3 py-2 rounded-lg bg-white text-[#1d3a2d] appearance-none focus:ring-2 focus:ring-[#00A651] focus:border-transparent pr-3"
+                style={{ border: '1px solid rgba(0,0,0,0.06)' }}
               >
                 <option value="Todos">Todos</option>
                 <option value="Insumos">Insumos</option>
@@ -268,7 +273,8 @@ import { AuthService } from '../../services/authService';
                 type="month"
                 value={filtros.mesAno}
                 onChange={(e) => setFiltros({ ...filtros, mesAno: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent"
+                className="w-full px-3 py-2 rounded-lg bg-white text-[#1d3a2d] appearance-none focus:ring-2 focus:ring-[#00A651] focus:border-transparent pr-3"
+                style={{ border: '1px solid rgba(0,0,0,0.06)' }}
               />
             </div>
           </div>
@@ -284,16 +290,16 @@ import { AuthService } from '../../services/authService';
         </div>
 
         {/* Cards de Indicadores */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
           {/* Total de Custos */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 transition-transform duration-200 hover:scale-101">
+          <div className="bg-white rounded-xl shadow-sm border border-[rgba(0,0,0,0.06)] p-5 transition-transform duration-200 hover:scale-101">
             <div className="flex items-start justify-between">
               <div className="w-12 h-12 rounded-lg bg-[#00A651]/10 flex items-center justify-center">
                 <DollarSign className="w-6 h-6 text-[#004417]" />
               </div>
             </div>
             <div className="mt-4">
-              <p className="text-sm text-gray-600 font-medium">Total de Custos</p>
+              <p className="text-sm text-[#1d3a2d] font-medium">Total de Custos</p>
               <p className="text-2xl font-bold text-[#004417] mt-1">
                 {formatCurrency(totalCustos)}
               </p>
@@ -301,14 +307,14 @@ import { AuthService } from '../../services/authService';
           </div>
 
           {/* Custo Médio / ha */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 transition-transform duration-200 hover:scale-101">
+          <div className="bg-white rounded-xl shadow-sm border border-[rgba(0,0,0,0.06)] p-5 transition-transform duration-200 hover:scale-101">
             <div className="flex items-start justify-between">
               <div className="w-12 h-12 rounded-lg bg-[#CADB2A]/20 flex items-center justify-center">
                 <TrendingUp className="w-6 h-6 text-[#004417]" />
               </div>
             </div>
             <div className="mt-4">
-              <p className="text-sm text-gray-600 font-medium">Custo Médio / ha</p>
+              <p className="text-sm text-[#1d3a2d] font-medium">Custo Médio / ha</p>
               <p className="text-2xl font-bold text-[#004417] mt-1">
                 {formatCurrency(custoMedioHa)}/ha
               </p>
@@ -316,20 +322,20 @@ import { AuthService } from '../../services/authService';
           </div>
 
           {/* % por Macrogrupo */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 transition-transform duration-200 hover:scale-101">
+          <div className="bg-white rounded-xl shadow-sm border border-[rgba(0,0,0,0.06)] p-5 transition-transform duration-200 hover:scale-101">
             <div className="flex items-start justify-between">
               <div className="w-12 h-12 rounded-lg bg-white flex items-center justify-center">
                 <BarChart3 className="w-6 h-6 text-[#004417]" />
               </div>
             </div>
             <div className="mt-4">
-              <p className="text-sm text-gray-600 font-medium">% por Macrogrupo</p>
+              <p className="text-sm text-[#1d3a2d] font-medium">% por Macrogrupo</p>
               <div className="mt-2 space-y-1">
                 <div className="flex justify-between text-xs">
-                  <span className="text-gray-600">Insumos</span>
+                  <span className="text-[#1d3a2d]">Insumos</span>
                   <span className="font-semibold text-[#004417]">58%</span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-1.5">
+                <div className="w-full rounded-full h-1.5" style={{ backgroundColor: 'rgba(0,0,0,0.04)' }}>
                   <div className="bg-[#00A651] h-1.5 rounded-full" style={{ width: '58%' }}></div>
                 </div>
               </div>
@@ -338,7 +344,7 @@ import { AuthService } from '../../services/authService';
 
           {/* Pendências */}
           <div 
-            className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 transition-transform duration-200 hover:scale-101 cursor-pointer"
+            className="bg-white rounded-xl shadow-sm border border-[rgba(0,0,0,0.06)] p-5 transition-transform duration-200 hover:scale-101 cursor-pointer"
             onClick={() => setModalPendenciasAberto(true)}
           >
             <div className="flex items-start justify-between">
@@ -347,37 +353,37 @@ import { AuthService } from '../../services/authService';
               </div>
             </div>
             <div className="mt-4">
-              <p className="text-sm text-gray-600 font-medium">Pendências</p>
+              <p className="text-sm text-[#1d3a2d] font-medium">Pendências</p>
               <p className="text-2xl font-bold text-[#004417] mt-1 flex items-center gap-2">
                 {totalPendencias}
-                <span className="text-xs text-gray-500 font-normal">Ver detalhes →</span>
+                <span className="text-xs text-[#1d3a2d]/70 font-normal">Ver detalhes →</span>
               </p>
             </div>
           </div>
         </div>
 
         {/* Tabela Principal - Desktop (≥1024px) */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hidden lg:block">
+        <div className="bg-white rounded-xl shadow-sm border border-[rgba(0,0,0,0.06)] p-6 hidden lg:block">
           <h3 className="text-lg font-bold text-[#004417] mb-4">Custo por Talhão</h3>
         
-          <div className="overflow-x-auto">
+          <div className="overflow-hidden rounded-t-xl">
             <table className="w-full">
               <thead>
-                <tr className="bg-[#004417]/5 border-b border-gray-200">
-                  <th className="text-left p-3 text-sm font-bold text-[#004417]">Talhão</th>
+                <tr className="h-14 align-middle" style={{ backgroundColor: '#004417' }}>
+                  <th className="text-left p-3 text-sm font-bold text-white">Talhão</th>
                   {macrogrupos.map(grupo => (
-                    <th key={grupo.key} className="text-right p-3 text-sm font-bold text-[#004417] relative group">
+                    <th key={grupo.key} className="text-right p-3 text-sm font-bold text-white relative group">
                       <span className="flex items-center justify-end gap-1">
-                        {grupo.label}
-                        <Info className="w-3.5 h-3.5 text-gray-400" />
+                        <span className="whitespace-nowrap">{grupo.label}</span>
+                        <Info className="w-3.5 h-3.5 text-white" />
                       </span>
-                      <div className="hidden group-hover:block absolute top-full right-0 mt-1 bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10">
+                      <div className="hidden group-hover:block absolute top-full right-0 mt-1 bg-[#004417] text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10">
                         {grupo.tooltip}
                       </div>
                     </th>
                   ))}
-                  <th className="text-right p-3 text-sm font-bold text-[#004417]">Total</th>
-                  <th className="text-right p-3 text-sm font-bold text-[#004417]">R$/ha</th>
+                  <th className="text-right p-3 text-sm font-bold text-white">Total</th>
+                  <th className="text-right p-3 text-sm font-bold text-white">R$/ha</th>
                 </tr>
               </thead>
               <tbody>
@@ -385,15 +391,15 @@ import { AuthService } from '../../services/authService';
                   <tr
                     key={index}
                     onClick={() => handleClickTalhao(talhao)}
-                    className="border-b border-gray-100 hover:bg-[#00A651]/8 cursor-pointer transition-colors"
-                    style={{ backgroundColor: index % 2 === 0 ? 'rgba(0, 68, 23, 0.02)' : 'transparent' }}
+                    className="hover:shadow-[0_2px_6px_rgba(0,0,0,0.06)] cursor-pointer transition-all"
+                    style={{ backgroundColor: index % 2 === 0 ? 'rgba(0,166,81,0.04)' : 'white', minHeight: 56 }}
                   >
                     <td className="p-3 text-sm font-medium text-[#004417]">{talhao.talhao}</td>
-                    <td className="p-3 text-sm text-gray-700 text-right">{formatCurrency(talhao.insumos)}</td>
-                    <td className="p-3 text-sm text-gray-700 text-right">{formatCurrency(talhao.operacional)}</td>
-                    <td className="p-3 text-sm text-gray-700 text-right">{formatCurrency(talhao.servicosLogistica)}</td>
-                    <td className="p-3 text-sm text-gray-700 text-right">{formatCurrency(talhao.administrativos)}</td>
-                    <td className="p-3 text-sm text-gray-700 text-right">{formatCurrency(talhao.outros)}</td>
+                    <td className="p-3 text-sm text-[#1d3a2d] text-right font-semibold">{formatCurrency(talhao.insumos)}</td>
+                    <td className="p-3 text-sm text-[#1d3a2d] text-right font-semibold">{formatCurrency(talhao.operacional)}</td>
+                    <td className="p-3 text-sm text-[#1d3a2d] text-right font-semibold">{formatCurrency(talhao.servicosLogistica)}</td>
+                    <td className="p-3 text-sm text-[#1d3a2d] text-right font-semibold">{formatCurrency(talhao.administrativos)}</td>
+                    <td className="p-3 text-sm text-[#1d3a2d] text-right font-semibold">{formatCurrency(talhao.outros)}</td>
                     <td className="p-3 text-sm font-bold text-[#004417] text-right">{formatCurrency(talhao.total)}</td>
                     <td className="p-3 text-sm font-semibold text-[#00A651] text-right">{formatCurrency(talhao.custoHa)}/ha</td>
                   </tr>
@@ -408,72 +414,87 @@ import { AuthService } from '../../services/authService';
           {custosPorTalhao.map((talhao, index) => (
             <div
               key={index}
-              className="bg-white rounded-xl shadow-sm border border-gray-100 p-5"
+              className="bg-white rounded-xl shadow-sm border border-[rgba(0,0,0,0.06)] p-4"
             >
-              {/* Header do Card */}
-              <div className="flex items-start justify-between mb-4 pb-4 border-b border-gray-100">
+              {/* Header do Card (clicável para expandir) */}
+              <div className="flex items-center justify-between mb-3" onClick={() => setOpenCards(prev => ({ ...prev, [talhao.talhao]: !prev[talhao.talhao] }))}>
                 <div>
                   <h4 className="text-lg font-bold text-[#004417]">{talhao.talhao}</h4>
-                  <p className="text-sm text-gray-600 mt-1">Área: {talhao.area} ha</p>
+                  <p className="text-sm text-[#1d3a2d]/80 mt-1">Área: {talhao.area} ha</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-gray-500 font-medium">Total</p>
+                  <p className="text-xs text-[#1d3a2d]/80 font-medium">Total</p>
                   <p className="text-xl font-bold text-[#004417]">{formatCurrency(talhao.total)}</p>
                   <p className="text-sm font-semibold text-[#00A651] mt-1">{formatCurrency(talhao.custoHa)}/ha</p>
                 </div>
               </div>
 
-              {/* Macrogrupos */}
-              <div className="space-y-3 mb-4">
-                <div className="flex items-center justify-between py-2 border-b border-gray-50">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-[#00A651]"></div>
-                    <span className="text-sm font-medium text-gray-700">Insumos</span>
-                  </div>
-                  <span className="text-sm font-semibold text-[#004417]">{formatCurrency(talhao.insumos)}</span>
-                </div>
+              {/* Closed hint */}
+              {!openCards[talhao.talhao] && (
+                <div className="text-sm text-[#1d3a2d]/70 mb-3">▼ Clique para ver detalhes das categorias</div>
+              )}
 
-                <div className="flex items-center justify-between py-2 border-b border-gray-50">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-[#CADB2A]"></div>
-                    <span className="text-sm font-medium text-gray-700">Operacional</span>
+              {/* Macrogrupos (colapsável) */}
+              {openCards[talhao.talhao] && (
+                <div className="space-y-3 mb-4">
+                  <div className="flex items-center justify-between py-2 border-b" style={{ borderColor: 'rgba(0,0,0,0.06)' }}>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-[#00A651]"></div>
+                      <span className="text-sm font-medium text-[#1d3a2d]">Insumos</span>
+                    </div>
+                    <span className="text-sm font-semibold text-[#1d3a2d]">{formatCurrency(talhao.insumos)}</span>
                   </div>
-                  <span className="text-sm font-semibold text-[#004417]">{formatCurrency(talhao.operacional)}</span>
-                </div>
 
-                <div className="flex items-center justify-between py-2 border-b border-gray-50">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-[#86b646]"></div>
-                    <span className="text-sm font-medium text-gray-700">Serviços/Logística</span>
+                  <div className="flex items-center justify-between py-2 border-b" style={{ borderColor: 'rgba(0,0,0,0.06)' }}>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-[#CADB2A]"></div>
+                      <span className="text-sm font-medium text-[#1d3a2d]">Operacional</span>
+                    </div>
+                    <span className="text-sm font-semibold text-[#1d3a2d]">{formatCurrency(talhao.operacional)}</span>
                   </div>
-                  <span className="text-sm font-semibold text-[#004417]">{formatCurrency(talhao.servicosLogistica)}</span>
-                </div>
 
-                <div className="flex items-center justify-between py-2 border-b border-gray-50">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-[#397738]"></div>
-                    <span className="text-sm font-medium text-gray-700">Administrativos</span>
+                  <div className="flex items-center justify-between py-2 border-b" style={{ borderColor: 'rgba(0,0,0,0.06)' }}>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-[#86b646]"></div>
+                      <span className="text-sm font-medium text-[#1d3a2d]">Serviços/Logística</span>
+                    </div>
+                    <span className="text-sm font-semibold text-[#1d3a2d]">{formatCurrency(talhao.servicosLogistica)}</span>
                   </div>
-                  <span className="text-sm font-semibold text-[#004417]">{formatCurrency(talhao.administrativos)}</span>
-                </div>
 
-                <div className="flex items-center justify-between py-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-gray-400"></div>
-                    <span className="text-sm font-medium text-gray-700">Outros</span>
+                  <div className="flex items-center justify-between py-2 border-b" style={{ borderColor: 'rgba(0,0,0,0.06)' }}>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-[#397738]"></div>
+                      <span className="text-sm font-medium text-[#1d3a2d]">Administrativos</span>
+                    </div>
+                    <span className="text-sm font-semibold text-[#1d3a2d]">{formatCurrency(talhao.administrativos)}</span>
                   </div>
-                  <span className="text-sm font-semibold text-[#004417]">{formatCurrency(talhao.outros)}</span>
+
+                  <div className="flex items-center justify-between py-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-[#0000001a]"></div>
+                      <span className="text-sm font-medium text-[#1d3a2d]">Outros</span>
+                    </div>
+                    <span className="text-sm font-semibold text-[#1d3a2d]">{formatCurrency(talhao.outros)}</span>
+                  </div>
                 </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleClickTalhao(talhao)}
+                  className="flex-1 px-4 py-2.5 bg-[#00A651] text-white font-semibold rounded-lg hover:bg-[#004417] transition-colors duration-200 flex items-center justify-center gap-2"
+                >
+                  Ver detalhes
+                  <ChevronRight className="w-4 h-4 text-white" />
+                </button>
+                <button
+                  onClick={() => setOpenCards(prev => ({ ...prev, [talhao.talhao]: !prev[talhao.talhao] }))}
+                  className="px-3 py-2.5 border border-[rgba(0,0,0,0.06)] rounded-lg text-[#004417] font-medium"
+                >
+                  {openCards[talhao.talhao] ? 'Recolher' : 'Expandir'}
+                </button>
               </div>
-
-              {/* Botão Ver Detalhes */}
-              <button
-                onClick={() => handleClickTalhao(talhao)}
-                className="w-full px-4 py-2.5 bg-[#00A651] text-white font-semibold rounded-lg hover:bg-[#004417] transition-colors duration-200 flex items-center justify-center gap-2"
-              >
-                Ver detalhes
-                <ChevronRight className="w-4 h-4" />
-              </button>
             </div>
           ))}
         </div>
@@ -483,16 +504,17 @@ import { AuthService } from '../../services/authService';
           <div className="fixed inset-0 bg-black/50 z-50 flex justify-end">
             <div className="bg-white w-full max-w-2xl h-full shadow-2xl flex flex-col">
               {/* Header do Painel */}
-              <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+              <div className="p-6 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(0,0,0,0.05)', backgroundColor: 'white' }}>
                 <div>
                   <h3 className="text-xl font-bold text-[#004417]">{talhaoSelecionado.talhao}</h3>
-                  <p className="text-sm text-gray-600">Detalhamento de custos</p>
+                  <p className="text-sm text-[#1d3a2d]">Detalhamento de custos</p>
                 </div>
                 <button
                   onClick={() => setPainelLateralAberto(false)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-2 rounded-lg transition-colors"
+                  style={{ color: '#004417' }}
                 >
-                  <X className="w-5 h-5 text-gray-500" />
+                  <X className="w-5 h-5 text-[#004417]" />
                 </button>
               </div>
 
@@ -501,29 +523,29 @@ import { AuthService } from '../../services/authService';
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
-                      <tr className="bg-[#004417]/5 border-b border-gray-200">
-                        <th className="text-left p-3 text-sm font-bold text-[#004417]">Data</th>
-                        <th className="text-left p-3 text-sm font-bold text-[#004417]">Categoria</th>
-                        <th className="text-left p-3 text-sm font-bold text-[#004417]">Descrição</th>
-                        <th className="text-left p-3 text-sm font-bold text-[#004417]">Origem</th>
-                        <th className="text-right p-3 text-sm font-bold text-[#004417]">Valor</th>
+                      <tr style={{ backgroundColor: '#004417' }}>
+                        <th className="text-left p-3 text-sm font-bold text-white">Data</th>
+                        <th className="text-left p-3 text-sm font-bold text-white">Categoria</th>
+                        <th className="text-left p-3 text-sm font-bold text-white">Descrição</th>
+                        <th className="text-left p-3 text-sm font-bold text-white">Origem</th>
+                        <th className="text-right p-3 text-sm font-bold text-white">Valor</th>
                       </tr>
                     </thead>
                     <tbody>
                       {detalhesCusto.map((detalhe, index) => (
                         <tr
                           key={index}
-                          className="border-b border-gray-100 hover:bg-gray-50"
-                          style={{ backgroundColor: index % 2 === 0 ? 'rgba(0, 68, 23, 0.02)' : 'transparent' }}
+                          className="hover:bg-white"
+                          style={{ backgroundColor: index % 2 === 0 ? 'rgba(0,166,81,0.04)' : 'white', borderBottom: '1px solid rgba(0,0,0,0.06)' }}
                         >
-                          <td className="p-3 text-sm text-gray-700">{detalhe.data}</td>
-                          <td className="p-3 text-sm text-gray-700">{detalhe.categoria}</td>
-                          <td className="p-3 text-sm text-gray-700">{detalhe.descricao}</td>
+                          <td className="p-3 text-sm text-[#1d3a2d]">{detalhe.data}</td>
+                          <td className="p-3 text-sm text-[#1d3a2d]">{detalhe.categoria}</td>
+                          <td className="p-3 text-sm text-[#1d3a2d]">{detalhe.descricao}</td>
                           <td className="p-3 text-sm">
                             <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
                               detalhe.origem === 'Financeiro' 
-                                ? 'bg-blue-100 text-blue-700' 
-                                : 'bg-green-100 text-green-700'
+                                ? 'bg-[#004417]/10 text-[#004417]' 
+                                : 'bg-[#00A651]/10 text-[#00A651]'
                             }`}>
                               {detalhe.origem === 'Financeiro' ? '💸' : '🌱'} {detalhe.origem}
                             </span>
@@ -539,21 +561,21 @@ import { AuthService } from '../../services/authService';
               </div>
 
               {/* Rodapé do Painel */}
-              <div className="p-6 border-t border-gray-200 bg-gray-50">
+              <div className="p-6" style={{ borderTop: '1px solid rgba(0,0,0,0.06)', backgroundColor: 'white' }}>
                 <div className="flex items-center justify-between mb-4">
                   <div className="text-sm">
-                    <span className="text-gray-600">💰 Total: </span>
+                    <span className="text-[#1d3a2d]">💰 Total: </span>
                     <span className="font-bold text-[#004417]">{formatCurrency(talhaoSelecionado.total)}</span>
                   </div>
                   <div className="text-sm">
-                    <span className="text-gray-600">📐 Custo/ha: </span>
+                    <span className="text-[#1d3a2d]">📐 Custo/ha: </span>
                     <span className="font-bold text-[#00A651]">{formatCurrency(talhaoSelecionado.custoHa)}/ha</span>
                   </div>
                 </div>
                 <button
                   className="w-full px-4 py-2.5 bg-[#00A651] text-white font-semibold rounded-lg hover:bg-[#004417] transition-colors flex items-center justify-center gap-2"
                 >
-                  <Paperclip className="w-4 h-4" />
+                  <Paperclip className="w-4 h-4 text-white" />
                   Ver anexos
                 </button>
               </div>
@@ -566,16 +588,17 @@ import { AuthService } from '../../services/authService';
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[80vh] flex flex-col">
               {/* Header do Modal */}
-              <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+              <div className="p-6 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(0,0,0,0.05)', backgroundColor: 'white' }}>
                 <div>
                   <h3 className="text-xl font-bold text-[#004417]">Pendências</h3>
-                  <p className="text-sm text-gray-600">{totalPendencias} itens pendentes</p>
+                  <p className="text-sm text-[#1d3a2d]">{totalPendencias} itens pendentes</p>
                 </div>
                 <button
                   onClick={() => setModalPendenciasAberto(false)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-2 rounded-lg transition-colors"
+                  style={{ color: '#004417' }}
                 >
-                  <X className="w-5 h-5 text-gray-500" />
+                  <X className="w-5 h-5 text-[#004417]" />
                 </button>
               </div>
 
@@ -583,24 +606,23 @@ import { AuthService } from '../../services/authService';
               <div className="flex-1 overflow-y-auto p-6">
                 <table className="w-full">
                   <thead>
-                    <tr className="bg-[#004417]/5 border-b border-gray-200">
-                      <th className="text-left p-3 text-sm font-bold text-[#004417]">Tipo</th>
-                      <th className="text-left p-3 text-sm font-bold text-[#004417]">Referência</th>
-                      <th className="text-left p-3 text-sm font-bold text-[#004417]">Descrição</th>
-                      <th className="text-left p-3 text-sm font-bold text-[#004417]">Status</th>
-                      <th className="text-center p-3 text-sm font-bold text-[#004417]">Ações</th>
+                    <tr style={{ backgroundColor: '#004417' }}>
+                      <th className="text-left p-3 text-sm font-bold text-white">Tipo</th>
+                      <th className="text-left p-3 text-sm font-bold text-white">Referência</th>
+                      <th className="text-left p-3 text-sm font-bold text-white">Descrição</th>
+                      <th className="text-left p-3 text-sm font-bold text-white">Status</th>
+                      <th className="text-center p-3 text-sm font-bold text-white">Ações</th>
                     </tr>
                   </thead>
                   <tbody>
                     {pendenciasMock.map((pendencia, index) => (
                       <tr
                         key={index}
-                        className="border-b border-gray-100"
-                        style={{ backgroundColor: index % 2 === 0 ? 'rgba(0, 68, 23, 0.02)' : 'transparent' }}
+                        style={{ backgroundColor: index % 2 === 0 ? 'rgba(0,166,81,0.04)' : 'white', borderBottom: '1px solid rgba(0,0,0,0.06)' }}
                       >
-                        <td className="p-3 text-sm text-gray-700">{pendencia.tipo}</td>
-                        <td className="p-3 text-sm text-gray-700">{pendencia.referencia}</td>
-                        <td className="p-3 text-sm text-gray-700">{pendencia.descricao}</td>
+                        <td className="p-3 text-sm text-[#1d3a2d]">{pendencia.tipo}</td>
+                        <td className="p-3 text-sm text-[#1d3a2d]">{pendencia.referencia}</td>
+                        <td className="p-3 text-sm text-[#1d3a2d]">{pendencia.descricao}</td>
                         <td className="p-3 text-sm">
                           <span className="inline-flex items-center text-xs px-2 py-1 rounded-full bg-[#F7941F]/20 text-[#F7941F]">
                             {pendencia.status}
@@ -612,7 +634,7 @@ import { AuthService } from '../../services/authService';
                             className="inline-flex items-center gap-1 text-sm text-[#00A651] hover:text-[#004417] font-medium"
                           >
                             🔍 Ver no Estoque
-                            <ExternalLink className="w-3.5 h-3.5" />
+                            <ExternalLink className="w-3.5 h-3.5 text-[#00A651]" />
                           </button>
                         </td>
                       </tr>
