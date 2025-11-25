@@ -92,7 +92,7 @@ export default function DashboardOverview() {
   const [ultimas5Transacoes, setUltimas5Transacoes] = useState<TransacaoFinanceira[]>([]);
   const [atividades, setAtividades] = useState<any[]>([]);
   const [atividadesGrafico, setAtividadesGrafico] = useState<Array<{ data?: string }>>([]);
-  const [cotacaoAtual, setCotacaoAtual] = useState(1726);
+  const [cotacaoAtual, setCotacaoAtual] = useState<number | null>(null);
   const [variacaoCotacao, setVariacaoCotacao] = useState('+2.5');
   const [areaCultivada, setAreaCultivada] = useState(0);
   const [talhoesCafe, setTalhoesCafe] = useState<Array<{nome: string, area: number}>>([]);
@@ -132,7 +132,6 @@ export default function DashboardOverview() {
         overall,
         atividadesRecentes,
         atividades30Dias,
-        cotacao,
         cotacaoCompleta,
         areaCafe,
         talhoes,
@@ -150,7 +149,6 @@ export default function DashboardOverview() {
         FinanceService.getOverallBalance(currentUser.user_id),
   ActivityService.getLancamentos(currentUser.user_id, 5),
   ActivityService.getLancamentos(currentUser.user_id, 100),
-        CotacaoService.getCotacaoAtual(),
         CotacaoService.getCotacaoCompleta(),
         TalhaoService.getAreaCultivadaCafe(currentUser.user_id),
         TalhaoService.getTalhoesCafe(currentUser.user_id),
@@ -194,8 +192,15 @@ export default function DashboardOverview() {
 
   setAtividades(mappedAtividades);
 
-  setAtividadesGrafico((atividades30Dias || []).map((l: any) => ({ data: l.data_atividade || l.created_at })));
-      setCotacaoAtual(cotacao);
+      setAtividadesGrafico((atividades30Dias || []).map((l: any) => ({ data: l.data_atividade || l.created_at })));
+      // Buscar cotação atual separadamente e tratar falhas explicitamente
+      try {
+        const cot = await CotacaoService.getCotacaoAtual();
+        setCotacaoAtual(cot);
+      } catch (cotErr) {
+        console.error('Não foi possível obter cotação atual:', cotErr);
+        setCotacaoAtual(null);
+      }
       setAreaCultivada(areaCafe);
       setTalhoesCafe(talhoes);
       setProducaoTotal(producaoTotal);
@@ -234,7 +239,7 @@ export default function DashboardOverview() {
   }
 
   // Calculate estimated revenue and costs
-  const cotacaoDia = cotacaoAtual;
+  const cotacaoDia = cotacaoAtual ?? 0;
   const receitaEstimada = producaoTotal * cotacaoDia;
   const custoMedioHectar = areaCultivada > 0 ? custoTotal / areaCultivada : 0;
   const custoMedioSaca = producaoTotal > 0 ? custoTotal / producaoTotal : 0;
@@ -267,7 +272,7 @@ export default function DashboardOverview() {
 },
   {
     title: 'Cotação Café (sc 60kg)',
-    value: `R$ ${cotacaoAtual.toLocaleString()}`,
+    value: cotacaoAtual != null ? CotacaoService.formatCurrency(cotacaoAtual) : 'Indisponível',
     change: `${variacaoCotacao} hoje`,
     changeType: 'neutral', // Changed from 'positive' to neutral
     icon: Coffee,
