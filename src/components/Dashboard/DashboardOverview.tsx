@@ -24,7 +24,7 @@ import ErrorMessage from './ErrorMessage';
 import WeatherWidget from './WeatherWidget';
 import { AuthService } from '../../services/authService';
 import { UserService } from '../../services/userService';
-import { FinanceService, ResumoFinanceiro, DadosGrafico, OverallBalance, ResumoMensalFinanceiro } from '../../services/financeService';
+import { FinanceService, ResumoFinanceiro, DadosGrafico, OverallBalance, ResumoMensalFinanceiro, PeriodBalance } from '../../services/financeService';
 import { ActivityService } from '../../services/activityService';
 import { CotacaoService } from '../../services/cotacaoService';
 import { formatSmartCurrency } from '../../lib/currencyFormatter';
@@ -104,6 +104,14 @@ export default function DashboardOverview() {
     totalDespesas: 0,
   });
   const [somaTransacoesAteHoje, setSomaTransacoesAteHoje] = useState(0);
+    // Period balance used to sync Dashboard StatsCard with FinanceiroPanel
+    const [periodBalanceDashboard, setPeriodBalanceDashboard] = useState<PeriodBalance>({
+      totalEntradas: 0,
+      totalSaidas: 0,
+      saldoReal: 0,
+      transacoesRealizadas: 0,
+      transacoesFuturas: 0
+    });
 
   useEffect(() => {
     loadDashboardData();
@@ -122,14 +130,14 @@ export default function DashboardOverview() {
       }
 
       // Load all data in parallel
-      const [
-        user,
+      const [user,
         resumo,
         grafico,
         lancamentos,
         proximas5,
         ultimas5,
         overall,
+        periodBalance,
         atividadesRecentes,
         atividades30Dias,
         cotacaoCompleta,
@@ -147,6 +155,7 @@ export default function DashboardOverview() {
         FinanceService.getProximas5TransacoesFuturas(currentUser.user_id),
         FinanceService.getUltimas5TransacoesExecutadas(currentUser.user_id),
         FinanceService.getOverallBalance(currentUser.user_id),
+        FinanceService.getPeriodBalance(currentUser.user_id, 'todos'),
   ActivityService.getLancamentos(currentUser.user_id, 5),
   ActivityService.getLancamentos(currentUser.user_id, 100),
         CotacaoService.getCotacaoCompleta(),
@@ -166,6 +175,8 @@ export default function DashboardOverview() {
       setProximas5Transacoes(proximas5);
       setUltimas5Transacoes(ultimas5);
       setOverallBalance(overall);
+      // Sincroniza o saldo do dashboard com o resultado canônico do serviço
+      setPeriodBalanceDashboard(periodBalance);
       
       // DEBUG: Log dos dados do gráfico para verificação
       console.log('📊 Dados do gráfico carregados:', grafico);
@@ -252,12 +263,12 @@ export default function DashboardOverview() {
   const stats = [
   {
   title: 'Saldo Atual',
+  subtitle: undefined,
   value: FinanceService.formatCurrency(somaTransacoesAteHoje),
   change: (
     <div className="flex flex-col">
-     
       <span className="text-sm text-[#004417]/70">
-        Saldo projetado: {FinanceService.formatCurrency(overallBalance.totalBalance)}
+        Saldo projetado: {FinanceService.formatCurrency(periodBalanceDashboard.saldoProjetado ?? overallBalance.totalBalance)}
       </span>
     </div>
   ),
@@ -373,7 +384,17 @@ export default function DashboardOverview() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
         {stats.map((stat, index) => (
-          <StatsCard key={index} {...stat} />
+          <StatsCard
+            key={index}
+            title={(stat as any).title}
+            subtitle={(stat as any).subtitle}
+            value={(stat as any).value}
+            change={(stat as any).change}
+            changeType={(stat as any).changeType}
+            icon={(stat as any).icon}
+            color={(stat as any).color}
+            modalContent={(stat as any).modalContent}
+          />
         ))}
       </div>
     

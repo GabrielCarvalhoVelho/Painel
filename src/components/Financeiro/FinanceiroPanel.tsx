@@ -111,12 +111,20 @@ const FinanceiroPanel: React.FC = () => {
       const customStart = customStartDate ? new Date(customStartDate) : undefined;
       const customEnd = customEndDate ? new Date(customEndDate) : undefined;
 
-      const [balance, transactions] = await Promise.all([
+      const [balance, transactions, somaAteHoje] = await Promise.all([
         FinanceService.getPeriodBalance(currentUser.user_id, filterPeriod, customStart, customEnd),
-        FinanceService.getTransactionsByPeriod(currentUser.user_id, filterPeriod, customStart, customEnd)
+        FinanceService.getTransactionsByPeriod(currentUser.user_id, filterPeriod, customStart, customEnd),
+        // Garantir que o saldo atual use a mesma fonte do Dashboard
+        FinanceService.getSomaTransacoesAteHoje(currentUser.user_id)
       ]);
 
-      setPeriodBalance(balance);
+      // Sobrescreve saldoReal com a soma usada pelo Dashboard para manter os valores idênticos
+      const balanceWithUnifiedSaldoReal = {
+        ...balance,
+        saldoReal: somaAteHoje
+      };
+
+      setPeriodBalance(balanceWithUnifiedSaldoReal);
 
       // ✅ LÓGICA ALTERADA AQUI
       // 1. Ordena transações realizadas: primeiro por data de registro (lançamento mais recente primeiro)
