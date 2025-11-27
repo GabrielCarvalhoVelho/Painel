@@ -33,6 +33,7 @@ export default function ManejoAgricolaPanel() {
     nome_atividade?: string;
     data?: string;
     dataFormatada?: string;
+    created_at?: string;
     area?: string;
     // produtos, maquinas e responsaveis agora representam os dados reais
     produtos?: Array<{
@@ -133,6 +134,7 @@ export default function ManejoAgricolaPanel() {
         nome_atividade: l.nome_atividade || '',
         data: l.data_atividade || l.created_at || '',
         dataFormatada: l.dataFormatada || '',
+        created_at: l.created_at || '',
         area: l.area_atividade || '',
         observacao: l.observacao || '',
         id_talhoes,
@@ -571,36 +573,64 @@ export default function ManejoAgricolaPanel() {
                     {atividadeDisplay.observacoes && (
                   <div className="mt-3 pt-3 border-t border-[rgba(0,68,23,0.08)]">
                     <div className="flex items-start justify-between">
+                      <div className="flex-shrink-0 text-xs text-[#004417]/65 mr-3">
+                        {atividade.created_at && (
+                          <>Lançado em {new Date(atividade.created_at).toLocaleString('pt-BR', {
+                            timeZone: 'America/Sao_Paulo',
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}</>
+                        )}
+                      </div>
                       <div className="flex-1">
                         <span className="text-[rgba(0,68,23,0.75)] font-medium text-sm">Observações:</span>
                         <p className="text-sm text-[#00A651] mt-1">{atividadeDisplay.observacoes}</p>
                       </div>
-                      <button
-                        onClick={() => openAttachmentModal(
-                          atividade.id_atividade || '',
-                          atividade.nome_atividade || 'Atividade'
-                        )}
-                        className="p-2 text-[#00A651] hover:opacity-90 bg-transparent border-0 shadow-none flex-shrink-0 ml-2"
-                        title="Gerenciar anexo"
-                      >
-                        <Paperclip className="w-4 h-4 text-[#00A651]" />
-                      </button>
+                      <div className="flex-shrink-0 ml-3">
+                        <button
+                          onClick={() => openAttachmentModal(
+                            atividade.id_atividade || '',
+                            atividade.nome_atividade || 'Atividade'
+                          )}
+                          className="p-2 text-[#00A651] hover:opacity-90 bg-transparent border-0 shadow-none flex-shrink-0"
+                          title="Gerenciar anexo"
+                        >
+                          <Paperclip className="w-4 h-4 text-[#00A651]" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                     )}
                     {!atividadeDisplay.observacoes && (
                   <div className="mt-3 pt-3 border-t border-[rgba(0,68,23,0.08)]">
-                    <div className="flex items-center justify-end">
-                      <button
-                        onClick={() => openAttachmentModal(
-                          atividade.id_atividade || '',
-                          atividade.nome_atividade || 'Atividade'
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs text-[#004417]/65">
+                        {atividade.created_at && (
+                          <>Lançado em {new Date(atividade.created_at).toLocaleString('pt-BR', {
+                            timeZone: 'America/Sao_Paulo',
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}</>
                         )}
-                        className="p-2 text-[#00A651] hover:opacity-90 bg-transparent border-0 shadow-none"
-                        title="Gerenciar anexo"
-                      >
-                        <Paperclip className="w-4 h-4 text-[#00A651]" />
-                      </button>
+                      </div>
+                      <div>
+                        <button
+                          onClick={() => openAttachmentModal(
+                            atividade.id_atividade || '',
+                            atividade.nome_atividade || 'Atividade'
+                          )}
+                          className="p-2 text-[#00A651] hover:opacity-90 bg-transparent border-0 shadow-none"
+                          title="Gerenciar anexo"
+                        >
+                          <Paperclip className="w-4 h-4 text-[#00A651]" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                     )}
