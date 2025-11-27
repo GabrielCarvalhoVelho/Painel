@@ -10,6 +10,8 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { AuthService } from '../../services/authService';
+import { TalhaoService } from '../../services/talhaoService';
+import type { Talhao } from '../../lib/supabase';
 
   // Interfaces
   interface Filtros {
@@ -59,6 +61,7 @@ import { AuthService } from '../../services/authService';
     const [filtroTalhao, setFiltroTalhao] = useState('todos');
 
     const [custosPorTalhao, setCustosPorTalhao] = useState<CustoTalhao[]>([]);
+    const [talhoes, setTalhoes] = useState<Talhao[]>([]);
     const [talhaoSelecionado, setTalhaoSelecionado] = useState<CustoTalhao | null>(null);
     const [detalhesCusto, setDetalhesCusto] = useState<DetalheCusto[]>([]);
     const [painelLateralAberto, setPainelLateralAberto] = useState(false);
@@ -162,9 +165,54 @@ import { AuthService } from '../../services/authService';
       }, 500);
     };
 
-    // Carrega dados iniciais ao montar para popular lista de talhões
+    // Carrega dados iniciais ao montar: buscar talhões do usuário e popular lista
     useEffect(() => {
-      handleFiltrar();
+      let mounted = true;
+      const loadTalhoes = async () => {
+        setLoading(true);
+        try {
+          const auth = AuthService.getInstance();
+          let currentUser = auth.getCurrentUser();
+          if (!currentUser) {
+            currentUser = await auth.init();
+          }
+
+          if (!currentUser) {
+            console.warn('Usuário não autenticado — nenhum talhão será carregado');
+            setTalhoes([]);
+            setCustosPorTalhao(custosTalhaoMock);
+            return;
+          }
+
+          const talhoesData = await TalhaoService.getTalhoesPorCriador(currentUser.user_id, { onlyActive: true, cultura: 'Café' });
+          if (!mounted) return;
+          setTalhoes(talhoesData || []);
+
+          // Mapear talhões para estrutura de custos (placeholders)
+          const mapped = (talhoesData || []).map((t: Talhao) => ({
+            talhao: t.nome || 'Sem nome',
+            area: t.area ?? 0,
+            insumos: 0,
+            operacional: 0,
+            servicosLogistica: 0,
+            administrativos: 0,
+            outros: 0,
+            total: 0,
+            custoHa: 0
+          }));
+
+          setCustosPorTalhao(mapped.length ? mapped : custosTalhaoMock);
+        } catch (err) {
+          console.error('Erro ao carregar talhões:', err);
+          // fallback para dados mock
+          setCustosPorTalhao(custosTalhaoMock);
+        } finally {
+          if (mounted) setLoading(false);
+        }
+      };
+
+      loadTalhoes();
+      return () => { mounted = false; };
     }, []);
 
     const handleClickTalhao = (talhao: CustoTalhao) => {
@@ -206,7 +254,7 @@ import { AuthService } from '../../services/authService';
           </div>
 
           <div className="flex items-center flex-row flex-nowrap gap-2 overflow-x-auto pb-2 snap-x snap-mandatory">
-            {['todos', ...custosPorTalhao.map(c => c.talhao)].map((opcao) => (
+            {['todos', ...talhoes.map(t => t.nome)].map((opcao) => (
               <button
                 key={opcao}
                 onClick={() => setFiltroTalhao(opcao)}
