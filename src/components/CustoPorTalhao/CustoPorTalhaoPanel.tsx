@@ -1,16 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import {
-  BarChart3,
-  DollarSign,
-  TrendingUp,
-  AlertCircle,
-  ChevronRight,
-  X,
-  Info,
-  ExternalLink
-} from 'lucide-react';
+import { BarChart3, X, Info } from 'lucide-react';
 import { AuthService } from '../../services/authService';
 import { TalhaoService } from '../../services/talhaoService';
+import { CustoPorTalhaoService } from '../../services/custoPorTalhaoService';
 import type { Talhao } from '../../lib/supabase';
 
   // Interfaces
@@ -42,16 +34,11 @@ import type { Talhao } from '../../lib/supabase';
     valor: number;
   }
 
-  interface Pendencia {
-    tipo: string;
-    referencia: string;
-    descricao: string;
-    status: string;
-  }
+
 
   export default function CustoPorTalhaoPanel() {
-    const [loading, setLoading] = useState(false);
-    const [filtros, setFiltros] = useState<Filtros>({
+    const [_loading, setLoading] = useState(false);
+    const [_filtros, _setFiltros] = useState<Filtros>({
       safra: '2024/2025',
       fazenda: '',
       talhoes: [],
@@ -60,93 +47,16 @@ import type { Talhao } from '../../lib/supabase';
     });
     const [filtroTalhao, setFiltroTalhao] = useState('todos');
 
-    const [custosPorTalhao, setCustosPorTalhao] = useState<CustoTalhao[]>([]);
     const [talhoes, setTalhoes] = useState<Talhao[]>([]);
-    const [talhaoSelecionado, setTalhaoSelecionado] = useState<CustoTalhao | null>(null);
-    const [detalhesCusto, setDetalhesCusto] = useState<DetalheCusto[]>([]);
+    const [custosMap, setCustosMap] = useState<Record<string, { id: string; nome: string; area: number; insumos: number; operacional: number; servicosLogistica: number; administrativos: number; outros: number; receita: number }>>({});
+    const [talhaoSelecionado, _setTalhaoSelecionado] = useState<CustoTalhao | null>(null);
+    const [detalhesCusto, _setDetalhesCusto] = useState<DetalheCusto[]>([]);
     const [painelLateralAberto, setPainelLateralAberto] = useState(false);
     const [modalPendenciasAberto, setModalPendenciasAberto] = useState(false);
-    const [openCards, setOpenCards] = useState<Record<string, boolean>>({});
+    
 
-    // Mock data - substituir por chamadas reais ao serviço
-    const totalCustos = 285000;
-    const custoMedioHa = 3250;
-    const totalPendencias = 12;
-
-    const pendenciasMock: Pendencia[] = [
-      {
-        tipo: 'NF sem detalhe',
-        referencia: 'Fertilizante BASF',
-        descricao: 'Falta unidade',
-        status: 'pendente_detalhe'
-      },
-      {
-        tipo: 'Consumo sem estoque',
-        referencia: 'Glifosato',
-        descricao: 'Atividade 22/07',
-        status: 'revisão interna'
-      }
-    ];
-
-    const custosTalhaoMock: CustoTalhao[] = [
-      {
-        talhao: 'Talhão 1A',
-        area: 12.5,
-        insumos: 45000,
-        operacional: 12000,
-        servicosLogistica: 8000,
-        administrativos: 3500,
-        outros: 1500,
-        total: 70000,
-        custoHa: 5600
-      },
-      {
-        talhao: 'Talhão 2B',
-        area: 18.3,
-        insumos: 62000,
-        operacional: 18500,
-        servicosLogistica: 11200,
-        administrativos: 5100,
-        outros: 2400,
-        total: 99200,
-        custoHa: 5421
-      },
-      {
-        talhao: 'Talhão 3C',
-        area: 25.0,
-        insumos: 78500,
-        operacional: 23000,
-        servicosLogistica: 14300,
-        administrativos: 6800,
-        outros: 3200,
-        total: 125800,
-        custoHa: 5032
-      }
-    ];
-
-    const detalhesCustoMock: DetalheCusto[] = [
-      {
-        data: '12/06/2024',
-        categoria: 'Mão de Obra',
-        descricao: 'Diaristas colheita',
-        origem: 'Financeiro',
-        valor: 2100
-      },
-      {
-        data: '05/07/2024',
-        categoria: 'Fertilizante',
-        descricao: 'NPK 20-05-20',
-        origem: 'Atividade Agrícola',
-        valor: 12800
-      },
-      {
-        data: '18/08/2024',
-        categoria: 'Defensivo',
-        descricao: 'Glifosato Premium',
-        origem: 'Atividade Agrícola',
-        valor: 4500
-      }
-    ];
+    // Dados iniciais simples — removidos os mocks complexos
+    const totalPendencias = 0;
 
     const macrogrupos = [
       { key: 'insumos', label: 'Insumos', tooltip: 'Fertilizantes, defensivos, sementes' },
@@ -155,15 +65,6 @@ import type { Talhao } from '../../lib/supabase';
       { key: 'administrativos', label: 'Administrativos', tooltip: 'Despesas fixas, seguros, impostos' },
       { key: 'outros', label: 'Outros', tooltip: 'Despesas diversas' }
     ];
-
-    const handleFiltrar = () => {
-      setLoading(true);
-      // Simular carregamento
-      setTimeout(() => {
-        setCustosPorTalhao(custosTalhaoMock);
-        setLoading(false);
-      }, 500);
-    };
 
     // Carrega dados iniciais ao montar: buscar talhões do usuário e popular lista
     useEffect(() => {
@@ -180,32 +81,34 @@ import type { Talhao } from '../../lib/supabase';
           if (!currentUser) {
             console.warn('Usuário não autenticado — nenhum talhão será carregado');
             setTalhoes([]);
-            setCustosPorTalhao(custosTalhaoMock);
             return;
           }
 
           const talhoesData = await TalhaoService.getTalhoesPorCriador(currentUser.user_id, { onlyActive: true, cultura: 'Café' });
           if (!mounted) return;
-          setTalhoes(talhoesData || []);
+          // Excluir talhão default (talhao_default === true) tanto do filtro quanto da tabela
+          const visibleTalhoes = (talhoesData || []).filter(t => !t.talhao_default);
+          setTalhoes(visibleTalhoes);
 
-          // Mapear talhões para estrutura de custos (placeholders)
-          const mapped = (talhoesData || []).map((t: Talhao) => ({
-            talhao: t.nome || 'Sem nome',
-            area: t.area ?? 0,
-            insumos: 0,
-            operacional: 0,
-            servicosLogistica: 0,
-            administrativos: 0,
-            outros: 0,
-            total: 0,
-            custoHa: 0
-          }));
+          // carregar insumos do dia (data_agendamento_pagamento = hoje)
+          try {
+            const hoje = new Date();
+            const yyyy = hoje.getFullYear();
+            const mm = String(hoje.getMonth() + 1).padStart(2, '0');
+            const dd = String(hoje.getDate()).padStart(2, '0');
+            const hojeStr = `${yyyy}-${mm}-${dd}`;
 
-          setCustosPorTalhao(mapped.length ? mapped : custosTalhaoMock);
+            const custos = await CustoPorTalhaoService.getInsumosPorTalhao(currentUser.user_id, hojeStr);
+            if (!mounted) return;
+            setCustosMap(custos || {});
+          } catch (err) {
+            console.error('Erro ao carregar insumos por talhão:', err);
+          }
+          // Neste passo apenas carregamos nomes; custos virão depois
         } catch (err) {
           console.error('Erro ao carregar talhões:', err);
-          // fallback para dados mock
-          setCustosPorTalhao(custosTalhaoMock);
+          // fallback para lista vazia
+          setTalhoes([]);
         } finally {
           if (mounted) setLoading(false);
         }
@@ -215,11 +118,7 @@ import type { Talhao } from '../../lib/supabase';
       return () => { mounted = false; };
     }, []);
 
-    const handleClickTalhao = (talhao: CustoTalhao) => {
-      setTalhaoSelecionado(talhao);
-      setDetalhesCusto(detalhesCustoMock);
-      setPainelLateralAberto(true);
-    };
+    // Por enquanto não abrimos painel de detalhes (sem dados de custo)
 
     const formatCurrency = (value: number) => {
       return new Intl.NumberFormat('pt-BR', {
@@ -228,10 +127,7 @@ import type { Talhao } from '../../lib/supabase';
       }).format(value);
     };
 
-    useEffect(() => {
-      // Carregar dados iniciais
-      handleFiltrar();
-    }, []);
+    // NOTE: removido carregamento por mock
 
     return (
       <div className="space-y-6">
@@ -249,7 +145,7 @@ import type { Talhao } from '../../lib/supabase';
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-bold text-[#004417]">Filtrar por Talhão</h3>
             <div className="text-[13px] text-[rgba(0,68,23,0.75)] font-medium">
-              {custosPorTalhao.length} {custosPorTalhao.length === 1 ? 'talhão encontrado' : 'talhões encontrados'}
+              {talhoes.length} {talhoes.length === 1 ? 'talhão encontrado' : 'talhões encontrados'}
             </div>
           </div>
 
@@ -295,20 +191,37 @@ import type { Talhao } from '../../lib/supabase';
                 </tr>
               </thead>
               <tbody>
-                {custosPorTalhao.map((talhao, index) => (
+                {talhoes.map((t, index) => (
                   <tr
-                    key={index}
-                    onClick={() => handleClickTalhao(talhao)}
-                    className="bg-white border-b border-[rgba(0,0,0,0.06)] hover:shadow-[0_2px_6px_rgba(0,0,0,0.06)] cursor-pointer transition-all"
+                    key={t.id_talhao || index}
+                    className="bg-white border-b border-[rgba(0,0,0,0.06)] transition-all"
                   >
-                    <td className="px-6 py-5 text-sm text-[#004417] font-medium align-top">{talhao.talhao}</td>
-                    <td className="px-6 py-5 text-sm text-right text-[#1d3a2d] font-semibold align-top">{formatCurrency(talhao.insumos)}</td>
-                    <td className="px-6 py-5 text-sm text-right text-[#1d3a2d] font-semibold align-top">{formatCurrency(talhao.operacional)}</td>
-                    <td className="px-6 py-5 text-sm text-right text-[#1d3a2d] font-semibold align-top">{formatCurrency(talhao.servicosLogistica)}</td>
-                    <td className="px-6 py-5 text-sm text-right text-[#1d3a2d] font-semibold align-top">{formatCurrency(talhao.administrativos)}</td>
-                    <td className="px-6 py-5 text-sm text-right text-[#1d3a2d] font-semibold align-top">{formatCurrency(talhao.outros)}</td>
-                    <td className="px-6 py-5 text-sm font-bold text-[#004417] text-right align-top">{formatCurrency(talhao.total)}</td>
-                    <td className="px-6 py-5 text-sm font-semibold text-[#00A651] text-right align-top">{formatCurrency(talhao.custoHa)}/ha</td>
+                    <td className="px-6 py-5 text-sm text-[#004417] font-medium align-top">{t.nome}</td>
+                    {/* Valores por macrogrupo */}
+                    {macrogrupos.map(gr => {
+                      const value = (custosMap[t.id_talhao] && (custosMap[t.id_talhao] as any)[gr.key]) || 0;
+                      return (
+                        <td key={gr.key} className="px-6 py-5 text-sm text-right text-[#1d3a2d] font-semibold align-top">
+                          {formatCurrency(value)}
+                        </td>
+                      );
+                    })}
+                    {/* Total */}
+                    <td className="px-6 py-5 text-sm font-bold text-[#004417] text-right align-top">
+                      {formatCurrency(((() => {
+                        const c = custosMap[t.id_talhao] || { insumos: 0, operacional: 0, servicosLogistica: 0, administrativos: 0, outros: 0 } as any;
+                        return (c.insumos || 0) + (c.operacional || 0) + (c.servicosLogistica || 0) + (c.administrativos || 0) + (c.outros || 0);
+                      })()))}
+                    </td>
+                    <td className="px-6 py-5 text-sm font-semibold text-[#00A651] text-right align-top">
+                      {(() => {
+                        const c = custosMap[t.id_talhao] || { insumos: 0, operacional: 0, servicosLogistica: 0, administrativos: 0, outros: 0, receita: 0 } as any;
+                        const total = (c.insumos || 0) + (c.operacional || 0) + (c.servicosLogistica || 0) + (c.administrativos || 0) + (c.outros || 0);
+                        const area = t.area || 0;
+                        const perHa = area > 0 ? total / area : 0;
+                        return formatCurrency(perHa) + '/ha';
+                      })()}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -317,91 +230,10 @@ import type { Talhao } from '../../lib/supabase';
         </div>
 
         {/* Cards Mobile - Vertical (≤1023px) */}
-        <div className="lg:hidden space-y-4">
-          {custosPorTalhao.map((talhao, index) => (
-            <div
-              key={index}
-              className="bg-white rounded-xl shadow-sm border border-[rgba(0,0,0,0.06)] p-4"
-            >
-              {/* Header do Card (clicável para expandir) */}
-              <div className="flex items-center justify-between mb-3" onClick={() => setOpenCards(prev => ({ ...prev, [talhao.talhao]: !prev[talhao.talhao] }))}>
-                <div>
-                  <h4 className="text-lg font-bold text-[#004417]">{talhao.talhao}</h4>
-                  <p className="text-sm text-[#1d3a2d]/80 mt-1">Área: {talhao.area} ha</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs text-[#1d3a2d]/80 font-medium">Total</p>
-                  <p className="text-xl font-bold text-[#004417]">{formatCurrency(talhao.total)}</p>
-                  <p className="text-sm font-semibold text-[#00A651] mt-1">{formatCurrency(talhao.custoHa)}/ha</p>
-                </div>
-              </div>
-
-              {/* Closed hint */}
-              {!openCards[talhao.talhao] && (
-                <div className="text-sm text-[#1d3a2d]/70 mb-3">▼ Clique para ver detalhes das categorias</div>
-              )}
-
-              {/* Macrogrupos (colapsável) */}
-              {openCards[talhao.talhao] && (
-                <div className="space-y-3 mb-4">
-                  <div className="flex items-center justify-between py-2 border-b" style={{ borderColor: 'rgba(0,0,0,0.06)' }}>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-[#00A651]"></div>
-                      <span className="text-sm font-medium text-[#1d3a2d]">Insumos</span>
-                    </div>
-                    <span className="text-sm font-semibold text-[#1d3a2d]">{formatCurrency(talhao.insumos)}</span>
-                  </div>
-
-                  <div className="flex items-center justify-between py-2 border-b" style={{ borderColor: 'rgba(0,0,0,0.06)' }}>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-[#CADB2A]"></div>
-                      <span className="text-sm font-medium text-[#1d3a2d]">Operacional</span>
-                    </div>
-                    <span className="text-sm font-semibold text-[#1d3a2d]">{formatCurrency(talhao.operacional)}</span>
-                  </div>
-
-                  <div className="flex items-center justify-between py-2 border-b" style={{ borderColor: 'rgba(0,0,0,0.06)' }}>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-[#86b646]"></div>
-                      <span className="text-sm font-medium text-[#1d3a2d]">Serviços/Logística</span>
-                    </div>
-                    <span className="text-sm font-semibold text-[#1d3a2d]">{formatCurrency(talhao.servicosLogistica)}</span>
-                  </div>
-
-                  <div className="flex items-center justify-between py-2 border-b" style={{ borderColor: 'rgba(0,0,0,0.06)' }}>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-[#397738]"></div>
-                      <span className="text-sm font-medium text-[#1d3a2d]">Administrativos</span>
-                    </div>
-                    <span className="text-sm font-semibold text-[#1d3a2d]">{formatCurrency(talhao.administrativos)}</span>
-                  </div>
-
-                  <div className="flex items-center justify-between py-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-[#0000001a]"></div>
-                      <span className="text-sm font-medium text-[#1d3a2d]">Outros</span>
-                    </div>
-                    <span className="text-sm font-semibold text-[#1d3a2d]">{formatCurrency(talhao.outros)}</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Actions */}
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleClickTalhao(talhao)}
-                  className="flex-1 px-4 py-2.5 bg-[#00A651] text-white font-semibold rounded-lg hover:bg-[#004417] transition-colors duration-200 flex items-center justify-center gap-2"
-                >
-                  Ver detalhes
-                  <ChevronRight className="w-4 h-4 text-white" />
-                </button>
-                <button
-                  onClick={() => setOpenCards(prev => ({ ...prev, [talhao.talhao]: !prev[talhao.talhao] }))}
-                  className="px-3 py-2.5 border border-[rgba(0,0,0,0.06)] rounded-lg text-[#004417] font-medium"
-                >
-                  {openCards[talhao.talhao] ? 'Recolher' : 'Expandir'}
-                </button>
-              </div>
+        <div className="lg:hidden space-y-2">
+          {talhoes.map((t, index) => (
+            <div key={t.id_talhao || index} className="bg-white rounded-xl shadow-sm border border-[rgba(0,0,0,0.06)] p-3">
+              <div className="text-base font-medium text-[#004417]">{t.nome}</div>
             </div>
           ))}
         </div>
@@ -532,30 +364,15 @@ import type { Talhao } from '../../lib/supabase';
                     </tr>
                   </thead>
                   <tbody>
-                    {pendenciasMock.map((pendencia, index) => (
-                      <tr
-                        key={index}
-                        style={{ backgroundColor: index % 2 === 0 ? 'rgba(0,166,81,0.04)' : 'white', borderBottom: '1px solid rgba(0,0,0,0.06)' }}
-                      >
-                        <td className="p-3 text-sm text-[#1d3a2d]">{pendencia.tipo}</td>
-                        <td className="p-3 text-sm text-[#1d3a2d]">{pendencia.referencia}</td>
-                        <td className="p-3 text-sm text-[#1d3a2d]">{pendencia.descricao}</td>
-                        <td className="p-3 text-sm">
-                          <span className="inline-flex items-center text-xs px-2 py-1 rounded-full bg-[#F7941F]/20 text-[#F7941F]">
-                            {pendencia.status}
-                          </span>
-                        </td>
-                        <td className="p-3 text-center">
-                          <button
-                            onClick={() => window.location.href = '/painel/estoque'}
-                            className="inline-flex items-center gap-1 text-sm text-[#00A651] hover:text-[#004417] font-medium"
-                          >
-                            🔍 Ver no Estoque
-                            <ExternalLink className="w-3.5 h-3.5 text-[#00A651]" />
-                          </button>
-                        </td>
+                    {totalPendencias === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="p-6 text-center text-sm text-[#1d3a2d]">Sem pendências</td>
                       </tr>
-                    ))}
+                    ) : (
+                      <tr>
+                        <td colSpan={5} className="p-6 text-center text-sm text-[#1d3a2d]">Há pendências — implementar listagem</td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
