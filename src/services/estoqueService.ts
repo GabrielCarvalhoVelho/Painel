@@ -471,7 +471,7 @@ export class EstoqueService {
     valorUnitarioMomento?: number | null,
     unidadeValorMomento?: string | null,
     unidadeMomento?: string | null
-  ): Promise<void> {
+  ): Promise<any> {
     const userId = await this.getCurrentUserId();
 
     // Calcular valor total da movimentação se houver valor unitário
@@ -507,7 +507,7 @@ export class EstoqueService {
       });
     }
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('movimentacoes_estoque')
       .insert([
         {
@@ -518,15 +518,23 @@ export class EstoqueService {
           observacao: observacao || null,
           unidade_momento: unidadeMomento || null,
           valor_unitario_momento: valorUnitarioMomento || null,
+          // alguns triggers/funções antigas referenciam o campo `valor_unitario`
+          // (nome histórico). Para compatibilidade com instalações que usam
+          // esse nome dentro de triggers, incluímos o mesmo valor em `valor_unitario`.
+          valor_unitario: valorUnitarioMomento != null ? valorUnitarioMomento : null,
           unidade_valor_momento: unidadeValorMomento || null,
           valor_total_movimentacao: valorTotalMovimentacao,
         },
-      ]);
+      ])
+      .select()
+      .single();
 
     if (error) {
       console.error('❌ Erro ao registrar movimentação:', error);
       throw error;
     }
+
+    return data;
   }
 
   /**
@@ -546,7 +554,43 @@ export class EstoqueService {
         throw error;
       }
 
-      return data;
+      // Registrar movimentação de entrada no histórico para que o ajuste apareça no histórico
+      try {
+        // Buscar informações do produto para saber a unidade de referência
+        const { data: produto, error: prodErr } = await supabase
+          .from('estoque_de_produtos')
+          .select('id, unidade_de_medida, unidade_valor_original')
+          .eq('id', p_produto_id)
+          .single();
+
+        if (prodErr) {
+          console.warn('Aviso: não foi possível buscar produto após processar entrada (movimentação não registrada):', prodErr);
+        } else if (produto) {
+          const unidadeMomento = produto.unidade_de_medida || produto.unidade_valor_original || null;
+          const unidadeValorMomento = produto.unidade_valor_original || unidadeMomento || null;
+
+          // Converter quantidade informada para unidade padrão (mg/mL) antes de registrar
+          const converted = unidadeMomento ? convertToStandardUnit(p_qtd, unidadeMomento) : { quantidade: p_qtd, unidade: unidadeMomento };
+          const quantidadePadrao = Number(converted.quantidade) || 0;
+
+          const movimentacaoCriada = await this.registrarMovimentacao(
+            p_produto_id,
+            'entrada',
+            quantidadePadrao,
+            'Ajuste de estoque (entrada) via app',
+            p_preco_unit != null ? Number(p_preco_unit) : null,
+            unidadeValorMomento,
+            unidadeMomento
+          );
+
+          // retornar também a movimentação criada para o frontend poder atualizar o histórico
+          return { rpcResult: data, movimentacao: movimentacaoCriada };
+        }
+      } catch (movErr) {
+        console.warn('Erro ao registrar movimentação de entrada após RPC processar_entrada_estoque:', movErr);
+      }
+
+      return { rpcResult: data, movimentacao: null };
     } catch (err) {
       console.error('❌ processarEntrada falhou:', err);
       throw err;

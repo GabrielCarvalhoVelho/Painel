@@ -16,9 +16,10 @@ interface Props {
   product: ProdutoAgrupado | null;
   onClose: () => void;
   onProdutosUpdate?: () => Promise<void>; // Callback para atualizar produtos após mudanças
+  newMovement?: any; // movimento criado recentemente (optimistic update)
 }
 
-export default function HistoryMovementsModal({ isOpen, product, onClose, onProdutosUpdate }: Props) {
+export default function HistoryMovementsModal({ isOpen, product, onClose, onProdutosUpdate, newMovement }: Props) {
   // items pode conter movimentacoes (MovimentacaoExpandida) e lançamentos (normalizados)
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -41,6 +42,8 @@ export default function HistoryMovementsModal({ isOpen, product, onClose, onProd
   });
   const [activityDetailModal, setActivityDetailModal] = useState({ isOpen: false, activityId: '' });
   const [debugInfos, setDebugInfos] = useState<any[]>([]);
+  // prop-driven optimistic movement
+  const [lastSeenMovementId, setLastSeenMovementId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!isOpen || !product) return;
@@ -48,6 +51,60 @@ export default function HistoryMovementsModal({ isOpen, product, onClose, onProd
     setCurrentPage(1);
     loadTotals();
   }, [isOpen, product]);
+
+  // quando uma nova movimentação for passada via prop `newMovement`, inserimos no topo do histórico
+  useEffect(() => {
+    // debug: checar props ao receber newMovement
+    // eslint-disable-next-line no-console
+    console.debug('HistoryMovementsModal: newMovement effect', { isOpen, productName: product?.nome, newMovement });
+    if (!isOpen || !product || !newMovement) return;
+
+    const movimento: any = newMovement;
+
+    // verificar se pertence a este grupo de produtos
+    const produtoId = Number(movimento.produto_id);
+    const produtoInfo = (product.produtos || []).find(p => Number(p.id) === produtoId) || null;
+    if (!produtoInfo) return; // não pertence ao grupo exibido
+
+    // evitar duplicatas
+    const exists = items.some(i => String(i.id) === String(movimento.id));
+    if (exists) return;
+
+    // mapear para o formato do item usado no modal (MovimentacaoExpandida-ish)
+    const mapped = {
+      id: movimento.id,
+      produto_id: produtoId,
+      user_id: movimento.user_id || produtoInfo.user_id || null,
+      tipo: movimento.tipo || 'entrada',
+      quantidade: movimento.quantidade || movimento.quantidade_padrao || 0,
+      observacao: movimento.observacao || movimento.note || 'Ajuste de estoque',
+      created_at: movimento.created_at || new Date().toISOString(),
+      nome_produto: produtoInfo.nome_produto || product.nome,
+      marca: produtoInfo.marca || null,
+      categoria: produtoInfo.categoria || null,
+      unidade: movimento.unidade_momento || produtoInfo.unidade || produtoInfo.unidade_de_medida || 'un',
+      valor: produtoInfo.valor ?? null,
+      lote: produtoInfo.lote || null,
+      validade: produtoInfo.validade || null,
+      fornecedor: produtoInfo.fornecedor || null,
+      registro_mapa: produtoInfo.registro_mapa || null,
+      produto_created_at: produtoInfo.created_at || null,
+      // campos históricos salvos no momento da transação (imutáveis)
+      valor_unitario_momento: movimento.valor_unitario_momento || movimento.valor_unitario || null,
+      unidade_valor_momento: movimento.unidade_valor_momento || movimento.unidade_valor || produtoInfo.unidade_valor_original || null,
+      valor_total_movimentacao: movimento.valor_total_movimentacao ?? null,
+      _source: 'entrada_manual'
+    };
+
+    // debug: mostrar movimentação mapeada que será inserida
+    // eslint-disable-next-line no-console
+    console.debug('HistoryMovementsModal: mapped newMovement to item', mapped);
+
+    setItems(prev => [mapped, ...prev]);
+    // atualizar totais (simples incremento)
+    if (mapped.tipo === 'entrada') setTotalEntradas(prev => prev + (Number(mapped.quantidade) || 0));
+    else setTotalSaidas(prev => prev + (Number(mapped.quantidade) || 0));
+  }, [newMovement, isOpen, product]);
 
   useEffect(() => {
     if (!isOpen || !product) return;

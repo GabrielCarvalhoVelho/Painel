@@ -13,7 +13,7 @@ interface Props {
   suggestedPrice?: number | null;
   activityLabel?: string | null;
   activityDate?: string | null;
-  onSaved?: () => Promise<void> | void;
+  onSaved?: (movimentacao?: any) => Promise<void> | void;
 }
 
 export default function EstoqueAdjustmentModal({ isOpen, onClose, productGroup, deficitQty, deficitUnit, suggestedPrice = 0, activityLabel, activityDate, onSaved }: Props) {
@@ -56,9 +56,12 @@ export default function EstoqueAdjustmentModal({ isOpen, onClose, productGroup, 
 
     try {
       setSubmitting(true);
-      await EstoqueService.processarEntrada(loteId, qtd, preco);
-      // sucesso
-      if (onSaved) await onSaved();
+        const result = await EstoqueService.processarEntrada(loteId, qtd, preco);
+        // debug
+        // eslint-disable-next-line no-console
+        console.debug('EstoqueAdjustmentModal: processarEntrada result', result);
+        // sucesso - se o service retornou a movimentação criada, passamos ao callback
+        if (onSaved) await onSaved(result?.movimentacao ?? null);
       onClose();
     } catch (err: any) {
       console.error('Erro ao processar entrada corretiva:', err);

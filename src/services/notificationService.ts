@@ -54,22 +54,46 @@ export default { getNotificationsForUser };
 
 export async function markNotificationRead(notificationId: number | string) {
   try {
-    // tenta marcar tanto a coluna `read` quanto a coluna `lida` (algumas instalações usam nomes diferentes)
-    const { data, error } = await supabase
-      .from('notificacoes_produtor')
-      .update({ read: true, lida: true })
-      .eq('id', notificationId);
+    // Primeiro, tentar marcar a coluna `lida` que é a usada em muitas instalações.
+    // Se a tabela tiver outra convenção (`read`), tentamos em fallback.
+    try {
+      const { data, error, status } = await supabase
+        .from('notificacoes_produtor')
+        .update({ lida: true })
+        .eq('id', notificationId)
+        .select()
+        .single();
 
-    if (error) {
-      console.error('Erro ao marcar notificação como lida:', error);
-      throw error;
+      if (error) {
+        // Se PostgREST reclamar de coluna desconhecida (cache/schema mismatch), vamos tratar abaixo
+        throw { error, status };
+      }
+
+      console.debug('markNotificationRead (lida) result for', notificationId, { status, data });
+      return data;
+    } catch (firstErr: any) {
+      // tenta fallback para coluna `read` (caso o schema use esse nome)
+      try {
+        const { data, error, status } = await supabase
+          .from('notificacoes_produtor')
+          .update({ read: true })
+          .eq('id', notificationId)
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Erro ao marcar notificação como lida (fallback read):', { error, status, notificationId });
+          throw error;
+        }
+
+        console.debug('markNotificationRead (read) result for', notificationId, { status, data });
+        return data;
+      } catch (secondErr) {
+        // registrar detalhes para diagnóstico (inclui status HTTP quando disponível)
+        console.error('Erro ao marcar notificação como lida (tentativas lida/read falharam):', { firstErr, secondErr, notificationId });
+        throw secondErr;
+      }
     }
-
-    // debug: mostrar resultado para ajudar diagnóstico em ambiente dev
-    // eslint-disable-next-line no-console
-    console.debug('markNotificationRead result for', notificationId, { data });
-
-    return data;
   } catch (err) {
     console.error('markNotificationRead error', err);
     throw err;

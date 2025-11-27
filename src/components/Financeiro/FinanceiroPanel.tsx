@@ -263,7 +263,14 @@ const FinanceiroPanel: React.FC = () => {
           {/* Informação de lançamento para transações futuras */}
           {transaction.data_registro && (
             <div className="text-xs text-[#004417]/65 flex-shrink-0">
-              Lançado em {new Date(transaction.data_registro).toLocaleDateString('pt-BR')}
+              Lançado em {new Date(transaction.data_registro).toLocaleString('pt-BR', {
+                timeZone: 'America/Sao_Paulo',
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })}
             </div>
           )}
           {/* Espaçador quando não há informação de lançamento */}
