@@ -166,19 +166,10 @@ import { CustoPorTalhaoService, CustoTalhao, FiltrosCustoPorTalhao } from '../..
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-[#004417] flex items-center gap-3">
-              <BarChart3 className="w-8 h-8" />
               Custo por Talhão
             </h1>
-            <p className="text-[#1d3a2d] mt-1">Resumo dos custos por área - Safra {filtros.safra}</p>
+            <p className="text-[#1d3a2d] mt-1">Resumo dos custos por área</p>
           </div>
-          <button
-            onClick={() => userId && carregarCustos(userId, filtros)}
-            disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 bg-[#00A651] text-white rounded-lg hover:bg-[#008c44] transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            Atualizar
-          </button>
         </div>
 
         {/* Filtro por Talhões */}
