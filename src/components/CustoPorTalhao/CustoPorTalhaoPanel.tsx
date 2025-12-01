@@ -181,28 +181,6 @@ import { CustoPorTalhaoService, CustoTalhao, FiltrosCustoPorTalhao } from '../..
           </button>
         </div>
 
-        {/* Filtro de Safra */}
-        <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(0,68,23,0.06)] p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-bold text-[#004417]">Safra</h3>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            {safrasDisponiveis.map((safra) => (
-              <button
-                key={safra}
-                onClick={() => handleSafraChange(safra)}
-                className={`px-4 py-2 rounded-[10px] text-sm font-semibold transition-all duration-200 ${
-                  filtros.safra === safra
-                    ? 'bg-[rgba(0,166,81,0.10)] border border-[#00A651] text-[#004417] font-semibold'
-                    : 'bg-white border border-[rgba(0,68,23,0.10)] text-[#004417] hover:bg-[rgba(0,68,23,0.03)] hover:border-[rgba(0,68,23,0.12)]'
-                }`}
-              >
-                {safra}
-              </button>
-            ))}
-          </div>
-        </div>
-
         {/* Filtro por Talhões */}
         <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(0,68,23,0.06)] p-5">
           <div className="flex items-center justify-between mb-4">
