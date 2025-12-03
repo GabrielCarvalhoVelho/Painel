@@ -595,7 +595,7 @@ function MovementCard({ movement: m, onOpenAttachment, onOpenActivityAttachment,
 
       {/* Action Buttons */}
       {isEntrada && (
-        <div className="md:absolute md:bottom-16 md:right-4 mt-3 md:mt-0 flex justify-end">
+        <div className="mt-3 flex justify-end">
           <button
             onClick={() => onOpenAttachment(m.produto_id.toString(), m.nome_produto || 'Produto')}
             className="text-[#004417] hover:text-[#00A651] transition-colors p-1.5 rounded-lg hover:bg-[rgba(0,166,81,0.08)]"
