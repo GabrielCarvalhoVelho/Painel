@@ -611,21 +611,82 @@ function LancamentoDetails({ nomeAtividade, quantidade, unidade, custoCalculado 
   unidade: string;
   custoCalculado?: number | null;
 }) {
-  const qtyScaled = autoScaleQuantity(quantidade, unidade);
+  // Log de debug para identificar o problema
+  console.log('LancamentoDetails - Props recebidas:', {
+    nomeAtividade,
+    quantidade,
+    unidade,
+    custoCalculado,
+    tipoQuantidade: typeof quantidade,
+    tipoUnidade: typeof unidade,
+    tipoCusto: typeof custoCalculado
+  });
 
-  // Verifica se o custo é válido (deve ser number válido, não null, não undefined e não NaN)
-  const custoValido = typeof custoCalculado === 'number' && !isNaN(custoCalculado) && isFinite(custoCalculado) && custoCalculado > 0;
+  // Validar quantidade de entrada - se for NaN, null ou inválida, usar 0
+  let quantidadeSegura = 0;
+  if (typeof quantidade === 'number' && !isNaN(quantidade) && isFinite(quantidade)) {
+    quantidadeSegura = quantidade;
+  }
 
-  // Validar qtyScaled para prevenir NaN na renderização
-  const quantidadeDisplay = isNaN(qtyScaled.quantidade) ? 0 : qtyScaled.quantidade;
-  const unidadeDisplay = qtyScaled.unidade || 'un';
+  // Validar unidade - se vazia ou inválida, usar 'un'
+  const unidadeSegura = (unidade && typeof unidade === 'string' && unidade.trim() !== '') ? unidade : 'un';
+
+  // Tentar escalar a quantidade apenas se for válida
+  let quantidadeFormatada = quantidadeSegura.toFixed(2);
+  let unidadeFormatada = unidadeSegura;
+
+  if (quantidadeSegura > 0) {
+    try {
+      const qtyScaled = autoScaleQuantity(quantidadeSegura, unidadeSegura);
+
+      // Validar o resultado do autoScaleQuantity
+      if (qtyScaled &&
+          typeof qtyScaled.quantidade === 'number' &&
+          !isNaN(qtyScaled.quantidade) &&
+          isFinite(qtyScaled.quantidade) &&
+          qtyScaled.unidade) {
+        quantidadeFormatada = qtyScaled.quantidade.toFixed(2);
+        unidadeFormatada = qtyScaled.unidade;
+      }
+    } catch (error) {
+      // Se falhar, usa os valores seguros originais
+      console.error('Erro ao escalar quantidade:', error);
+    }
+  }
+
+  // Validar custo - deve ser número positivo válido
+  const temCustoValido = (
+    custoCalculado != null &&
+    typeof custoCalculado === 'number' &&
+    !isNaN(custoCalculado) &&
+    isFinite(custoCalculado) &&
+    custoCalculado > 0
+  );
+
+  // Sanitizar strings para garantir que não há NaN literal
+  const atividadeTexto = String(nomeAtividade || '—').replace(/NaN/g, '—');
+  const quantidadeTexto = String(quantidadeFormatada).replace(/NaN/g, '0.00');
+  const unidadeTexto = String(unidadeFormatada).replace(/NaN/g, 'un');
+
+  console.log('LancamentoDetails - Valores finais:', {
+    atividadeTexto,
+    quantidadeTexto,
+    unidadeTexto,
+    temCustoValido
+  });
 
   return (
     <div className="mt-3 rounded-lg border border-[rgba(0,68,23,0.08)] bg-[rgba(202,219,42,0.08)] p-3 text-[13px] text-[rgba(0,68,23,0.85)] space-y-2">
-      <div><strong className="font-semibold text-[#004417]">Atividade:</strong> {nomeAtividade || '—'}</div>
-      <div><strong className="font-semibold text-[#004417]">Quantidade usada:</strong> {quantidadeDisplay} {unidadeDisplay}</div>
-      {custoValido && (
-        <div><strong className="font-semibold text-[#004417]">Custo do produto usado:</strong> {formatSmartCurrency(custoCalculado)}</div>
+      <div>
+        <strong className="font-semibold text-[#004417]">Atividade:</strong> {atividadeTexto}
+      </div>
+      <div>
+        <strong className="font-semibold text-[#004417]">Quantidade usada:</strong> {quantidadeTexto} {unidadeTexto}
+      </div>
+      {temCustoValido && (
+        <div>
+          <strong className="font-semibold text-[#004417]">Custo do produto usado:</strong> {formatSmartCurrency(custoCalculado!)}
+        </div>
       )}
     </div>
   );
