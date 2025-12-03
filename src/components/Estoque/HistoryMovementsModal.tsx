@@ -590,19 +590,21 @@ function LancamentoDetails({ nomeAtividade, quantidade, unidade, custoCalculado 
   custoCalculado?: number | null;
 }) {
   const qtyScaled = autoScaleQuantity(quantidade, unidade);
-  
-  // Verifica se o custo é válido (não null, não undefined e não NaN)
-  const custoValido = custoCalculado != null && !isNaN(custoCalculado) && isFinite(custoCalculado);
-  
+
+  // Verifica se o custo é válido (deve ser number válido, não null, não undefined e não NaN)
+  const custoValido = typeof custoCalculado === 'number' && !isNaN(custoCalculado) && isFinite(custoCalculado) && custoCalculado > 0;
+
   // Validar qtyScaled para prevenir NaN na renderização
   const quantidadeDisplay = isNaN(qtyScaled.quantidade) ? 0 : qtyScaled.quantidade;
   const unidadeDisplay = qtyScaled.unidade || 'un';
-  
+
   return (
     <div className="mt-3 rounded-lg border border-[rgba(0,68,23,0.08)] bg-[rgba(202,219,42,0.08)] p-3 text-[13px] text-[rgba(0,68,23,0.85)] space-y-2">
       <div><strong className="font-semibold text-[#004417]">Atividade:</strong> {nomeAtividade || '—'}</div>
       <div><strong className="font-semibold text-[#004417]">Quantidade usada:</strong> {quantidadeDisplay} {unidadeDisplay}</div>
-      <div><strong className="font-semibold text-[#004417]">Custo do produto usado:</strong> {custoValido ? formatSmartCurrency(custoCalculado) : '—'}</div>
+      {custoValido && (
+        <div><strong className="font-semibold text-[#004417]">Custo do produto usado:</strong> {formatSmartCurrency(custoCalculado)}</div>
+      )}
     </div>
   );
 }
