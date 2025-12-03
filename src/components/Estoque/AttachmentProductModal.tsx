@@ -8,7 +8,8 @@ import {
   FileText,
   AlertCircle,
   CheckCircle,
-  File
+  File,
+  Image as ImageIcon
 } from 'lucide-react';
 import { AttachmentProductService, AttachmentFile } from '../../services/attachmentProductService';
 
@@ -205,6 +206,9 @@ export default function AttachmentProductModal({
     return 'text-gray-600';
   };
 
+  const imageAttachment = attachments.find(a => a.type === 'image');
+  const pdfAttachment = attachments.find(a => a.type === 'pdf');
+
   if (!isOpen) return null;
 
   return (
@@ -236,16 +240,16 @@ export default function AttachmentProductModal({
           </div>
         </div>
       )}
-      <div className="bg-white rounded-2xl shadow-[0_4px_12px_rgba(0,68,23,0.1)] max-w-md w-full p-6">
+      <div className="bg-white rounded-[16px] shadow-[0_4px_12px_rgba(0,68,23,0.1)] max-w-md w-full p-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-start justify-between mb-6">
           <div>
-            <h3 className="text-[18px] font-bold text-[#004417] mb-2">Gerenciar Anexos</h3>
+            <h3 className="text-[18px] font-bold text-[#004417] mb-1">Gerenciar Anexos</h3>
             <p className="text-[14px] text-[rgba(0,68,23,0.7)] truncate max-w-64">{productName}</p>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-[rgba(0,68,23,0.5)] hover:text-[#00A651] rounded-lg transition-colors"
+            className="p-1.5 text-[rgba(0,68,23,0.55)] hover:text-[#00A651] rounded-lg transition-colors"
             disabled={loading}
             aria-label="Fechar"
           >
@@ -255,75 +259,66 @@ export default function AttachmentProductModal({
 
         {/* Mensagem de feedback */}
         {message && (
-          <div className={`mb-4 p-3 rounded-xl flex items-center space-x-2 ${
-            message.type === 'success' 
-              ? 'bg-[rgba(0,166,81,0.1)] border border-[rgba(0,166,81,0.2)]' 
-              : 'bg-[rgba(247,148,31,0.1)] border border-[rgba(247,148,31,0.2)]'
+          <div className={`mb-5 rounded-xl border px-4 py-3 flex items-center gap-2 text-[13px] font-medium ${
+            message.type === 'success'
+              ? 'bg-[rgba(0,166,81,0.08)] border-[rgba(0,166,81,0.2)] text-[#004417]'
+              : 'bg-[rgba(247,148,31,0.08)] border-[rgba(247,148,31,0.25)] text-[#004417]'
           }`}>
             {message.type === 'success' ? (
               <CheckCircle className="w-5 h-5 text-[#00A651]" />
             ) : (
               <AlertCircle className="w-5 h-5 text-[#F7941F]" />
             )}
-            <span className={`text-[13px] font-medium ${
-              message.type === 'success' ? 'text-[#004417]' : 'text-[#004417]'
-            }`}>
-              {message.text}
-            </span>
+            <span>{message.text}</span>
           </div>
         )}
 
         {/* Área de anexos */}
-        <div className="mb-6 space-y-4">
-          {/* Botões de anexar sempre disponíveis para o tipo que não existe */}
-          <div className="flex flex-col gap-3">
-            {!attachments.find(a => a.type === 'image') && (
-              <button
-                className="flex items-center justify-center gap-2 bg-[#00A651] text-white py-3 rounded-xl hover:bg-[#004417] transition-all duration-200 font-semibold h-12"
-                onClick={() => handleImageSelect(false)}
-                disabled={loading}
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg> Anexar Imagem
-              </button>
-            )}
-            {!attachments.find(a => a.type === 'pdf') && (
-              <button
-                className="flex items-center justify-center gap-2 bg-[#004417] text-white py-3 rounded-xl hover:bg-[#006F2E] transition-all duration-200 font-semibold h-12"
-                onClick={() => handlePdfSelect(false)}
-                disabled={loading}
-              >
-                <FileText className="w-5 h-5" /> Anexar Arquivo
-              </button>
-            )}
+        <div className="mb-6 space-y-5">
+          <div className="space-y-3">
+            <button
+              className="flex items-center justify-center gap-3 h-12 rounded-xl bg-[#00A651] text-white text-[15px] font-semibold shadow-[0_2px_6px_rgba(0,68,23,0.12)] hover:bg-[#004417] transition-colors disabled:opacity-60"
+              onClick={() => handleImageSelect(Boolean(imageAttachment))}
+              disabled={loading}
+            >
+              <ImageIcon className="w-5 h-5" /> Anexar Imagem
+            </button>
+            <button
+              className="flex items-center justify-center gap-3 h-12 rounded-xl bg-[#004417] text-white text-[15px] font-semibold shadow-[0_2px_6px_rgba(0,68,23,0.12)] hover:bg-[#006F2E] transition-colors disabled:opacity-60"
+              onClick={() => handlePdfSelect(Boolean(pdfAttachment))}
+              disabled={loading}
+            >
+              <FileText className="w-5 h-5" /> Anexar Arquivo
+            </button>
           </div>
 
-          {/* Se houver imagem */}
-          {attachments.find(a => a.type === 'image') && (
-            <div className="flex flex-col items-center gap-3 bg-[rgba(0,68,23,0.02)] p-4 rounded-xl border border-[rgba(0,68,23,0.08)]">
-              <img
-                src={attachments.find(a => a.type === 'image')?.url}
-                alt="Imagem anexada"
-                className="max-h-32 mb-2 rounded-lg border border-[rgba(0,68,23,0.1)]"
-              />
-              <div className="flex gap-2 mb-2">
+          {imageAttachment && (
+            <div className="rounded-xl border border-[rgba(0,68,23,0.08)] bg-[rgba(0,68,23,0.02)] p-4 space-y-4">
+              <div className="flex flex-col items-center gap-3">
+                <img
+                  src={imageAttachment.url}
+                  alt="Imagem anexada"
+                  className="max-h-40 rounded-lg border border-[rgba(0,68,23,0.1)] object-contain"
+                />
+                <span className="text-[13px] text-[rgba(0,68,23,0.75)]">Pré-visualização do arquivo enviado</span>
+              </div>
+              <div className="flex flex-wrap gap-3">
                 <button
-                  className="bg-[rgba(0,68,23,0.05)] text-[#004417] px-3 py-1.5 rounded-lg hover:bg-[rgba(0,68,23,0.08)] flex items-center gap-1.5 transition-all font-medium text-[13px]"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg border border-[rgba(0,68,23,0.12)] bg-white text-[#004417] text-[13px] font-semibold hover:bg-[rgba(0,68,23,0.05)] transition-colors"
                   onClick={() => handleDownload('image')}
                   disabled={loading}
                 >
                   <Download className="w-4 h-4" /> Download
                 </button>
-              </div>
-              <div className="flex gap-2">
                 <button
-                  className="bg-[rgba(0,166,81,0.1)] text-[#00A651] px-3 py-1.5 rounded-lg hover:bg-[rgba(0,166,81,0.15)] flex items-center gap-1.5 transition-all font-medium text-[13px]"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[rgba(0,166,81,0.12)] text-[#00A651] text-[13px] font-semibold hover:bg-[rgba(0,166,81,0.18)] transition-colors"
                   onClick={() => handleImageSelect(true)}
                   disabled={loading}
                 >
                   <Upload className="w-4 h-4" /> Substituir Imagem
                 </button>
                 <button
-                  className="bg-[rgba(247,148,31,0.1)] text-[#F7941F] px-3 py-1.5 rounded-lg hover:bg-[rgba(247,148,31,0.15)] flex items-center gap-1.5 transition-all font-medium text-[13px]"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[rgba(247,148,31,0.12)] text-[#F7941F] text-[13px] font-semibold hover:bg-[rgba(247,148,31,0.18)] transition-colors"
                   onClick={handleDeleteImage}
                   disabled={loading}
                 >
@@ -333,45 +328,43 @@ export default function AttachmentProductModal({
             </div>
           )}
 
-          {/* Se houver PDF */}
-          {attachments.find(a => a.type === 'pdf') && (
-            <div className="flex flex-col items-center gap-3 bg-[rgba(0,68,23,0.02)] p-4 rounded-xl border border-[rgba(0,68,23,0.08)]">
-              {(() => {
-                const attachment = attachments.find(a => a.type === 'pdf');
-                if (!attachment) return null;
-
-                const FileIcon = getFileIcon(attachment.type);
-                const iconColor = getFileIconColor(attachment.type);
-                const fileLabel = getFileTypeLabel(attachment.type);
-
-                return (
-                  <div className="flex flex-col items-center gap-2 mb-2">
-                    <div className={iconColor}>
-                      <FileIcon className="w-8 h-8" />
-                    </div>
-                    <span className="font-semibold text-[#004417] text-[14px]">{fileLabel}</span>
-                  </div>
-                );
-              })()}
-              <div className="flex gap-2 mb-2">
+          {pdfAttachment && (
+            <div className="rounded-xl border border-[rgba(0,68,23,0.08)] bg-[rgba(0,68,23,0.02)] p-4 space-y-4">
+              <div className="flex items-center gap-3">
+                {(() => {
+                  const FileIcon = getFileIcon(pdfAttachment.type);
+                  const iconColor = getFileIconColor(pdfAttachment.type);
+                  const fileLabel = getFileTypeLabel(pdfAttachment.type);
+                  return (
+                    <>
+                      <div className={`${iconColor} flex items-center justify-center w-12 h-12 rounded-full bg-white border border-[rgba(0,68,23,0.08)]`}>
+                        <FileIcon className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <p className="text-[13px] text-[rgba(0,68,23,0.7)]">Arquivo disponível</p>
+                        <strong className="text-[#004417] text-[15px]">{fileLabel}</strong>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+              <div className="flex flex-wrap gap-3">
                 <button
-                  className="bg-[rgba(0,68,23,0.05)] text-[#004417] px-3 py-1.5 rounded-lg hover:bg-[rgba(0,68,23,0.08)] flex items-center gap-1.5 transition-all font-medium text-[13px]"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg border border-[rgba(0,68,23,0.12)] bg-white text-[#004417] text-[13px] font-semibold hover:bg-[rgba(0,68,23,0.05)] transition-colors"
                   onClick={() => handleDownload('pdf')}
                   disabled={loading}
                 >
                   <Download className="w-4 h-4" /> Download
                 </button>
-              </div>
-              <div className="flex gap-2">
                 <button
-                  className="bg-[rgba(0,166,81,0.1)] text-[#00A651] px-3 py-1.5 rounded-lg hover:bg-[rgba(0,166,81,0.15)] flex items-center gap-1.5 transition-all font-medium text-[13px]"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[rgba(0,166,81,0.12)] text-[#00A651] text-[13px] font-semibold hover:bg-[rgba(0,166,81,0.18)] transition-colors"
                   onClick={() => handlePdfSelect(true)}
                   disabled={loading}
                 >
                   <Upload className="w-4 h-4" /> Substituir Arquivo
                 </button>
                 <button
-                  className="bg-[rgba(247,148,31,0.1)] text-[#F7941F] px-3 py-1.5 rounded-lg hover:bg-[rgba(247,148,31,0.15)] flex items-center gap-1.5 transition-all font-medium text-[13px]"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[rgba(247,148,31,0.12)] text-[#F7941F] text-[13px] font-semibold hover:bg-[rgba(247,148,31,0.18)] transition-colors"
                   onClick={handleDeletePdf}
                   disabled={loading}
                 >

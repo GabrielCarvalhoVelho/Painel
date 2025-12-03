@@ -123,6 +123,15 @@ export function formatQuantityWithUnit(quantidade: number, unidade: string): str
 }
 
 export function autoScaleQuantity(quantidade: number, unidade: string): { quantidade: number; unidade: string } {
+  // Validar entrada para evitar NaN
+  if (typeof quantidade !== 'number' || isNaN(quantidade) || !isFinite(quantidade)) {
+    return { quantidade: 0, unidade: unidade || 'un' };
+  }
+  
+  if (!unidade) {
+    return { quantidade, unidade: 'un' };
+  }
+
   const standardized = convertToStandardUnit(quantidade, unidade);
 
   if (standardized.unidade === 'mg' || standardized.unidade === 'mL') {

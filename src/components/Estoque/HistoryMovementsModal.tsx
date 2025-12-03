@@ -157,6 +157,9 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
           quantidadeInicialConvertida = convertFromStandardUnit(produtoInfo.quantidade_inicial, 'mL', unidadeValorOriginal);
         }
       }
+      
+      // Validar divisão por zero
+      if (quantidadeInicialConvertida <= 0) return null;
       valorUnitarioNaUnidadeOriginal = produtoInfo.valor_total / quantidadeInicialConvertida;
     } else if (produtoInfo.valor != null) {
       const unidadeProd = produtoInfo.unidade;
@@ -167,6 +170,9 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
         valorUnitarioNaUnidadeOriginal = produtoInfo.valor;
       }
     }
+
+    // Se não conseguiu calcular o valor unitário, retornar null
+    if (!valorUnitarioNaUnidadeOriginal || !isFinite(valorUnitarioNaUnidadeOriginal)) return null;
 
     let quantidadeNaUnidadeDoValor = quantidadeVal;
     if (unidadeQuant !== unidadeValorOriginal) {
@@ -179,7 +185,12 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
       }
     }
 
-    return valorUnitarioNaUnidadeOriginal * quantidadeNaUnidadeDoValor;
+    const custoFinal = valorUnitarioNaUnidadeOriginal * quantidadeNaUnidadeDoValor;
+    
+    // Validar resultado final
+    if (!isFinite(custoFinal) || isNaN(custoFinal)) return null;
+    
+    return custoFinal;
   }, []);
 
   const loadData = useCallback(async (page: number) => {
@@ -355,7 +366,7 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
   return (
     <>
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-2xl shadow-[0_4px_12px_rgba(0,68,23,0.1)] w-full max-w-[760px] max-h-[90vh] flex flex-col overflow-hidden">
+        <div className="bg-white rounded-[16px] shadow-[0_4px_12px_rgba(0,68,23,0.1)] w-full max-w-[760px] max-h-[90vh] flex flex-col overflow-hidden">
           
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-[rgba(0,68,23,0.08)]">
@@ -390,7 +401,7 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-[rgba(0,166,81,0.3)] scrollbar-track-transparent" data-modal-content>
+          <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-[rgba(0,166,81,0.25)] scrollbar-track-transparent" data-modal-content>
             {loading ? (
               <div className="text-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto" />
@@ -417,7 +428,7 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
 
           {/* Pagination */}
           {totalCount > ITEMS_PER_PAGE && (
-            <div className="p-4 border-t">
+            <div className="p-4 border-t border-[rgba(0,68,23,0.08)] bg-[rgba(0,68,23,0.01)]">
               <Pagination
                 currentPage={currentPage}
                 totalPages={Math.ceil(totalCount / ITEMS_PER_PAGE)}
@@ -468,24 +479,23 @@ interface MovementCardProps {
 function MovementCard({ movement: m, onOpenAttachment, onOpenActivityAttachment, onOpenActivityDetail }: MovementCardProps) {
   const isLancamento = m._source === 'lancamento';
   const isEntrada = m.tipo === 'entrada';
-  
   const badgeClass = isLancamento
-    ? 'bg-[rgba(147,51,234,0.1)] text-[#9333EA]'
+    ? 'bg-[rgba(202,219,42,0.18)] text-[#004417]'
     : isEntrada
       ? 'bg-[rgba(0,166,81,0.15)] text-[#00A651]'
       : 'bg-[rgba(247,148,31,0.15)] text-[#F7941F]';
-  
-  const badgeLabel = isLancamento ? 'Aplicação' : isEntrada ? '⬇️ Entrada' : '⬆️ Saída';
-  const qty = isLancamento ? (m.quantidade_val ?? 0) : m.quantidade;
-  const unit = isLancamento ? (m.quantidade_un || m.unidade) : m.unidade;
-  const qtyScaled = autoScaleQuantity(qty, unit);
 
-  const borderClass = isEntrada
-    ? 'border-l-4 border-l-[#00A651] border border-[rgba(0,166,81,0.15)]'
-    : 'border-l-4 border-l-[#F7941F] border border-[rgba(247,148,31,0.15)]';
+  const badgeLabel = isLancamento ? 'Aplicação' : isEntrada ? 'Entrada' : 'Saída';
+  const qty = isLancamento ? (m.quantidade_val ?? 0) : (m.quantidade ?? 0);
+  const unit = isLancamento ? (m.quantidade_un || m.unidade || 'un') : (m.unidade || 'un');
+  const qtyScaled = autoScaleQuantity(qty, unit);
+  
+  // Garantir que quantidade exibida não seja NaN
+  const quantidadeDisplay = isNaN(qtyScaled.quantidade) ? 0 : qtyScaled.quantidade;
+  const unidadeDisplay = qtyScaled.unidade || 'un';
 
   return (
-    <div className={`bg-white shadow-[0_2px_8px_rgba(0,68,23,0.04)] rounded-xl p-5 relative ${borderClass}`}>
+    <div className="bg-white border border-[rgba(0,68,23,0.08)] shadow-[0_2px_8px_rgba(0,68,23,0.04)] rounded-xl p-5 relative">
       <div className="flex items-start justify-between">
         <div className="flex-1">
           {/* Header */}
@@ -494,11 +504,11 @@ function MovementCard({ movement: m, onOpenAttachment, onOpenActivityAttachment,
               <span className={`inline-flex px-3 py-1.5 rounded-full text-[13px] font-semibold ${badgeClass}`}>
                 {badgeLabel}
               </span>
-              <span className={`font-bold text-[18px] whitespace-nowrap ${isEntrada ? 'text-[#00A651]' : 'text-[#F7941F]'}`}>
-                {qtyScaled.quantidade} {qtyScaled.unidade}
+              <span className="font-bold text-[18px] whitespace-nowrap text-[#004417]">
+                {quantidadeDisplay} {unidadeDisplay}
               </span>
               {m._agrupado && (
-                <span className="text-[11px] text-[rgba(0,68,23,0.5)] bg-[rgba(0,68,23,0.05)] px-2 py-1 rounded">
+                <span className="text-[11px] text-[#004417] bg-[rgba(0,68,23,0.05)] px-2 py-1 rounded">
                   {m._quantidade_lotes} lotes
                 </span>
               )}
@@ -512,7 +522,7 @@ function MovementCard({ movement: m, onOpenAttachment, onOpenActivityAttachment,
           {/* Observação */}
           {m.observacao && (
             <p className="text-[13px] text-[rgba(0,68,23,0.85)] mt-2 mb-3 italic bg-[rgba(0,68,23,0.03)] px-3 py-2 rounded-lg">
-              "{m.observacao}"
+              "{m.observacao || ""}"
             </p>
           )}
 
@@ -521,7 +531,7 @@ function MovementCard({ movement: m, onOpenAttachment, onOpenActivityAttachment,
             <LancamentoDetails
               nomeAtividade={m.nome_atividade}
               quantidade={m.quantidade_val ?? 0}
-              unidade={m.quantidade_un || m.unidade}
+              unidade={m.quantidade_un || m.unidade || 'un'}
               custoCalculado={m.custo_calculado}
             />
           )}
@@ -581,11 +591,18 @@ function LancamentoDetails({ nomeAtividade, quantidade, unidade, custoCalculado 
 }) {
   const qtyScaled = autoScaleQuantity(quantidade, unidade);
   
+  // Verifica se o custo é válido (não null, não undefined e não NaN)
+  const custoValido = custoCalculado != null && !isNaN(custoCalculado) && isFinite(custoCalculado);
+  
+  // Validar qtyScaled para prevenir NaN na renderização
+  const quantidadeDisplay = isNaN(qtyScaled.quantidade) ? 0 : qtyScaled.quantidade;
+  const unidadeDisplay = qtyScaled.unidade || 'un';
+  
   return (
-    <div className="text-[13px] text-[rgba(0,68,23,0.85)] space-y-2 mt-2">
+    <div className="mt-3 rounded-lg border border-[rgba(0,68,23,0.08)] bg-[rgba(202,219,42,0.08)] p-3 text-[13px] text-[rgba(0,68,23,0.85)] space-y-2">
       <div><strong className="font-semibold text-[#004417]">Atividade:</strong> {nomeAtividade || '—'}</div>
-      <div><strong className="font-semibold text-[#004417]">Quantidade usada:</strong> {qtyScaled.quantidade} {qtyScaled.unidade}</div>
-      <div><strong className="font-semibold text-[#004417]">Custo do produto usado:</strong> {custoCalculado != null ? formatSmartCurrency(custoCalculado) : '—'}</div>
+      <div><strong className="font-semibold text-[#004417]">Quantidade usada:</strong> {quantidadeDisplay} {unidadeDisplay}</div>
+      <div><strong className="font-semibold text-[#004417]">Custo do produto usado:</strong> {custoValido ? formatSmartCurrency(custoCalculado) : '—'}</div>
     </div>
   );
 }
@@ -595,20 +612,20 @@ function EntradaDetails({ movement: m }: { movement: MovementItem }) {
   const unidadeValorOriginal = m.unidade_valor_original || m.unidade;
 
   return (
-    <div className="bg-[rgba(0,166,81,0.03)] rounded-lg p-3 mt-3">
-      <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-[13px] text-[rgba(0,68,23,0.85)]">
-        <div><strong className="font-semibold text-[#00A651]">Marca:</strong> {m.marca || '—'}</div>
-        <div><strong className="font-semibold text-[#00A651]">Categoria:</strong> {m.categoria || '—'}</div>
-        <div><strong className="font-semibold text-[#00A651]">Fornecedor:</strong> {m.fornecedor || '—'}</div>
-        <div><strong className="font-semibold text-[#00A651]">Lote:</strong> {m.lote || '—'}</div>
-        <div><strong className="font-semibold text-[#00A651]">Validade:</strong> {formatValidity(m.validade)}</div>
-        <div><strong className="font-semibold text-[#00A651]">Registro MAPA:</strong> {m.registro_mapa || '—'}</div>
+    <div className="bg-white rounded-lg p-4 mt-3 border border-[rgba(0,68,23,0.08)]">
+      <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-[13px] text-[rgba(0,68,23,0.85)]">
+        <div><strong className="font-semibold text-[#004417]">Marca:</strong> {m.marca || '—'}</div>
+        <div><strong className="font-semibold text-[#004417]">Categoria:</strong> {m.categoria || '—'}</div>
+        <div><strong className="font-semibold text-[#004417]">Fornecedor:</strong> {m.fornecedor || '—'}</div>
+        <div><strong className="font-semibold text-[#004417]">Lote:</strong> {m.lote || '—'}</div>
+        <div><strong className="font-semibold text-[#004417]">Validade:</strong> {formatValidity(m.validade)}</div>
+        <div><strong className="font-semibold text-[#004417]">Registro MAPA:</strong> {m.registro_mapa || '—'}</div>
       </div>
       {valorUnitario != null && valorUnitario > 0 && (
-        <div className="mt-3 pt-3 border-t border-[rgba(0,166,81,0.1)]">
-          <div className="flex justify-between items-center">
-            <div className="text-[13px]">
-              <strong className="font-semibold text-[#00A651]">Valor Unitário:</strong>{' '}
+        <div className="mt-4 pt-3 border-t border-[rgba(0,68,23,0.08)]">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 text-[13px]">
+            <div>
+              <strong className="font-semibold text-[#004417]">Valor Unitário:</strong>{' '}
               <span className="text-[#004417]">{formatSmartCurrency(valorUnitario)} / {unidadeValorOriginal}</span>
             </div>
             {m.valor_total && (
@@ -629,14 +646,14 @@ function SaidaDetails({ movement: m }: { movement: MovementItem }) {
   const unidadeValorOriginal = m.unidade_valor_original || m.unidade;
 
   return (
-    <div className="bg-[rgba(247,148,31,0.03)] rounded-lg p-3 mt-3">
+    <div className="bg-white rounded-lg p-4 mt-3 border border-[rgba(0,68,23,0.08)]">
       {m._agrupado && m._entradas_referencia && m._entradas_referencia.length > 0 && (
-        <div className="mb-3 pb-3 border-b border-[rgba(247,148,31,0.1)]">
-          <strong className="font-semibold text-[#F7941F] text-[13px]">Lotes removidos (FIFO):</strong>
+        <div className="mb-3 pb-3 border-b border-[rgba(0,68,23,0.08)]">
+          <strong className="font-semibold text-[#004417] text-[13px]">Lotes removidos (FIFO):</strong>
           <div className="mt-2 space-y-1">
             {m._entradas_referencia.map((entrada, idx) => (
               <div key={idx} className="text-[12px] text-[rgba(0,68,23,0.7)] flex items-center gap-2">
-                <span className="w-2 h-2 bg-[#F7941F] rounded-full" />
+                <span className="w-2 h-2 bg-[#CADB2A] rounded-full" />
                 Lote: {entrada.lote || 'S/N'} • {formatDate(entrada.created_at)}
               </div>
             ))}
@@ -644,9 +661,9 @@ function SaidaDetails({ movement: m }: { movement: MovementItem }) {
         </div>
       )}
       {valorTotal > 0 && (
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
           <div className="text-[13px] text-[rgba(0,68,23,0.85)]">
-            <strong className="font-semibold text-[#F7941F]">Valor Unitário:</strong>{' '}
+            <strong className="font-semibold text-[#004417]">Valor Unitário:</strong>{' '}
             <span className="text-[#004417]">{formatSmartCurrency(Number(valorUnitario))} / {unidadeValorOriginal}</span>
           </div>
           <div className="text-[15px] font-bold text-[#F7941F]">
