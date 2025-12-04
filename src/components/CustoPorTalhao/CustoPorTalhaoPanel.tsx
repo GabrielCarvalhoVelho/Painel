@@ -40,8 +40,9 @@ export default function CustoPorTalhaoPanel() {
 
   const [custosTalhoes, setCustosTalhoes] = useState<CustoTalhao[]>([]);
   const [talhaoSelecionado, setTalhaoSelecionado] = useState<CustoTalhao | null>(null);
-  const [detalhesCusto] = useState<DetalheCusto[]>([]);
+  const [detalhesCusto, setDetalhesCusto] = useState<DetalheCusto[]>([]);
   const [painelLateralAberto, setPainelLateralAberto] = useState(false);
+  const [loadingDetalhes, setLoadingDetalhes] = useState(false);
   const [modalPendenciasAberto, setModalPendenciasAberto] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [talhaoExpandido, setTalhaoExpandido] = useState<string | null>(null);
@@ -147,9 +148,30 @@ export default function CustoPorTalhaoPanel() {
     ? custosTalhoes
     : custosTalhoes.filter(t => t.talhao === filtroTalhao);
 
-  const handleTalhaoSelect = (talhao: CustoTalhao) => {
+  const handleTalhaoSelect = async (talhao: CustoTalhao) => {
     setTalhaoSelecionado(talhao);
     setPainelLateralAberto(true);
+    setLoadingDetalhes(true);
+    setDetalhesCusto([]);
+
+    try {
+      if (!userId) return;
+
+      const detalhes = await CustoPorTalhaoService.getDetalhesCustoTalhao(
+        userId,
+        talhao.id,
+        {
+          safra: filtros.safra,
+          mesAno: filtros.mesAno
+        }
+      );
+
+      setDetalhesCusto(detalhes);
+    } catch (error) {
+      console.error('Erro ao carregar detalhes:', error);
+    } finally {
+      setLoadingDetalhes(false);
+    }
   };
 
   const toggleTalhaoExpandido = (talhaoId: string) => {
@@ -459,116 +481,132 @@ export default function CustoPorTalhaoPanel() {
         </div>
       )}
 
-      {/* Painel Lateral (Drill-down) */}
+      {/* Modal Central (Drill-down) */}
       {painelLateralAberto && talhaoSelecionado && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex justify-end">
-          <div className="bg-white w-full max-w-2xl h-full shadow-2xl flex flex-col rounded-none lg:rounded-l-2xl" role="dialog" aria-modal="true">
-            {/* Header do Painel */}
-            <div className="p-6 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(0,0,0,0.05)', backgroundColor: 'white' }}>
-              <div>
-                <h3 className="text-xl font-bold text-[#004417]">{talhaoSelecionado.talhao}</h3>
-                <p className="text-sm text-[#1d3a2d]">Detalhamento de custos</p>
-              </div>
-              <button
-                onClick={() => setPainelLateralAberto(false)}
-                className="p-2 rounded-lg transition-colors"
-                style={{ color: '#004417' }}
-              >
-                <X className="w-5 h-5 text-[#004417]" />
-              </button>
-            </div>
+        <div className="fixed inset-0 z-50">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setPainelLateralAberto(false)}
+          />
 
-            {/* Conteúdo do Painel */}
-            <div className="flex-1 overflow-y-auto p-6">
-              <div>
-                {/* Desktop: tabela */}
-                <div className="hidden lg:block overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="bg-[rgba(0,166,81,0.06)] rounded-t-2xl">
-                        <th className="px-6 py-4 text-left text-[14px] font-bold text-[#004417]">Data</th>
-                        <th className="px-6 py-4 text-left text-[14px] font-bold text-[#004417]">Categoria</th>
-                        <th className="px-6 py-4 text-left text-[14px] font-bold text-[#004417]">Descrição</th>
-                        <th className="px-6 py-4 text-left text-[14px] font-bold text-[#004417]">Origem</th>
-                        <th className="px-6 py-4 text-right text-[14px] font-bold text-[#004417]">Valor</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {detalhesCusto.length === 0 ? (
-                        <tr>
-                          <td colSpan={5} className="px-6 py-5 text-center text-sm text-[#1d3a2d]">
-                            Nenhum detalhamento disponível para este talhão.
-                          </td>
-                        </tr>
-                      ) : (
-                        detalhesCusto.map((detalhe, index) => (
-                          <tr key={index} className="bg-white border-b border-[rgba(0,0,0,0.06)]">
-                            <td className="px-6 py-5 text-sm text-[#1d3a2d]">{detalhe.data}</td>
-                            <td className="px-6 py-5 text-sm text-[#1d3a2d]">{detalhe.categoria}</td>
-                            <td className="px-6 py-5 text-sm text-[#1d3a2d]">{detalhe.descricao}</td>
-                            <td className="px-6 py-5 text-sm">
-                              <span className={`text-sm font-medium ${detalhe.origem === 'Financeiro' ? 'text-[#004417]' : 'text-[#00A651]'
-                                }`}>
-                                {detalhe.origem}
-                              </span>
-                            </td>
-                            <td className="px-6 py-5 text-sm font-semibold text-[#004417] text-right">{formatCurrency(detalhe.valor)}</td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
+          {/* Conteúdo centralizado */}
+          <div className="absolute inset-0 flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-3xl max-h-[85vh] shadow-2xl rounded-xl overflow-hidden flex flex-col" role="dialog" aria-modal="true">
+              {/* Header do Modal */}
+              <div className="p-6 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(0,0,0,0.05)', backgroundColor: 'white' }}>
+                <div>
+                  <h3 className="text-xl font-bold text-[#004417]">{talhaoSelecionado.talhao}</h3>
+                  <p className="text-sm text-[#1d3a2d]">Detalhamento de custos</p>
                 </div>
+                <button
+                  onClick={() => setPainelLateralAberto(false)}
+                  className="p-2 rounded-lg transition-colors"
+                  style={{ color: '#004417' }}
+                >
+                  <X className="w-5 h-5 text-[#004417]" />
+                </button>
+              </div>
 
-                {/* Mobile: cards separados */}
-                <div className="lg:hidden space-y-4">
-                  {detalhesCusto.length === 0 ? (
-                    <div className="bg-white rounded-xl shadow-sm border border-[rgba(0,0,0,0.06)] p-4 text-center text-sm text-[#1d3a2d]">
-                      Nenhum detalhamento disponível para este talhão.
+              {/* Conteúdo do Modal */}
+              <div className="flex-1 overflow-y-auto p-6">
+                {loadingDetalhes ? (
+                  <div className="flex items-center justify-center py-12">
+                    <RefreshCw className="w-8 h-8 text-[#00A651] animate-spin" />
+                    <span className="ml-3 text-[#1d3a2d]">Carregando detalhes...</span>
+                  </div>
+                ) : (
+                  <div>
+                    {/* Desktop: tabela */}
+                    <div className="hidden lg:block overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="bg-[rgba(0,166,81,0.06)] rounded-t-2xl">
+                            <th className="px-6 py-4 text-left text-[14px] font-bold text-[#004417]">Data</th>
+                            <th className="px-6 py-4 text-left text-[14px] font-bold text-[#004417]">Categoria</th>
+                            <th className="px-6 py-4 text-left text-[14px] font-bold text-[#004417]">Descrição</th>
+                            <th className="px-6 py-4 text-left text-[14px] font-bold text-[#004417]">Origem</th>
+                            <th className="px-6 py-4 text-right text-[14px] font-bold text-[#004417]">Valor</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {detalhesCusto.length === 0 ? (
+                            <tr>
+                              <td colSpan={5} className="px-6 py-5 text-center text-sm text-[#1d3a2d]">
+                                Nenhum detalhamento disponível para este talhão.
+                              </td>
+                            </tr>
+                          ) : (
+                          detalhesCusto.map((detalhe, index) => (
+                            <tr key={index} className="bg-white border-b border-[rgba(0,0,0,0.06)]">
+                              <td className="px-6 py-5 text-sm text-[#1d3a2d]">{detalhe.data}</td>
+                              <td className="px-6 py-5 text-sm text-[#1d3a2d]">{detalhe.categoria}</td>
+                              <td className="px-6 py-5 text-sm text-[#1d3a2d]">{detalhe.descricao}</td>
+                              <td className="px-6 py-5 text-sm">
+                                <span className={`text-sm font-medium ${detalhe.origem === 'Financeiro' ? 'text-[#004417]' : 'text-[#00A651]'
+                                  }`}>
+                                  {detalhe.origem}
+                                </span>
+                              </td>
+                              <td className="px-6 py-5 text-sm font-semibold text-[#004417] text-right">{formatCurrency(detalhe.valor)}</td>
+                            </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
                     </div>
-                  ) : (
-                    detalhesCusto.map((detalhe, index) => (
-                      <div key={index} className="bg-white rounded-xl shadow-sm border border-[rgba(0,0,0,0.06)] p-4">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="min-w-0">
-                            <div className="text-sm text-[#1d3a2d]">{detalhe.data}</div>
-                            <div className="text-base font-bold text-[#004417] truncate">{detalhe.categoria}</div>
-                            <div className="text-sm text-[#1d3a2d] mt-1 truncate">{detalhe.descricao}</div>
-                          </div>
-                          <div className="flex-shrink-0 text-right">
-                            <div className={`text-sm font-medium ${detalhe.origem === 'Financeiro' ? 'text-[#004417]' : 'text-[#00A651]'}`}>
-                              {detalhe.origem}
+
+                    {/* Mobile: cards separados */}
+                    <div className="lg:hidden space-y-4">
+                    {detalhesCusto.length === 0 ? (
+                      <div className="bg-white rounded-xl shadow-sm border border-[rgba(0,0,0,0.06)] p-4 text-center text-sm text-[#1d3a2d]">
+                        Nenhum detalhamento disponível para este talhão.
+                      </div>
+                    ) : (
+                      detalhesCusto.map((detalhe, index) => (
+                        <div key={index} className="bg-white rounded-xl shadow-sm border border-[rgba(0,0,0,0.06)] p-4">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="min-w-0">
+                              <div className="text-sm text-[#1d3a2d]">{detalhe.data}</div>
+                              <div className="text-base font-bold text-[#004417] truncate">{detalhe.categoria}</div>
+                              <div className="text-sm text-[#1d3a2d] mt-1 truncate">{detalhe.descricao}</div>
                             </div>
-                            <div className="text-lg font-bold text-[#004417] mt-2">{formatCurrency(detalhe.valor)}</div>
+                            <div className="flex-shrink-0 text-right">
+                              <div className={`text-sm font-medium ${detalhe.origem === 'Financeiro' ? 'text-[#004417]' : 'text-[#00A651]'}`}>
+                                {detalhe.origem}
+                              </div>
+                              <div className="text-lg font-bold text-[#004417] mt-2">{formatCurrency(detalhe.valor)}</div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))
-                  )}
-                </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
 
-            {/* Rodapé do Painel */}
-            <div className="p-6 space-y-4" style={{ borderTop: '1px solid rgba(0,0,0,0.06)', backgroundColor: 'white' }}>
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="text-sm">
-                  <span className="text-[#1d3a2d]">💰 Total: </span>
-                  <span className="font-bold text-[#004417]">{formatCurrency(talhaoSelecionado.total)}</span>
+              {/* Rodapé do Modal */}
+              <div className="p-6 space-y-4" style={{ borderTop: '1px solid rgba(0,0,0,0.06)', backgroundColor: 'white' }}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="text-sm">
+                    <span className="text-[#1d3a2d]">💰 Total: </span>
+                    <span className="font-bold text-[#004417]">{formatCurrency(talhaoSelecionado.total)}</span>
+                  </div>
+                  <div className="text-sm">
+                    <span className="text-[#1d3a2d]">📐 Custo/ha: </span>
+                    <span className="font-bold text-[#00A651]">{formatCurrency(talhaoSelecionado.custoHa)}/ha</span>
+                  </div>
                 </div>
-                <div className="text-sm">
-                  <span className="text-[#1d3a2d]">📐 Custo/ha: </span>
-                  <span className="font-bold text-[#00A651]">{formatCurrency(talhaoSelecionado.custoHa)}/ha</span>
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handleVerAnexos}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-[#00A651] text-sm font-semibold text-[#004417] hover:bg[rgba(0,166,81,0.08)] transition-colors"
+                  >
+                    📎 Ver anexos
+                  </button>
                 </div>
-              </div>
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={handleVerAnexos}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-[#00A651] text-sm font-semibold text-[#004417] hover:bg-[rgba(0,166,81,0.08)] transition-colors"
-                >
-                  📎 Ver anexos
-                </button>
               </div>
             </div>
           </div>

@@ -1,10 +1,248 @@
 import { supabase } from '../lib/supabase';
 import { TalhaoService } from './talhaoService';
-import { startOfMonth, endOfMonth, format } from 'date-fns';
+import { startOfMonth, endOfMonth, format, parseISO } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+
+/**
+ * Interface para custo de produto por talhão
+ */
+interface CustoProdutoTalhao {
+  talhao_id: string;
+  produto_id: number;
+  produto_nome: string;
+  quantidade_total: number;
+  unidade: string;
+  custo_total: number;
+}
+
+/**
+ * Busca custos de insumos das atividades agrícolas por talhão
+ * Calcula o custo dos produtos aplicados em cada talhão baseado em:
+ * - lancamentos_agricolas: atividades registradas
+ * - lancamento_produtos: produtos utilizados nas atividades
+ * - lancamento_talhoes: talhões onde as atividades foram realizadas
+ * - produtos_estoque: para buscar o preço unitário dos produtos
+ */
+async function getCustosInsumosPorTalhao(
+  userId: string,
+  dataInicio: Date | null,
+  dataFim: Date | null
+): Promise<Record<string, number>> {
+  try {
+    console.log('🌱 Buscando custos de insumos das atividades agrícolas...');
+
+    // 1. Buscar atividades agrícolas no período
+    let queryAtividades = supabase
+      .from('lancamentos_agricolas')
+      .select('atividade_id, data_atividade')
+      .eq('user_id', userId);
+
+    if (dataInicio) {
+      queryAtividades = queryAtividades.gte('data_atividade', format(dataInicio, 'yyyy-MM-dd'));
+    }
+    if (dataFim) {
+      queryAtividades = queryAtividades.lte('data_atividade', format(dataFim, 'yyyy-MM-dd'));
+    }
+
+    const { data: atividades, error: errorAtividades } = await queryAtividades;
+
+    if (errorAtividades) {
+      console.error('❌ Erro ao buscar atividades agrícolas:', errorAtividades);
+      return {};
+    }
+
+    if (!atividades || atividades.length === 0) {
+      console.log('ℹ️ Nenhuma atividade agrícola encontrada no período');
+      return {};
+    }
+
+    const atividadeIds = atividades.map(a => a.atividade_id);
+    console.log('📋 Atividades encontradas:', atividadeIds.length);
+
+    // 2. Buscar produtos utilizados nas atividades com custo já calculado
+    const { data: produtos, error: errorProdutos } = await supabase
+      .from('lancamento_produtos')
+      .select('atividade_id, produto_id, quantidade_val, quantidade_un, custo_total_item, nome_produto')
+      .in('atividade_id', atividadeIds)
+      .not('produto_id', 'is', null);
+
+    if (errorProdutos) {
+      console.error('❌ Erro ao buscar produtos das atividades:', errorProdutos);
+      return {};
+    }
+
+    if (!produtos || produtos.length === 0) {
+      console.log('ℹ️ Nenhum produto vinculado às atividades');
+      return {};
+    }
+
+    console.log('📦 Produtos utilizados:', produtos.length);
+
+    // 3. Buscar talhões vinculados às atividades
+    const { data: talhoes, error: errorTalhoes } = await supabase
+      .from('lancamento_talhoes')
+      .select('atividade_id, talhao_id')
+      .in('atividade_id', atividadeIds);
+
+    if (errorTalhoes) {
+      console.error('❌ Erro ao buscar talhões das atividades:', errorTalhoes);
+      return {};
+    }
+
+    // Criar mapa atividade_id -> talhao_ids[]
+    const atividadeTalhoesMap = new Map<string, string[]>();
+    (talhoes || []).forEach(t => {
+      if (!atividadeTalhoesMap.has(t.atividade_id)) {
+        atividadeTalhoesMap.set(t.atividade_id, []);
+      }
+      atividadeTalhoesMap.get(t.atividade_id)!.push(t.talhao_id);
+    });
+
+    // 4. Buscar talhões non-default para distribuição proporcional
+    const talhoesNonDefault = await TalhaoService.getTalhoesNonDefault(userId, { onlyActive: true });
+    const talhoesElegiveis = (talhoesNonDefault || []).filter(t => t && !t.talhao_default && (t.area || 0) > 0);
+    
+    // Criar mapa de talhões elegíveis por ID
+    const talhoesElegivelMap = new Map<string, { id: string; nome: string; area: number }>();
+    let totalAreaElegivel = 0;
+    
+    talhoesElegiveis.forEach(t => {
+      talhoesElegivelMap.set(t.id_talhao, {
+        id: t.id_talhao,
+        nome: t.nome,
+        area: t.area || 0
+      });
+      totalAreaElegivel += (t.area || 0);
+    });
+
+    console.log('📐 Talhões elegíveis para distribuição proporcional:', {
+      quantidade: talhoesElegivelMap.size,
+      areaTotal: totalAreaElegivel
+    });
+
+    // 5. Calcular custos por talhão usando custo_total_item
+    const custosPorTalhao: Record<string, number> = {};
+    const custosDetalhados: CustoProdutoTalhao[] = [];
+    let custosSemVinculo = 0;
+
+    produtos.forEach(produto => {
+      const talhoesAtividade = atividadeTalhoesMap.get(produto.atividade_id) || [];
+
+      // Usar custo_total_item que já vem calculado da tabela
+      // Divide por 1 bilhão para ajustar a escala do valor
+      const custoTotal = (typeof produto.custo_total_item === 'string'
+        ? parseFloat(produto.custo_total_item)
+        : (produto.custo_total_item || 0)) / 1000000000;
+
+      if (custoTotal <= 0) {
+        return; // Pula se não tem custo
+      }
+
+      const quantidade = typeof produto.quantidade_val === 'string'
+        ? parseFloat(produto.quantidade_val)
+        : (produto.quantidade_val || 0);
+
+      // Verificar se algum talhão vinculado é non-default
+      const talhoesValidos = talhoesAtividade.filter(talhaoId => talhoesElegivelMap.has(talhaoId));
+
+      if (talhoesValidos.length > 0) {
+        // Caso 1: Tem talhões non-default vinculados - divide igualmente entre eles
+        const custoPorTalhao = custoTotal / talhoesValidos.length;
+
+        talhoesValidos.forEach(talhaoId => {
+          if (!custosPorTalhao[talhaoId]) {
+            custosPorTalhao[talhaoId] = 0;
+          }
+          custosPorTalhao[talhaoId] += custoPorTalhao;
+
+          // Guardar detalhamento
+          custosDetalhados.push({
+            talhao_id: talhaoId,
+            produto_id: produto.produto_id!,
+            produto_nome: produto.nome_produto || 'Produto sem nome',
+            quantidade_total: quantidade / talhoesValidos.length,
+            unidade: produto.quantidade_un || 'un',
+            custo_total: custoPorTalhao
+          });
+        });
+      } else {
+        // Caso 2: Sem talhões non-default vinculados - acumular para distribuição proporcional
+        custosSemVinculo += custoTotal;
+      }
+    });
+
+    // 6. Buscar movimentações de estoque do tipo "saida" no período
+    let queryEstoque = supabase
+      .from('estoque_de_produtos')
+      .select('valor_total, tipo_de_movimentacao, created_at')
+      .eq('user_id', userId)
+      .eq('tipo_de_movimentacao', 'saida');
+
+    if (dataInicio) {
+      queryEstoque = queryEstoque.gte('created_at', format(dataInicio, 'yyyy-MM-dd'));
+    }
+    if (dataFim) {
+      queryEstoque = queryEstoque.lte('created_at', format(dataFim, 'yyyy-MM-dd') + 'T23:59:59');
+    }
+
+    const { data: movimentacoesEstoque, error: errorEstoque } = await queryEstoque;
+
+    if (errorEstoque) {
+      console.error('❌ Erro ao buscar movimentações de estoque:', errorEstoque);
+    }
+
+    // Somar valores das saídas de estoque
+    let custosSaidasEstoque = 0;
+    (movimentacoesEstoque || []).forEach(mov => {
+      const valor = typeof mov.valor_total === 'string'
+        ? parseFloat(mov.valor_total)
+        : (mov.valor_total || 0);
+      custosSaidasEstoque += Math.abs(valor);
+    });
+
+    console.log('📦 Movimentações de estoque (saídas):', {
+      quantidade: movimentacoesEstoque?.length || 0,
+      total: custosSaidasEstoque
+    });
+
+    // 7. Distribuir custos sem vínculo + saídas de estoque proporcionalmente por área
+    const custosTotaisParaDistribuir = custosSemVinculo + custosSaidasEstoque;
+
+    if (custosTotaisParaDistribuir > 0 && totalAreaElegivel > 0) {
+      console.log('📊 Distribuindo custos proporcionalmente:', {
+        semVinculo: custosSemVinculo,
+        saidasEstoque: custosSaidasEstoque,
+        total: custosTotaisParaDistribuir,
+        talhoes: talhoesElegivelMap.size
+      });
+
+      talhoesElegivelMap.forEach((talhao, talhaoId) => {
+        const proporcao = talhao.area / totalAreaElegivel;
+        const custoDistribuido = custosTotaisParaDistribuir * proporcao;
+
+        if (!custosPorTalhao[talhaoId]) {
+          custosPorTalhao[talhaoId] = 0;
+        }
+        custosPorTalhao[talhaoId] += custoDistribuido;
+      });
+    }
+
+    console.log('✅ Custos de insumos calculados:', {
+      talhoes: Object.keys(custosPorTalhao).length,
+      totalGeral: Object.values(custosPorTalhao).reduce((acc, val) => acc + val, 0)
+    });
+
+    return custosPorTalhao;
+  } catch (err) {
+    console.error('❌ Erro ao buscar custos de insumos:', err);
+    return {};
+  }
+}
 
 /**
  * Busca o valor total de movimentações de estoque do tipo saída
  * para calcular insumos por talhão (distribuição proporcional por área)
+ * @deprecated Usar getCustosInsumosPorTalhao() que calcula baseado nas atividades agrícolas
  */
 async function getTotalMovimentacoesEstoque(
   userId: string,
@@ -291,10 +529,9 @@ export class CustoPorTalhaoService {
         fim: dataFim ? format(dataFim, 'dd/MM/yyyy') : 'N/A'
       });
 
-      // 3. Buscar total de insumos das movimentações de estoque (saídas)
-      // O valor será distribuído proporcionalmente pela área dos talhões
-      const totalInsumosEstoque = await getTotalMovimentacoesEstoque(userId, dataInicio, dataFim);
-      console.log('📦 Total insumos de estoque para distribuir:', totalInsumosEstoque);
+      // 3. Buscar custos de insumos das atividades agrícolas por talhão
+      const custosInsumosPorTalhao = await getCustosInsumosPorTalhao(userId, dataInicio, dataFim);
+      console.log('🌱 Custos de insumos por talhão:', custosInsumosPorTalhao);
 
       // 4. Buscar transações financeiras do período
       let query = supabase
@@ -337,15 +574,18 @@ export class CustoPorTalhaoService {
         };
       }
 
-      // 6. Distribuir insumos de estoque proporcionalmente pela área
-      if (totalInsumosEstoque > 0 && totalArea > 0) {
-        for (const id of Object.keys(resultado)) {
-          const talhao = resultado[id];
-          const proporcao = talhao.area / totalArea;
-          talhao.insumos = totalInsumosEstoque * proporcao;
+      // 6. Atribuir custos de insumos específicos a cada talhão
+      for (const talhaoId of Object.keys(custosInsumosPorTalhao)) {
+        if (resultado[talhaoId]) {
+          resultado[talhaoId].insumos = custosInsumosPorTalhao[talhaoId];
         }
-        console.log('✅ Insumos de estoque distribuídos proporcionalmente entre', Object.keys(resultado).length, 'talhões');
       }
+      
+      const totalInsumosAtribuidos = Object.values(resultado).reduce((acc, t) => acc + t.insumos, 0);
+      console.log('✅ Insumos atribuídos aos talhões:', {
+        talhoes: Object.keys(custosInsumosPorTalhao).length,
+        total: totalInsumosAtribuidos
+      });
 
       // Acumuladores para custos sem vínculo específico (exceto insumos que vem do estoque)
       const semVinculo: Record<keyof typeof MACRO_CATEGORIAS, number> = {
@@ -431,19 +671,332 @@ export class CustoPorTalhaoService {
 
   /**
    * Busca detalhes de custos de um talhão específico
+   * Usa EXATAMENTE a mesma lógica de getCustosInsumosPorTalhao
    */
   static async getDetalhesCustoTalhao(
-    _userId: string,
-    _talhaoId: string,
-    _filtros: FiltrosCustoPorTalhao
+    userId: string,
+    talhaoId: string,
+    filtros: FiltrosCustoPorTalhao
   ): Promise<DetalheCusto[]> {
     try {
-      // TODO: Implementar lógica de busca de detalhes
-      // Combinar dados de transações financeiras e atividades agrícolas
+      console.log('📋 Buscando detalhes de custo para talhão:', talhaoId);
+
+      const detalhes: DetalheCusto[] = [];
+
+      // Calcular período de filtro
+      let dataInicio: Date | null = null;
+      let dataFim: Date | null = null;
+
+      if (filtros.mesAno) {
+        const [ano, mes] = filtros.mesAno.split('-').map(Number);
+        const dataRef = new Date(ano, mes - 1, 1);
+        dataInicio = startOfMonth(dataRef);
+        dataFim = endOfMonth(dataRef);
+      } else if (filtros.safra) {
+        const periodo = this.calcularPeriodoSafra(filtros.safra);
+        dataInicio = periodo.inicio;
+        dataFim = periodo.fim;
+      } else {
+        const hoje = new Date();
+        const anoAtual = hoje.getMonth() >= 4 ? hoje.getFullYear() : hoje.getFullYear() - 1;
+        const safraAtual = `${anoAtual}/${anoAtual + 1}`;
+        const periodo = this.calcularPeriodoSafra(safraAtual);
+        dataInicio = periodo.inicio;
+        dataFim = periodo.fim;
+      }
+
+      // 1. Buscar TODAS as atividades agrícolas no período (mesma query do getCustosInsumosPorTalhao)
+      let queryAtividades = supabase
+        .from('lancamentos_agricolas')
+        .select('atividade_id, nome_atividade, data_atividade')
+        .eq('user_id', userId);
+
+      if (dataInicio) {
+        queryAtividades = queryAtividades.gte('data_atividade', format(dataInicio, 'yyyy-MM-dd'));
+      }
+      if (dataFim) {
+        queryAtividades = queryAtividades.lte('data_atividade', format(dataFim, 'yyyy-MM-dd'));
+      }
+
+      const { data: atividades, error: errorAtividades } = await queryAtividades;
+
+      if (errorAtividades) {
+        console.error('❌ Erro ao buscar atividades:', errorAtividades);
+      }
+
+      if (!atividades || atividades.length === 0) {
+        console.log('ℹ️ Nenhuma atividade encontrada no período');
+        return detalhes;
+      }
+
+      const atividadeIds = atividades.map(a => a.atividade_id);
+
+      // 2. Buscar produtos das atividades (mesma query do getCustosInsumosPorTalhao)
+      const { data: produtos, error: errorProdutos } = await supabase
+        .from('lancamento_produtos')
+        .select('atividade_id, produto_id, quantidade_val, quantidade_un, custo_total_item, nome_produto')
+        .in('atividade_id', atividadeIds)
+        .not('produto_id', 'is', null);
+
+      if (errorProdutos) {
+        console.error('❌ Erro ao buscar produtos:', errorProdutos);
+      }
+
+      // 3. Buscar talhões vinculados às atividades (mesma query do getCustosInsumosPorTalhao)
+      const { data: talhoes, error: errorTalhoes } = await supabase
+        .from('lancamento_talhoes')
+        .select('atividade_id, talhao_id')
+        .in('atividade_id', atividadeIds);
+
+      if (errorTalhoes) {
+        console.error('❌ Erro ao buscar talhões:', errorTalhoes);
+      }
+
+      // Criar mapa atividade_id -> talhao_ids[]
+      const atividadeTalhoesMap = new Map<string, string[]>();
+      (talhoes || []).forEach(t => {
+        if (!atividadeTalhoesMap.has(t.atividade_id)) {
+          atividadeTalhoesMap.set(t.atividade_id, []);
+        }
+        atividadeTalhoesMap.get(t.atividade_id)!.push(t.talhao_id);
+      });
+
+      // 4. Buscar talhões non-default para saber quais são elegíveis (mesma lógica do getCustosInsumosPorTalhao)
+      const talhoesNonDefault = await TalhaoService.getTalhoesNonDefault(userId, { onlyActive: true });
+      const talhoesElegiveis = (talhoesNonDefault || []).filter(t => t && !t.talhao_default && (t.area || 0) > 0);
       
-      return [];
+      const talhoesElegivelMap = new Map<string, { id: string; nome: string; area: number }>();
+      let totalAreaElegivel = 0;
+      
+      talhoesElegiveis.forEach(t => {
+        talhoesElegivelMap.set(t.id_talhao, {
+          id: t.id_talhao,
+          nome: t.nome,
+          area: t.area || 0
+        });
+        totalAreaElegivel += (t.area || 0);
+      });
+
+      // Calcular proporção deste talhão específico
+      const talhaoInfo = talhoesElegivelMap.get(talhaoId);
+      const areaTalhao = talhaoInfo?.area || 0;
+      const proporcaoTalhao = totalAreaElegivel > 0 ? areaTalhao / totalAreaElegivel : 0;
+
+      // Criar mapa atividade_id -> atividade
+      const atividadeMap = new Map<string, any>();
+      atividades.forEach(a => atividadeMap.set(a.atividade_id, a));
+
+      // 5. Processar produtos (MESMA LÓGICA do getCustosInsumosPorTalhao)
+      (produtos || []).forEach(produto => {
+        const talhoesAtividade = atividadeTalhoesMap.get(produto.atividade_id) || [];
+        const atividade = atividadeMap.get(produto.atividade_id);
+
+        if (!atividade) return;
+
+        // Calcular custo (mesma escala)
+        const custoTotal = (typeof produto.custo_total_item === 'string'
+          ? parseFloat(produto.custo_total_item)
+          : (produto.custo_total_item || 0)) / 1000000000;
+
+        if (custoTotal <= 0) return;
+
+        const quantidade = typeof produto.quantidade_val === 'string'
+          ? parseFloat(produto.quantidade_val)
+          : (produto.quantidade_val || 0);
+
+        // Verificar se tem talhões non-default vinculados
+        const talhoesValidos = talhoesAtividade.filter(tid => talhoesElegivelMap.has(tid));
+
+        if (talhoesValidos.length > 0) {
+          // Caso 1: Tem talhões non-default vinculados - verifica se o nosso talhão está incluído
+          if (talhoesValidos.includes(talhaoId)) {
+            const custoPorTalhao = custoTotal / talhoesValidos.length;
+            
+            detalhes.push({
+              data: format(parseISO(atividade.data_atividade), 'dd/MM/yyyy', { locale: ptBR }),
+              categoria: 'Insumos',
+              descricao: `${atividade.nome_atividade} - ${produto.nome_produto || 'Produto'} (${quantidade} ${produto.quantidade_un || 'un'})`,
+              origem: 'Atividade Agrícola',
+              valor: custoPorTalhao,
+              macrogrupo: 'insumos'
+            });
+          }
+        } else {
+          // Caso 2: Sem talhões non-default vinculados - distribuir proporcionalmente
+          if (proporcaoTalhao > 0) {
+            const valorProporcional = custoTotal * proporcaoTalhao;
+            
+            if (valorProporcional > 0) {
+              detalhes.push({
+                data: format(parseISO(atividade.data_atividade), 'dd/MM/yyyy', { locale: ptBR }),
+                categoria: 'Insumos',
+                descricao: `${atividade.nome_atividade} - ${produto.nome_produto || 'Produto'} (${quantidade} ${produto.quantidade_un || 'un'}) - ${(proporcaoTalhao * 100).toFixed(2)}% da área`,
+                origem: 'Atividade Agrícola',
+                valor: valorProporcional,
+                macrogrupo: 'insumos'
+              });
+            }
+          }
+        }
+      });
+
+      // 6. Buscar saídas de estoque (mesma query do getCustosInsumosPorTalhao)
+      let queryEstoque = supabase
+        .from('estoque_de_produtos')
+        .select('valor_total, tipo_de_movimentacao, created_at, nome_do_produto')
+        .eq('user_id', userId)
+        .eq('tipo_de_movimentacao', 'saida');
+
+      if (dataInicio) {
+        queryEstoque = queryEstoque.gte('created_at', format(dataInicio, 'yyyy-MM-dd'));
+      }
+      if (dataFim) {
+        queryEstoque = queryEstoque.lte('created_at', format(dataFim, 'yyyy-MM-dd') + 'T23:59:59');
+      }
+
+      const { data: saidasEstoque, error: errorEstoque } = await queryEstoque;
+
+      if (errorEstoque) {
+        console.error('❌ Erro ao buscar saídas de estoque:', errorEstoque);
+      }
+
+      // 7. Adicionar saídas de estoque proporcionalmente (mesma lógica do getCustosInsumosPorTalhao)
+      if (proporcaoTalhao > 0 && saidasEstoque && saidasEstoque.length > 0) {
+        saidasEstoque.forEach((saida: any) => {
+          const valorTotal = typeof saida.valor_total === 'string'
+            ? parseFloat(saida.valor_total)
+            : (saida.valor_total || 0);
+
+          const valorProporcional = Math.abs(valorTotal) * proporcaoTalhao;
+
+          if (valorProporcional > 0) {
+            detalhes.push({
+              data: format(parseISO(saida.created_at), 'dd/MM/yyyy', { locale: ptBR }),
+              categoria: 'Insumos',
+              descricao: `Saída de Estoque - ${saida.nome_do_produto || 'Produto'} (${(proporcaoTalhao * 100).toFixed(2)}% da área)`,
+              origem: 'Estoque',
+              valor: valorProporcional,
+              macrogrupo: 'insumos'
+            });
+          }
+        });
+      }
+
+      // 8. Adicionar DETALHES de Operacional a partir de transações financeiras
+      // Reaproveita a mesma janela de tempo e lógica de vinculação
+      let queryFinanceiro = supabase
+        .from('transacoes_financeiras')
+        .select('id_transacao, valor, categoria, descricao, area_vinculada, data_agendamento_pagamento, tipo_transacao, status')
+        .eq('user_id', userId)
+        .eq('tipo_transacao', 'GASTO')
+        .eq('status', 'Pago');
+
+      if (dataInicio) {
+        queryFinanceiro = queryFinanceiro.gte('data_agendamento_pagamento', format(dataInicio, 'yyyy-MM-dd'));
+      }
+      if (dataFim) {
+        queryFinanceiro = queryFinanceiro.lte('data_agendamento_pagamento', format(dataFim, 'yyyy-MM-dd') + 'T23:59:59');
+      }
+
+      const { data: transacoes } = await queryFinanceiro;
+
+      // Helper para identificar macrogrupo operacional com base nos mapeamentos existentes
+      const identificarOperacional = (categoria: string, descricao: string): boolean => {
+        const catLower = (categoria || '').toLowerCase();
+        const descNorm = CustoPorTalhaoService["normalize"](descricao || '');
+        const categorias = (MACRO_CATEGORIAS as any).operacional as string[];
+        const keywords = (KEYWORDS_MACROGRUPOS as any).operacional as string[];
+        if (categorias.some((c: string) => c.toLowerCase() === catLower)) return true;
+        if (keywords.some((kw: string) => descNorm.includes(kw))) return true;
+        return false;
+      };
+
+      // Verifica vínculo de talhão pela área (mesma função inline utilizada em getCustosPorTalhao)
+      const { data: talhoesAll } = await supabase
+        .from('talhoes')
+        .select('id_talhao, nome, talhao_default, area')
+        .eq('usuario_id', userId);
+      const elegiveis = (talhoesAll || []).filter(t => t && !t.talhao_default && (t.area || 0) > 0);
+      const nameMap = new Map<string, any>();
+      const talhaoNames: string[] = [];
+      elegiveis.forEach(t => {
+        const key = CustoPorTalhaoService["normalize"](t.nome || '');
+        nameMap.set(key, t);
+        talhaoNames.push(key);
+      });
+      const findTalhaoByAreaVinculada = (areaVinculada: string): any | null => {
+        if (!areaVinculada) return null;
+        const areaKey = CustoPorTalhaoService["normalize"](areaVinculada);
+        if (nameMap.has(areaKey)) return nameMap.get(areaKey)!;
+        for (const talhaoName of talhaoNames) {
+          if (areaKey.includes(talhaoName) || talhaoName.includes(areaKey)) {
+            return nameMap.get(talhaoName)!;
+          }
+        }
+        return null;
+      };
+
+      // Total de área para proporcional
+      const totalAreaElegivelOper = elegiveis.reduce((acc, t) => acc + (t.area || 0), 0);
+      const talhaoInfoOper = elegiveis.find(t => t.id_talhao === talhaoId);
+      const proporcaoTalhaoOper = totalAreaElegivelOper > 0 ? ((talhaoInfoOper?.area || 0) / totalAreaElegivelOper) : 0;
+
+      (transacoes || []).forEach(tr => {
+        const valor = typeof tr.valor === 'string' ? parseFloat(tr.valor) : (tr.valor || 0);
+        const valorAbs = Math.abs(valor);
+        if (valorAbs <= 0) return;
+
+        // Só operacional
+        const ehOperacional = identificarOperacional(tr.categoria || '', tr.descricao || '');
+        if (!ehOperacional) return;
+
+        const areaVinc = (tr.area_vinculada || '').toString().trim();
+        const talhaoVinc = findTalhaoByAreaVinculada(areaVinc);
+
+        if (talhaoVinc && talhaoVinc.id_talhao === talhaoId) {
+          // Direto no talhão
+          detalhes.push({
+            data: format(parseISO(tr.data_agendamento_pagamento), 'dd/MM/yyyy', { locale: ptBR }),
+            categoria: 'Operacional',
+            descricao: tr.descricao || tr.categoria || 'Operacional',
+            origem: 'Financeiro',
+            valor: valorAbs,
+            macrogrupo: 'operacional'
+          });
+        } else {
+          // Sem vínculo com talhão específico non-default: distribuir proporcionalmente
+          if (proporcaoTalhaoOper > 0) {
+            const valorProp = valorAbs * proporcaoTalhaoOper;
+            if (valorProp > 0) {
+              detalhes.push({
+                data: format(parseISO(tr.data_agendamento_pagamento), 'dd/MM/yyyy', { locale: ptBR }),
+                categoria: 'Operacional',
+                descricao: `${tr.descricao || tr.categoria || 'Operacional'} - ${(proporcaoTalhaoOper * 100).toFixed(2)}% da área`,
+                origem: 'Financeiro',
+                valor: valorProp,
+                macrogrupo: 'operacional'
+              });
+            }
+          }
+        }
+      });
+
+      console.log('✅ Detalhes de custo carregados:', {
+        total: detalhes.length,
+        valorTotal: detalhes.reduce((acc, d) => acc + d.valor, 0)
+      });
+
+      // Ordenar por data (mais recente primeiro)
+      return detalhes.sort((a, b) => {
+        const [diaA, mesA, anoA] = a.data.split('/').map(Number);
+        const [diaB, mesB, anoB] = b.data.split('/').map(Number);
+        const dataA = new Date(anoA, mesA - 1, diaA);
+        const dataB = new Date(anoB, mesB - 1, diaB);
+        return dataB.getTime() - dataA.getTime();
+      });
+
     } catch (error) {
-      console.error('Erro ao buscar detalhes de custo:', error);
+      console.error('❌ Erro ao buscar detalhes de custo:', error);
       throw error;
     }
   }
