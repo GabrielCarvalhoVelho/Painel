@@ -90,7 +90,8 @@ export default function ListaProdutosDesktop({
                 <p className="text-[13px] text-[rgba(0,68,23,0.6)] mb-0.5">Quantidade</p>
                 <p className="text-[15px] font-semibold text-[#004417]">
                   {(() => {
-                    const { quantidade, unidade } = autoScaleQuantity(item.totalEstoqueDisplay, item.unidadeDisplay);
+                    const quantidadeBase = item.quantidadeLiquidaAtual ?? item.totalEstoqueDisplay;
+                    const { quantidade, unidade } = autoScaleQuantity(quantidadeBase, item.unidadeDisplay);
                     return (
                       <>
                         {quantidade}{' '}
@@ -105,9 +106,14 @@ export default function ListaProdutosDesktop({
               <div>
                 <p className="text-[13px] text-[rgba(0,68,23,0.6)] mb-0.5">Valor Médio</p>
                 <p className="text-[15px] font-bold text-[#004417]">
-                  {item.mediaPrecoDisplay != null && item.unidadeValorOriginal
-                    ? `${formatSmartCurrency(Number(item.mediaPrecoDisplay))} / ${formatUnitFull(item.unidadeValorOriginal)}`
-                    : "—"}            
+                  {(() => {
+                    const valorMedio = item.mediaPrecoAtual ?? item.mediaPrecoDisplay;
+                    const unidadeValor = item.unidadeValorOriginal || item.unidadeDisplay;
+
+                    if (valorMedio == null || unidadeValor == null) return "—";
+
+                    return `${formatSmartCurrency(Number(valorMedio))} / ${formatUnitFull(unidadeValor)}`;
+                  })()}
                 </p>
               </div>
             </div>

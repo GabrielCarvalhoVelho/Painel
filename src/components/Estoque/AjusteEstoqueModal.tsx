@@ -1,10 +1,11 @@
 // src/components/Estoque/AjusteEstoqueModal.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { X, Save, AlertTriangle } from 'lucide-react';
 import { EstoqueService } from '../../services/estoqueService';
 import { formatCurrencyInput, formatSmartCurrency } from '../../lib/currencyFormatter';
 import { formatUnitFull } from '../../lib/formatUnit';
 import { ProdutoAgrupado } from '../../services/agruparProdutosService';
+import { convertBetweenUnits, convertValueBetweenUnits } from '../../lib/unitConverter';
 
 interface Props {
   isOpen: boolean;
@@ -22,10 +23,50 @@ export default function AjusteEstoqueModal({ isOpen, onClose, productGroup, onSa
   const [validade, setValidade] = useState('');
   const [fornecedor, setFornecedor] = useState('');
 
-  // Calcular quantidade faltante
-  const quantidadeFaltante = productGroup ? Math.abs(productGroup.totalEstoqueDisplay) : 0;
+  const quantidadeFaltante = productGroup
+    ? Math.abs((productGroup.quantidadeLiquidaAtual ?? productGroup.totalEstoqueDisplay) || 0)
+    : 0;
   const unidade = productGroup?.unidadeDisplay || '';
-  const precoSugerido = productGroup?.mediaPrecoDisplay || 0;
+
+  const precoSugerido = useMemo(() => {
+    if (!productGroup || !productGroup.entradas.length) return 0;
+
+    const EPSILON = 1e-6;
+    const unidadeBase = productGroup.unidadeDisplay
+      || productGroup.unidadeValorOriginal
+      || productGroup.entradas[0]?.unidade_valor_original
+      || productGroup.entradas[0]?.unidade
+      || 'un';
+
+    const entradasOrdenadas = [...productGroup.entradas].sort((a, b) => {
+      const dataA = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const dataB = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return dataB - dataA;
+    });
+
+    for (const entrada of entradasOrdenadas) {
+      const unidadeEntrada = entrada.unidade || unidadeBase;
+      const unidadeValorEntrada = entrada.unidade_valor_original || unidadeEntrada;
+      const quantidadeBruta = Number(entrada.quantidade_inicial ?? entrada.quantidade ?? 0) || 0;
+      const quantidadeConvertida = convertBetweenUnits(quantidadeBruta, unidadeEntrada, unidadeBase);
+
+      if (!Number.isFinite(quantidadeConvertida) || Math.abs(quantidadeConvertida) < EPSILON) {
+        continue;
+      }
+
+      const valorTotalEntrada = Number(entrada.valor_total ?? 0) || 0;
+      if (valorTotalEntrada > 0) {
+        return valorTotalEntrada / quantidadeConvertida;
+      }
+
+      const valorInformado = Number(entrada.valor ?? entrada.valor_medio ?? 0) || 0;
+      if (valorInformado > 0) {
+        return convertValueBetweenUnits(valorInformado, unidadeValorEntrada, unidadeBase);
+      }
+    }
+
+    return 0;
+  }, [productGroup]);
 
   useEffect(() => {
     if (isOpen && productGroup) {
@@ -33,7 +74,10 @@ export default function AjusteEstoqueModal({ isOpen, onClose, productGroup, onSa
       setQuantidade(quantidadeFaltante.toFixed(2));
       
       // Pré-preencher com preço médio do grupo
-      const result = formatCurrencyInput((precoSugerido * 100).toString());
+      const precoParaSugestao = Number.isFinite(precoSugerido) && precoSugerido > 0
+        ? Math.round(precoSugerido * 100)
+        : 0;
+      const result = formatCurrencyInput(precoParaSugestao.toString());
       setValor(result.numeric.toString());
       setValorDisplay(result.formatted);
 
@@ -204,7 +248,7 @@ export default function AjusteEstoqueModal({ isOpen, onClose, productGroup, onSa
               </span>
             </div>
             <p className="text-xs text-[rgba(0,68,23,0.6)] mt-1.5">
-              Sugestão (média do grupo): <strong>{formatSmartCurrency(precoSugerido)}</strong>
+              Sugestão (última entrada): <strong>{formatSmartCurrency(precoSugerido)}</strong>
             </p>
           </div>
 

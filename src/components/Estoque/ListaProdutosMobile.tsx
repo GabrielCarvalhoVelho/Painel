@@ -57,15 +57,21 @@ export default function ListaProdutosMobile({
               <div>
                 <p className="text-[13px] text-[rgba(0,68,23,0.6)] mb-0.5">Qtd.</p>
                 <p className="text-[15px] font-semibold text-[#004417]">
-                  {item.totalEstoqueDisplay.toFixed(2)} <span className="text-[13px] text-[rgba(0,68,23,0.7)]">{formatUnitFull(item.unidadeDisplay)}</span>
+                  {(item.quantidadeLiquidaAtual ?? item.totalEstoqueDisplay).toFixed(2)}{' '}
+                  <span className="text-[13px] text-[rgba(0,68,23,0.7)]">{formatUnitFull(item.unidadeDisplay)}</span>
                 </p>
               </div>
               <div className="text-right">
                 <p className="text-[13px] text-[rgba(0,68,23,0.6)] mb-0.5">Valor Méd.</p>
                 <p className="text-[15px] font-bold text-[#004417]">
-                  {item.mediaPrecoDisplay != null && item.unidadeValorOriginal
-                    ? `${formatSmartCurrency(Number(item.mediaPrecoDisplay))} / ${formatUnitFull(item.unidadeValorOriginal)}`
-                    : "—"}
+                  {(() => {
+                    const valorMedio = item.mediaPrecoAtual ?? item.mediaPrecoDisplay;
+                    const unidadeValor = item.unidadeValorOriginal || item.unidadeDisplay;
+
+                    if (valorMedio == null || unidadeValor == null) return "—";
+
+                    return `${formatSmartCurrency(Number(valorMedio))} / ${formatUnitFull(unidadeValor)}`;
+                  })()}
                 </p>
               </div>
             </div>
