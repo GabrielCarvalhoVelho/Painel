@@ -159,7 +159,7 @@ export default function AjusteEstoqueModal({ isOpen, onClose, productGroup, onSa
   };
 
   return (
-    <div className="fixed inset-0 bg-[rgba(0,68,23,0.45)] flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-[18px] shadow-[0_1px_6px_rgba(0,68,23,0.12)] w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b border-[rgba(0,68,23,0.08)]">
           <h2 className="text-xl font-bold text-[#004417]">Ajustar Estoque Negativo</h2>
