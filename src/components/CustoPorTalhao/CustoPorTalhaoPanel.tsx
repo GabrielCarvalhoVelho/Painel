@@ -359,20 +359,20 @@ export default function CustoPorTalhaoPanel() {
               <thead>
                 <tr className="bg-[rgba(0,166,81,0.06)] rounded-t-2xl">
                   <th className="px-6 py-4 text-left text-[14px] font-bold text-[#004417]">Talhão</th>
-                  <th className="px-6 py-4 text-right text-[14px] font-bold text-[#004417]">Área (ha)</th>
+                  <th className="px-6 py-4 text-center text-[14px] font-bold text-[#004417]">Área (ha)</th>
                   {macrogrupos.map(grupo => (
-                    <th key={grupo.key} className="px-6 py-4 text-right text-[14px] font-bold text-[#004417] relative group">
-                      <span className="flex items-center justify-end gap-1">
+                    <th key={grupo.key} className="px-6 py-4 text-center text-[14px] font-bold text-[#004417] relative group">
+                      <span className="flex items-center justify-center gap-1">
                         <span className="whitespace-nowrap">{grupo.label}</span>
                         <Info className="w-3.5 h-3.5 text-[#004417]" />
                       </span>
-                      <div className="hidden group-hover:block absolute top-full right-0 mt-1 bg-[#004417] text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10">
+                      <div className="hidden group-hover:block absolute top-full left-1/2 transform -translate-x-1/2 mt-1 bg-[#004417] text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10">
                         {grupo.tooltip}
                       </div>
                     </th>
                   ))}
-                  <th className="px-6 py-4 text-right text-[14px] font-bold text-[#004417]">Total</th>
-                  <th className="px-6 py-4 text-right text-[14px] font-bold text-[#004417]">R$/ha</th>
+                  <th className="px-6 py-4 text-center text-[14px] font-bold text-[#004417]">Total</th>
+                  <th className="px-6 py-4 text-center text-[14px] font-bold text-[#004417]">R$/ha</th>
                 </tr>
               </thead>
               <tbody>
@@ -392,17 +392,17 @@ export default function CustoPorTalhaoPanel() {
                         onClick={() => handleTalhaoSelect(t)}
                         className="bg-white border-b border-[rgba(0,0,0,0.06)] transition-all hover:bg-[rgba(0,166,81,0.08)] cursor-pointer"
                       >
-                        <td className="px-6 py-5 text-sm text-[#004417] font-medium align-top">{t.talhao}</td>
-                        <td className="px-6 py-5 text-sm text-right text-[#1d3a2d] align-top">{t.area.toFixed(2)}</td>
+                        <td className="px-6 py-5 text-sm text-left font-bold text-[#00A651] align-top">{t.talhao}</td>
+                        <td className="px-6 py-5 text-sm text-center text-[#1d3a2d] align-top">{t.area.toFixed(2)}</td>
                         {macrogrupos.map(gr => (
-                          <td key={gr.key} className="px-6 py-5 text-sm text-right text-[#1d3a2d] font-semibold align-top">
+                          <td key={gr.key} className="px-6 py-5 text-sm text-center text-[#1d3a2d] font-semibold align-top">
                             {formatCurrency((t as any)[gr.key] || 0)}
                           </td>
                         ))}
-                        <td className="px-6 py-5 text-sm font-bold text-[#004417] text-right align-top">
+                        <td className="px-6 py-5 text-sm font-bold text-[#004417] text-center align-top">
                           {formatCurrency(t.total)}
                         </td>
-                        <td className="px-6 py-5 text-sm font-semibold text-[#00A651] text-right align-top">
+                        <td className="px-6 py-5 text-sm font-semibold text-[#00A651] text-center align-top">
                           {formatCurrency(t.custoHa)}/ha
                         </td>
                       </tr>
@@ -410,17 +410,17 @@ export default function CustoPorTalhaoPanel() {
                     {/* Linha de Totais */}
                     {talhoesFiltrados.length > 1 && (
                       <tr className="bg-[rgba(0,166,81,0.06)] font-bold">
-                        <td className="px-6 py-5 text-sm text-[#004417]">TOTAL</td>
-                        <td className="px-6 py-5 text-sm text-right text-[#004417]">{totaisGerais.area.toFixed(2)}</td>
+                        <td className="px-6 py-5 text-sm text-left font-bold text-[#004417]">TOTAL</td>
+                        <td className="px-6 py-5 text-sm text-center text-[#004417]">{totaisGerais.area.toFixed(2)}</td>
                         {macrogrupos.map(gr => (
-                          <td key={gr.key} className="px-6 py-5 text-sm text-right text-[#004417]">
+                          <td key={gr.key} className="px-6 py-5 text-sm text-center text-[#004417]">
                             {formatCurrency((totaisGerais as any)[gr.key] || 0)}
                           </td>
                         ))}
-                        <td className="px-6 py-5 text-sm text-right text-[#004417]">
+                        <td className="px-6 py-5 text-sm text-center text-[#004417]">
                           {formatCurrency(totaisGerais.total)}
                         </td>
-                        <td className="px-6 py-5 text-sm text-right text-[#00A651]">
+                        <td className="px-6 py-5 text-sm text-center text-[#00A651]">
                           {formatCurrency(totaisGerais.area > 0 ? totaisGerais.total / totaisGerais.area : 0)}/ha
                         </td>
                       </tr>
