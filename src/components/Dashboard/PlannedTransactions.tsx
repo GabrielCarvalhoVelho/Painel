@@ -176,7 +176,7 @@ export default function PlannedTransactions({ transactions, proximas5 }: Planned
                     {/* Informação de lançamento */}
                     {transaction.data_registro && (
                       <div className="text-xs text-[#004417]/65 font-medium flex-shrink-0">
-                        Lançado em {new Date(transaction.data_registro).toLocaleDateString('pt-BR')}
+                        Lançado em {new Date(transaction.data_registro).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                       </div>
                     )}
                     {/* Espaçador quando não há informação de lançamento */}
