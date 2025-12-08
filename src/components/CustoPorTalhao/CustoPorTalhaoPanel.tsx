@@ -655,22 +655,13 @@ export default function CustoPorTalhaoPanel() {
               <div className="p-6 space-y-4" style={{ borderTop: '1px solid rgba(0,0,0,0.06)', backgroundColor: 'white' }}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="text-sm">
-                    <span className="text-[#1d3a2d]">💰 Total: </span>
+                    <span className="text-[#1d3a2d]">Total: </span>
                     <span className="font-bold text-[#004417]">{formatCurrency(talhaoSelecionado.total)}</span>
                   </div>
                   <div className="text-sm">
-                    <span className="text-[#1d3a2d]">📐 Custo/ha: </span>
+                    <span className="text-[#1d3a2d]">Custo/ha: </span>
                     <span className="font-bold text-[#00A651]">{formatCurrency(talhaoSelecionado.custoHa)}/ha</span>
                   </div>
-                </div>
-                <div className="flex justify-end">
-                  <button
-                    type="button"
-                    onClick={handleVerAnexos}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-[#00A651] text-sm font-semibold text-[#004417] hover:bg[rgba(0,166,81,0.08)] transition-colors"
-                  >
-                    📎 Ver anexos
-                  </button>
                 </div>
               </div>
             </div>
