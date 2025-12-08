@@ -349,7 +349,7 @@ export class CustoPorTalhaoService {
   /**
    * Helper para normalizar strings (remover acentos e caracteres especiais)
    */
-  private static normalize(input: string): string {
+  public static normalize(input: string): string {
     if (!input) return '';
     try {
       return input
@@ -451,39 +451,10 @@ export class CustoPorTalhaoService {
       }
 
       // Criar mapa de talhões para lookup rápido
-      const nameMap = new Map<string, typeof eligibleTalhoes[0]>();
-      const talhaoNames: string[] = []; // Lista de nomes normalizados para busca flexível
       let totalArea = 0;
       for (const t of talhoesParaProcessar) {
-        const nameKey = this.normalize(t.nome || '');
-        nameMap.set(nameKey, t);
-        talhaoNames.push(nameKey);
         totalArea += (t.area || 0);
       }
-
-      /**
-       * Busca o talhão correspondente ao area_vinculada
-       * Tenta match exato primeiro, depois busca se contém o nome do talhão
-       */
-      const findTalhaoByAreaVinculada = (areaVinculada: string): typeof eligibleTalhoes[0] | null => {
-        if (!areaVinculada) return null;
-        
-        const areaKey = this.normalize(areaVinculada);
-        
-        // 1. Match exato
-        if (nameMap.has(areaKey)) {
-          return nameMap.get(areaKey)!;
-        }
-        
-        // 2. Busca se area_vinculada contém algum nome de talhão
-        for (const talhaoName of talhaoNames) {
-          if (areaKey.includes(talhaoName) || talhaoName.includes(areaKey)) {
-            return nameMap.get(talhaoName)!;
-          }
-        }
-        
-        return null;
-      };
 
       // 2. Calcular período de filtro
       let dataInicio: Date | null = null;
@@ -515,10 +486,21 @@ export class CustoPorTalhaoService {
       // 3. Buscar custos de insumos das atividades agrícolas por talhão
       const custosInsumosPorTalhao = await getCustosInsumosPorTalhao(userId, dataInicio, dataFim);
 
-      // 4. Buscar transações financeiras do período
+      // 4. Buscar transações financeiras do período com vínculos de talhões
       let query = supabase
         .from('transacoes_financeiras')
-        .select('id_transacao, valor, categoria, descricao, area_vinculada, data_agendamento_pagamento, tipo_transacao, status')
+        .select(`
+          id_transacao, 
+          valor, 
+          categoria, 
+          descricao, 
+          data_agendamento_pagamento, 
+          tipo_transacao, 
+          status,
+          transacoes_talhoes(
+            id_talhao
+          )
+        `)
         .eq('user_id', userId)
         .eq('tipo_transacao', 'GASTO')
         .eq('status', 'Pago');
@@ -535,6 +517,8 @@ export class CustoPorTalhaoService {
       if (error) {
         throw error;
       }
+
+
 
       // 5. Inicializar resultado com todos os talhões
       const resultado: Record<string, CustoTalhao> = {};
@@ -570,11 +554,10 @@ export class CustoPorTalhaoService {
       };
 
       // 7. Processar cada transação financeira (exceto insumos que já vem do estoque)
-      // Logs de diagnóstico para macrogrupo operacional
-      let operacionalDiretoTotal = 0;
-      let operacionalSemVinculoTotal = 0;
-      const operacionalSamples: Array<{ id: any; categoria: any; descricao: any; area_vinculada: any; valor: number; vinculadoTalhao: boolean }> = [];
-
+      let contadorVinculadas = 0;
+      let contadorSemVinculo = 0;
+      let contadorPuladas = 0;
+      
       for (const tr of (transacoes || [])) {
         const valor = typeof tr.valor === 'string' ? parseFloat(tr.valor) : (tr.valor || 0);
         const valorAbs = Math.abs(valor);
@@ -583,47 +566,43 @@ export class CustoPorTalhaoService {
         const macrogrupo = this.identificarMacrogrupo(tr.categoria || '', tr.descricao || '');
         
         if (!macrogrupo) {
+          contadorPuladas++;
           continue;
         }
 
         // Pular insumos - eles são calculados a partir das movimentações de estoque
         if (macrogrupo === 'insumos') {
+          contadorPuladas++;
           continue;
         }
 
         // Filtrar por macrogrupo se especificado
         if (filtros.macrogrupo && filtros.macrogrupo !== 'Todos' && filtros.macrogrupo !== macrogrupo) {
+          contadorPuladas++;
           continue;
         }
 
-        // Verificar vínculo com talhão
-        const areaVinc = (tr.area_vinculada || '').toString().trim();
-        const talhaoVinculado = findTalhaoByAreaVinculada(areaVinc);
+        // Verificar vínculo com talhão usando transacoes_talhoes
+        const talhoesVinculados = (tr as any).transacoes_talhoes || [];
+        const talhaoIds = talhoesVinculados.map((t: any) => t.id_talhao).filter(Boolean);
 
-        if (talhaoVinculado && resultado[talhaoVinculado.id_talhao]) {
-          // Atribuir ao talhão específico
-          resultado[talhaoVinculado.id_talhao][macrogrupo] += valorAbs;
-
-          // Coletar amostras e totais para operacional
-          if (macrogrupo === 'operacional') {
-            operacionalDiretoTotal += valorAbs;
-            if (operacionalSamples.length < 5) {
-              operacionalSamples.push({ id: tr.id_transacao, categoria: tr.categoria, descricao: tr.descricao, area_vinculada: tr.area_vinculada, valor: valorAbs, vinculadoTalhao: true });
+        if (talhaoIds.length > 0) {
+          // Dividir valor entre os talhões vinculados
+          const valorPorTalhao = valorAbs / talhaoIds.length;
+          
+          for (const talhaoId of talhaoIds) {
+            if (resultado[talhaoId]) {
+              resultado[talhaoId][macrogrupo] += valorPorTalhao;
+              contadorVinculadas++;
             }
           }
         } else {
           // Acumular para distribuição proporcional
           semVinculo[macrogrupo] += valorAbs;
-
-          // Coletar totais para operacional sem vínculo
-          if (macrogrupo === 'operacional') {
-            operacionalSemVinculoTotal += valorAbs;
-            if (operacionalSamples.length < 5) {
-              operacionalSamples.push({ id: tr.id_transacao, categoria: tr.categoria, descricao: tr.descricao, area_vinculada: tr.area_vinculada, valor: valorAbs, vinculadoTalhao: false });
-            }
-          }
+          contadorSemVinculo++;
         }
       }
+
 
       // 8. Distribuir custos sem vínculo proporcionalmente pela área (exceto insumos)
       if (totalArea > 0) {
@@ -693,7 +672,7 @@ export class CustoPorTalhaoService {
         dataFim = periodo.fim;
       }
 
-      // 1. Buscar TODAS as atividades agrícolas no período (mesma query do getCustosInsumosPorTalhao)
+      // 1. Buscar TODAS as atividades agrícolas no período
       let queryAtividades = supabase
         .from('lancamentos_agricolas')
         .select('atividade_id, nome_atividade, data_atividade')
@@ -706,26 +685,33 @@ export class CustoPorTalhaoService {
         queryAtividades = queryAtividades.lte('data_atividade', format(dataFim, 'yyyy-MM-dd'));
       }
 
-      const { data: atividades, error: errorAtividades } = await queryAtividades;
+      const { data: atividades } = await queryAtividades;
 
-      if (!atividades || atividades.length === 0) {
-        return detalhes;
+      // Mesmo sem atividades, continuar para buscar transações financeiras
+      const atividadesParaProcessar = atividades || [];
+      const atividadeIds = atividadesParaProcessar.map(a => a.atividade_id);
+
+      // 2. Buscar produtos das atividades
+      let produtos: any[] = [];
+      let talhoes: any[] = [];
+      
+      if (atividadeIds.length > 0) {
+        const { data: produtosData } = await supabase
+          .from('lancamento_produtos')
+          .select('atividade_id, produto_id, quantidade_val, quantidade_un, custo_total_item, nome_produto')
+          .in('atividade_id', atividadeIds)
+          .not('produto_id', 'is', null);
+        
+        produtos = produtosData || [];
+
+        // 3. Buscar talhões vinculados às atividades
+        const { data: talhoesData } = await supabase
+          .from('lancamento_talhoes')
+          .select('atividade_id, talhao_id')
+          .in('atividade_id', atividadeIds);
+        
+        talhoes = talhoesData || [];
       }
-
-      const atividadeIds = atividades.map(a => a.atividade_id);
-
-      // 2. Buscar produtos das atividades (mesma query do getCustosInsumosPorTalhao)
-      const { data: produtos, error: errorProdutos } = await supabase
-        .from('lancamento_produtos')
-        .select('atividade_id, produto_id, quantidade_val, quantidade_un, custo_total_item, nome_produto')
-        .in('atividade_id', atividadeIds)
-        .not('produto_id', 'is', null);
-
-      // 3. Buscar talhões vinculados às atividades (mesma query do getCustosInsumosPorTalhao)
-      const { data: talhoes, error: errorTalhoes } = await supabase
-        .from('lancamento_talhoes')
-        .select('atividade_id, talhao_id')
-        .in('atividade_id', atividadeIds);
 
       // Criar mapa atividade_id -> talhao_ids[]
       const atividadeTalhoesMap = new Map<string, string[]>();
@@ -736,7 +722,7 @@ export class CustoPorTalhaoService {
         atividadeTalhoesMap.get(t.atividade_id)!.push(t.talhao_id);
       });
 
-      // 4. Buscar talhões non-default para saber quais são elegíveis (mesma lógica do getCustosInsumosPorTalhao)
+      // 4. Buscar talhões non-default para saber quais são elegíveis
       const talhoesNonDefault = await TalhaoService.getTalhoesNonDefault(userId, { onlyActive: true });
       const talhoesElegiveis = (talhoesNonDefault || []).filter(t => t && !t.talhao_default && (t.area || 0) > 0);
       
@@ -759,7 +745,7 @@ export class CustoPorTalhaoService {
 
       // Criar mapa atividade_id -> atividade
       const atividadeMap = new Map<string, any>();
-      atividades.forEach(a => atividadeMap.set(a.atividade_id, a));
+      atividadesParaProcessar.forEach(a => atividadeMap.set(a.atividade_id, a));
 
       // 5. Processar produtos (MESMA LÓGICA do getCustosInsumosPorTalhao)
       (produtos || []).forEach(produto => {
@@ -815,7 +801,7 @@ export class CustoPorTalhaoService {
         }
       });
 
-      // 6. Buscar saídas de estoque (mesma query do getCustosInsumosPorTalhao)
+      // 6. Buscar saídas de estoque
       let queryEstoque = supabase
         .from('estoque_de_produtos')
         .select('valor_total, tipo_de_movimentacao, created_at, nome_do_produto')
@@ -829,9 +815,9 @@ export class CustoPorTalhaoService {
         queryEstoque = queryEstoque.lte('created_at', format(dataFim, 'yyyy-MM-dd') + 'T23:59:59');
       }
 
-      const { data: saidasEstoque, error: errorEstoque } = await queryEstoque;
+      const { data: saidasEstoque } = await queryEstoque;
 
-      // 7. Adicionar saídas de estoque proporcionalmente (mesma lógica do getCustosInsumosPorTalhao)
+      // 7. Adicionar saídas de estoque proporcionalmente
       if (proporcaoTalhao > 0 && saidasEstoque && saidasEstoque.length > 0) {
         saidasEstoque.forEach((saida: any) => {
           const valorTotal = typeof saida.valor_total === 'string'
@@ -854,10 +840,20 @@ export class CustoPorTalhaoService {
       }
 
       // 8. Adicionar DETALHES de Operacional a partir de transações financeiras
-      // Reaproveita a mesma janela de tempo e lógica de vinculação
       let queryFinanceiro = supabase
         .from('transacoes_financeiras')
-        .select('id_transacao, valor, categoria, descricao, area_vinculada, data_agendamento_pagamento, tipo_transacao, status')
+        .select(`
+          id_transacao, 
+          valor, 
+          categoria, 
+          descricao, 
+          data_agendamento_pagamento, 
+          tipo_transacao, 
+          status,
+          transacoes_talhoes(
+            id_talhao
+          )
+        `)
         .eq('user_id', userId)
         .eq('tipo_transacao', 'GASTO')
         .eq('status', 'Pago');
@@ -871,48 +867,10 @@ export class CustoPorTalhaoService {
 
       const { data: transacoes } = await queryFinanceiro;
 
-      // Verifica vínculo de talhão pela área (mesma função inline utilizada em getCustosPorTalhao)
-      // IMPORTANTE: Usar TalhaoService para garantir consistência com a tabela principal
-      const talhoesParaOperacional = await TalhaoService.getTalhoesNonDefault(userId, { onlyActive: true });
-      const elegiveis = talhoesParaOperacional.filter(t => t && (t.area || 0) > 0);
-      
-      const nameMap = new Map<string, any>();
-      const talhaoNames: string[] = [];
-      elegiveis.forEach(t => {
-        const key = CustoPorTalhaoService["normalize"](t.nome || '');
-        nameMap.set(key, t);
-        talhaoNames.push(key);
-      });
-      const findTalhaoByAreaVinculada = (areaVinculada: string): any | null => {
-        if (!areaVinculada) return null;
-        const areaKey = CustoPorTalhaoService["normalize"](areaVinculada);
-        if (nameMap.has(areaKey)) return nameMap.get(areaKey)!;
-        for (const talhaoName of talhaoNames) {
-          if (areaKey.includes(talhaoName) || talhaoName.includes(areaKey)) {
-            return nameMap.get(talhaoName)!;
-          }
-        }
-        return null;
-      };
-
       // Total de área para proporcional
-      const totalAreaElegivelOper = elegiveis.reduce((acc, t) => acc + (t.area || 0), 0);
-      const talhaoInfoOper = elegiveis.find(t => t.id_talhao === talhaoId);
+      const totalAreaElegivelOper = talhoesElegiveis.reduce((acc, t) => acc + (t.area || 0), 0);
+      const talhaoInfoOper = talhoesElegiveis.find(t => t.id_talhao === talhaoId);
       const proporcaoTalhaoOper = totalAreaElegivelOper > 0 ? ((talhaoInfoOper?.area || 0) / totalAreaElegivelOper) : 0;
-
-      // Contadores para debug
-      const contadoresMacro: Record<string, number> = {
-        operacional: 0,
-        servicosLogistica: 0,
-        administrativos: 0,
-        outros: 0
-      };
-      const totaisMacro: Record<string, number> = {
-        operacional: 0,
-        servicosLogistica: 0,
-        administrativos: 0,
-        outros: 0
-      };
 
       // Mapear nome do macrogrupo para label de exibição
       const macroLabels: Record<string, string> = {
@@ -928,43 +886,43 @@ export class CustoPorTalhaoService {
         if (valorAbs <= 0) return;
 
         // Verificar classificação de cada transação
-        const macroClassificado = CustoPorTalhaoService["identificarMacrogrupo"](tr.categoria || '', tr.descricao || '');
+        const macroClassificado = this.identificarMacrogrupo(tr.categoria || '', tr.descricao || '');
         
         // Pular insumos (já calculados separadamente) e transações não classificadas
-        if (!macroClassificado || macroClassificado === 'insumos') return;
+        if (!macroClassificado || macroClassificado === 'insumos') {
+          return;
+        }
 
-        const areaVinc = (tr.area_vinculada || '').toString().trim();
-        const talhaoVinc = findTalhaoByAreaVinculada(areaVinc);
         const labelCategoria = macroLabels[macroClassificado] || macroClassificado;
 
-        if (talhaoVinc && talhaoVinc.id_talhao === talhaoId) {
-          // Direto no talhão
+        // Verificar vínculo com talhão usando transacoes_talhoes
+        const talhoesVinculados = (tr as any).transacoes_talhoes || [];
+        const talhaoIdsVinculados = talhoesVinculados.map((t: any) => t.id_talhao).filter(Boolean);
+
+        if (talhaoIdsVinculados.includes(talhaoId)) {
+          // Transação vinculada diretamente a este talhão
+          const valorPorTalhao = talhaoIdsVinculados.length > 1 ? valorAbs / talhaoIdsVinculados.length : valorAbs;
+          
           detalhes.push({
             data: format(parseISO(tr.data_agendamento_pagamento), 'dd/MM/yyyy', { locale: ptBR }),
             categoria: labelCategoria,
             descricao: tr.descricao || tr.categoria || labelCategoria,
             origem: 'Financeiro',
-            valor: valorAbs,
+            valor: valorPorTalhao,
             macrogrupo: macroClassificado
           });
-          contadoresMacro[macroClassificado] = (contadoresMacro[macroClassificado] || 0) + 1;
-          totaisMacro[macroClassificado] = (totaisMacro[macroClassificado] || 0) + valorAbs;
-        } else {
-          // Sem vínculo com talhão específico non-default: distribuir proporcionalmente
-          if (proporcaoTalhaoOper > 0) {
-            const valorProp = valorAbs * proporcaoTalhaoOper;
-            if (valorProp > 0) {
-              detalhes.push({
-                data: format(parseISO(tr.data_agendamento_pagamento), 'dd/MM/yyyy', { locale: ptBR }),
-                categoria: labelCategoria,
-                descricao: `${tr.descricao || tr.categoria || labelCategoria} - ${(proporcaoTalhaoOper * 100).toFixed(2)}% da área`,
-                origem: 'Financeiro',
-                valor: valorProp,
-                macrogrupo: macroClassificado
-              });
-              contadoresMacro[macroClassificado] = (contadoresMacro[macroClassificado] || 0) + 1;
-              totaisMacro[macroClassificado] = (totaisMacro[macroClassificado] || 0) + valorProp;
-            }
+        } else if (talhaoIdsVinculados.length === 0 && proporcaoTalhaoOper > 0) {
+          // Sem vínculo específico: distribuir proporcionalmente
+          const valorProp = valorAbs * proporcaoTalhaoOper;
+          if (valorProp > 0) {
+            detalhes.push({
+              data: format(parseISO(tr.data_agendamento_pagamento), 'dd/MM/yyyy', { locale: ptBR }),
+              categoria: labelCategoria,
+              descricao: `${tr.descricao || tr.categoria || labelCategoria} - ${(proporcaoTalhaoOper * 100).toFixed(2)}% da área`,
+              origem: 'Financeiro',
+              valor: valorProp,
+              macrogrupo: macroClassificado
+            });
           }
         }
       });
