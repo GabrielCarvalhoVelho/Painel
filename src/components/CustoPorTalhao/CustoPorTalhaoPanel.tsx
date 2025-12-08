@@ -49,6 +49,7 @@ export default function CustoPorTalhaoPanel() {
   const [userId, setUserId] = useState<string | null>(null);
   const [talhaoExpandido, setTalhaoExpandido] = useState<string | null>(null);
   const [filtroDetalheMacrogrupo, setFiltroDetalheMacrogrupo] = useState<'Todos' | 'insumos' | 'operacional' | 'servicosLogistica' | 'administrativos' | 'outros'>('Todos');
+  const [tooltipAberto, setTooltipAberto] = useState<string | null>(null);
 
 
   // Dados iniciais simples — removidos os mocks complexos
@@ -296,11 +297,25 @@ export default function CustoPorTalhaoPanel() {
                   const valor = macroTotais[grupo.key] || 0;
                   const percentual = totalMacro > 0 ? (valor / totalMacro) * 100 : 0;
                   return (
-                    <div key={grupo.key}>
+                    <div key={grupo.key} className="relative">
                       <div className="flex items-center justify-between text-xs font-semibold text-[#004417]">
-                        <span>{grupo.label}</span>
+                        <span className="flex items-center gap-1">
+                          {grupo.label}
+                          <button
+                            type="button"
+                            onClick={() => setTooltipAberto(tooltipAberto === grupo.key ? null : grupo.key)}
+                            className="p-0.5"
+                          >
+                            <Info className="w-3 h-3 text-[#004417]" />
+                          </button>
+                        </span>
                         <span>{percentual.toFixed(1)}%</span>
                       </div>
+                      {tooltipAberto === grupo.key && (
+                        <div className="absolute left-0 top-full mt-1 bg-[#004417] text-white text-xs rounded px-3 py-2 z-20 max-w-[280px] shadow-lg">
+                          {grupo.tooltip}
+                        </div>
+                      )}
                       <div className="h-2 w-full bg-[rgba(0,68,23,0.08)] rounded-full">
                         <div
                           className="h-full bg-[#00A651] rounded-full"
@@ -477,11 +492,25 @@ export default function CustoPorTalhaoPanel() {
                     <div className="space-y-4 text-sm text-[#1d3a2d]">
                       <div className="grid grid-cols-2 gap-3">
                         {macrogrupos.map((gr) => (
-                          <div key={gr.key} className="flex flex-col gap-1">
+                          <div key={gr.key} className="flex flex-col gap-1 relative">
                             <span className="text-[rgba(0,68,23,0.75)] font-semibold flex items-center gap-1">
                               {gr.label}
-                              <Info className="w-3 h-3 text-[#004417]" />
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setTooltipAberto(tooltipAberto === `${talhaoId}-${gr.key}` ? null : `${talhaoId}-${gr.key}`);
+                                }}
+                                className="p-0.5"
+                              >
+                                <Info className="w-3 h-3 text-[#004417]" />
+                              </button>
                             </span>
+                            {tooltipAberto === `${talhaoId}-${gr.key}` && (
+                              <div className="absolute left-0 top-full mt-1 bg-[#004417] text-white text-xs rounded px-3 py-2 z-20 max-w-[250px] shadow-lg">
+                                {gr.tooltip}
+                              </div>
+                            )}
                             <span className="text-base font-bold text-[#004417]">{formatCurrency((t as any)[gr.key] || 0)}</span>
                           </div>
                         ))}
@@ -501,7 +530,7 @@ export default function CustoPorTalhaoPanel() {
                         onClick={() => handleTalhaoSelect(t)}
                         className="w-full text-sm font-bold text-[#004417] border border-[#00A651] rounded-xl py-3 flex items-center justify-center gap-2 hover:bg-[rgba(0,166,81,0.08)] transition-colors"
                       >
-                        📊 Abrir detalhamento
+                        Abrir detalhamento
                       </button>
                     </div>
                   </div>
