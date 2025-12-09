@@ -250,6 +250,19 @@ const FinanceiroPanel: React.FC = () => {
             <span className="text-[#004417]/65">Talhão:</span>
             <p className="font-semibold text-[#004417]">{transaction.nome_talhao || 'Sem talhão específico'}</p>
           </div>
+          {transaction.alocacoes && transaction.alocacoes.length > 0 && (
+            <div className="col-span-2">
+              <span className="text-[#004417]/65">Alocação:</span>
+              <div className="mt-1 space-y-1">
+                {transaction.alocacoes.map((alocacao, index) => (
+                  <div key={index} className="flex items-center gap-2 text-sm">
+                    <span className="font-semibold text-[#004417]">{alocacao.nome_talhao}</span>
+                    <span className="text-[#00A651] font-bold">{alocacao.percentual_alocacao.toFixed(1)}%</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="col-span-2">
             <span className="text-[#004417]/65">Forma de pagamento:</span>
             <p className="font-semibold text-[#004417]">{transaction.forma_pagamento_recebimento || 'Não informado'}</p>

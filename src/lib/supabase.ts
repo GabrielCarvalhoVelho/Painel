@@ -102,7 +102,13 @@ export interface TransacaoFinanceira {
   anexo_arquivo_url?: string;
   id_grupo_anexo?: string;
   parcela_com_anexo_original?: boolean;
-  nome_talhao?: string; // Nome do talhão vinculado
+  nome_talhao?: string;
+  alocacoes?: Array<{
+    id: string;
+    id_talhao: string;
+    percentual_alocacao: number;
+    nome_talhao?: string;
+  }>;
 }
 
 export interface AtividadeAgricola {
@@ -154,6 +160,16 @@ export interface Talhao {
   variedade_plantada?: string | null;
   quantidade_de_pes?: number | null;
   ano_de_plantio?: string | null;
+}
+
+export interface AlocacaoTalhao {
+  id: string;
+  id_transacao: string;
+  id_talhao: string;
+  percentual_alocacao: number;
+  criado_em?: string;
+  atualizado_em?: string;
+  nome_talhao?: string;
 }
 
 export interface ProdutoEstoque {

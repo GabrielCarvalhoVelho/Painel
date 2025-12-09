@@ -160,6 +160,14 @@ export class FinanceService {
             talhoes!inner(
               nome
             )
+          ),
+          transacoes_talhoes_alocacao!left(
+            id,
+            id_talhao,
+            percentual_alocacao,
+            talhoes!inner(
+              nome
+            )
           )
         `)
         .eq('user_id', userId)
@@ -171,16 +179,23 @@ export class FinanceService {
         return [];
       }
 
-      // Processa dados para adicionar nome do talhão
       const transacoesComTalhoes = (data || []).map(transacao => {
         const talhoes = (transacao as any).transacoes_talhoes || [];
         const nomeTalhao = talhoes.length > 0 && talhoes[0].talhoes?.nome
           ? talhoes[0].talhoes.nome
           : 'Sem talhão específico';
 
+        const alocacoes = (transacao as any).transacoes_talhoes_alocacao || [];
+
         return {
           ...transacao,
-          nome_talhao: nomeTalhao
+          nome_talhao: nomeTalhao,
+          alocacoes: alocacoes.map((a: any) => ({
+            id: a.id,
+            id_talhao: a.id_talhao,
+            percentual_alocacao: a.percentual_alocacao,
+            nome_talhao: a.talhoes?.nome || 'N/A'
+          }))
         } as TransacaoFinanceira;
       });
 
@@ -1300,6 +1315,14 @@ static async getTotalNegativeTransactions(userId: string): Promise<number> {
             talhoes!inner(
               nome
             )
+          ),
+          transacoes_talhoes_alocacao!left(
+            id,
+            id_talhao,
+            percentual_alocacao,
+            talhoes!inner(
+              nome
+            )
           )
         `)
         .eq('user_id', userId)
@@ -1324,9 +1347,17 @@ static async getTotalNegativeTransactions(userId: string): Promise<number> {
           ? talhoes[0].talhoes.nome
           : 'Sem talhão específico';
 
+        const alocacoes = (transacaoRaw as any).transacoes_talhoes_alocacao || [];
+
         const transacao = {
           ...transacaoRaw,
-          nome_talhao: nomeTalhao
+          nome_talhao: nomeTalhao,
+          alocacoes: alocacoes.map((a: any) => ({
+            id: a.id,
+            id_talhao: a.id_talhao,
+            percentual_alocacao: a.percentual_alocacao,
+            nome_talhao: a.talhoes?.nome || 'N/A'
+          }))
         } as TransacaoFinanceira;
 
         const dataTransacao = this.getTransactionDate(transacao);
