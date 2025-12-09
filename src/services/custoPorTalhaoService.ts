@@ -287,7 +287,11 @@ export interface FiltrosCustoPorTalhao {
 // Baseado nas categorias reais do banco de dados
 const MACRO_CATEGORIAS = {
   insumos: [
-    // Coluna 'insumos' será zerada - não busca de transacoes_financeiras
+    'Fertilizantes',
+    'Defensivos Agrícolas',
+    'Agrotóxicos',
+    'Sementes e mudas',
+    'Sem./Mudas',
   ],
   operacional: [
     'Máquinas e Equipamentos',
@@ -295,30 +299,37 @@ const MACRO_CATEGORIAS = {
     'Aluguel de Máquinas',
     'Mão de obra',
     'Manutenção e Instalações',
-    // Categorias observadas nos logs
     'Operação com máquinas',
     'Aluguel Máquinas',
     'Tratores e Colheitadeiras',
     'Operação com Avião',
     'Máquinas',
     'Implementos',
+    'Tratores/Zé',
+    'Trator/Colheitad',
+    'Combustíveis',
   ],
   servicosLogistica: [
     'Transporte',
+    'Transporte Externo',
+    'Transporte Ext.',
     'Beneficiamento',
     'Despesas de armazenagem',
     'Classificação',
     'Assistência Técnica',
     'Serviços Diversos',
-    'Análise de Solo'
+    'Análise de Solo',
+    'Embalagens/Utensílios',
   ],
   administrativos: [
     'Despesas Administrativas',
     'Despesas Gerais',
+    'Demais Despesas',
     'Encargos Sociais',
     'Arrendamento',
     'Seguro',
-    'Gestão/Administração'
+    'Gestão/Administração',
+    'Administrador',
   ],
   outros: [
     'Outros',
@@ -328,7 +339,11 @@ const MACRO_CATEGORIAS = {
 
 // Keywords para identificação por descrição (fallback quando categoria não bate)
 const KEYWORDS_MACROGRUPOS = {
-  insumos: [], // Coluna 'insumos' será zerada - não busca de transacoes_financeiras
+  insumos: [
+    'fertilizante', 'adubo', 'ureia', 'calcario', 'calcário',
+    'defensivo', 'agrotoxico', 'agrotóxico', 'herbicida', 'fungicida', 'inseticida',
+    'semente', 'muda',
+  ],
   operacional: [
     'diesel', 'gasolina', 'combustivel', 'combustível',
     'manutenc', 'manutenção', 'repar',
@@ -336,11 +351,10 @@ const KEYWORDS_MACROGRUPOS = {
     'trator', 'colheita', 'irrigação',
     'mourão', 'mourao', 'cerca', 'instalação', 'instalacao',
     'óleo', 'oleo', 'lubrificante', 'lubrific', 'oficina', 'peça', 'peca', 'corrente', 'filtro',
-    // Palavras-chave adicionais dos logs
     'maquinas', 'máquinas', 'operacao', 'operação', 'aviao', 'avião',
     'colheitadeira', 'pulverizador', 'implementos', 'aluguel maquinas'
   ],
-  servicosLogistica: ['transporte', 'frete', 'beneficiament', 'armazen', 'classifica', 'assistência', 'assistencia', 'analise de solo', 'análise de solo'],
+  servicosLogistica: ['transporte', 'frete', 'beneficiament', 'armazen', 'classifica', 'assistência', 'assistencia', 'analise de solo', 'análise de solo', 'embalagem'],
   administrativos: ['administrativ', 'encargo', 'arrend', 'seguro', 'imposto', 'taxa', 'gestao', 'gestão', 'administracao', 'administração'],
   outros: ['outro', 'venda']
 } as const;
@@ -874,6 +888,7 @@ export class CustoPorTalhaoService {
 
       // Mapear nome do macrogrupo para label de exibição
       const macroLabels: Record<string, string> = {
+        insumos: 'Insumos',
         operacional: 'Operacional',
         servicosLogistica: 'Serviços/Logística',
         administrativos: 'Administrativos',
@@ -887,9 +902,9 @@ export class CustoPorTalhaoService {
 
         // Verificar classificação de cada transação
         const macroClassificado = this.identificarMacrogrupo(tr.categoria || '', tr.descricao || '');
-        
-        // Pular insumos (já calculados separadamente) e transações não classificadas
-        if (!macroClassificado || macroClassificado === 'insumos') {
+
+        // Pular transações não classificadas
+        if (!macroClassificado) {
           return;
         }
 
