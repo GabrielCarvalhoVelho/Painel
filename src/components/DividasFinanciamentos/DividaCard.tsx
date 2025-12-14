@@ -1,0 +1,95 @@
+import { Divida } from './mockDividas';
+import { ChevronRight } from 'lucide-react';
+
+interface DividaCardProps {
+  divida: Divida;
+  onViewDetails: (id: number) => void;
+  onEdit: (id: number) => void;
+  onLiquidar: (id: number) => void;
+}
+
+const getSituacaoBadgeColor = (situacao: string) => {
+  switch (situacao) {
+    case 'Ativa':
+      return 'bg-blue-100 text-blue-800';
+    case 'Liquidada':
+      return 'bg-green-100 text-green-800';
+    case 'Renegociada':
+      return 'bg-amber-100 text-amber-800';
+    default:
+      return 'bg-gray-100 text-gray-800';
+  }
+};
+
+const renderField = (label: string, value?: string | number | null) => {
+  if (!value) return null;
+  return (
+    <div className="mb-3">
+      <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">{label}</p>
+      <p className="text-sm text-gray-900 font-medium">{value}</p>
+    </div>
+  );
+};
+
+export default function DividaCard({
+  divida,
+  onViewDetails,
+  onEdit,
+  onLiquidar,
+}: DividaCardProps) {
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition-shadow">
+      {/* Header com título e badge */}
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex-1">
+          <h3 className="text-base font-bold text-gray-900">{divida.nome}</h3>
+          <p className="text-sm text-gray-600 mt-1">{divida.credor}</p>
+        </div>
+        <span className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ml-2 ${getSituacaoBadgeColor(divida.situacao)}`}>
+          {divida.situacao}
+        </span>
+      </div>
+
+      {/* Campos exibidos (ocultando os vazios) */}
+      <div className="space-y-2 mb-5 pb-4 border-b border-gray-100">
+        {renderField('Tipo', divida.tipo)}
+        {renderField('Data da Contratação', divida.dataContratacao)}
+        {renderField('Valor Contratado', `R$ ${divida.valorContratado.toLocaleString('pt-BR')}`)}
+        {renderField('Taxa', divida.taxa)}
+        {renderField('Carência', divida.carencia)}
+        {renderField('Garantia', divida.garantia)}
+        {renderField('Responsável', divida.responsavel)}
+        {renderField('Observações', divida.observacoes)}
+      </div>
+
+      {/* Forma de pagamento */}
+      <div className="mb-5 pb-4 border-b border-gray-100">
+        <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">Forma de Pagamento</p>
+        <p className="text-sm text-gray-900 font-medium">{divida.formaPagamento}</p>
+      </div>
+
+      {/* Ações */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => onViewDetails(divida.id)}
+          className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 transition-colors"
+        >
+          Ver detalhes
+          <ChevronRight className="w-4 h-4" />
+        </button>
+        <button
+          onClick={() => onEdit(divida.id)}
+          className="flex-1 px-3 py-2 bg-[#00A651] hover:bg-[#008c44] rounded-lg text-sm font-medium text-white transition-colors"
+        >
+          Editar
+        </button>
+        <button
+          onClick={() => onLiquidar(divida.id)}
+          className="flex-1 px-3 py-2 border border-red-200 hover:bg-red-50 rounded-lg text-sm font-medium text-red-700 transition-colors"
+        >
+          Liquidar
+        </button>
+      </div>
+    </div>
+  );
+}

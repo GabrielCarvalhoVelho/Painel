@@ -12,7 +12,10 @@ import {
   Sprout,
   Calculator,
   LandPlot,
-  BarChart3
+  BarChart3,
+  FileText,
+  Folder,
+  Bug
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -24,6 +27,9 @@ interface SidebarProps {
 const menuItems = [
   { id: 'dashboard', icon: Home, label: 'Dashboard', description: 'Visão geral' },
   { id: 'financeiro', icon: DollarSign, label: 'Financeiro', description: 'Fluxo de caixa' },
+  { id: 'dividas-financiamentos', icon: FileText, label: 'Dívidas e Financiamentos', description: 'Gestão de dívidas' },
+  { id: 'documentos', icon: Folder, label: 'Documentos', description: 'Gestão de arquivos' },
+  { id: 'pragas-doencas', icon: Bug, label: 'Pragas e Doenças', description: 'Ocorrências de pragas' },
   { id: 'custo-safra', icon: Calculator, label: 'Custo Safra', description: 'Análise de custos' },
   { id: 'custo-por-talhao', icon: BarChart3, label: 'Custo por Talhão', description: 'Competência por Área' },
   { id: 'manejo-agricola', icon: Sprout, label: 'Manejo Agrícola', description: 'Atividades técnicas' },

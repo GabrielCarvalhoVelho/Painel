@@ -6,6 +6,9 @@ import Sidebar from './components/Layout/Sidebar';
 import Header from './components/Layout/Header';
 import DashboardOverview from './components/Dashboard/DashboardOverview';
 import FinanceiroPanel from './components/Financeiro/FinanceiroPanel';
+import DividasFinanciamentosPanel from './components/DividasFinanciamentos/DividasFinanciamentosPanel';
+import DocumentosPanel from './components/Documentos/DocumentosPanel';
+import PragasDoencasPanel from './components/PragasDoencas/PragasDoencasPanel';
 import CustoSafraPanel from './components/CustoSafra/CustoSafraPanel';
 import CustoPorTalhaoPanel from './components/CustoPorTalhao/CustoPorTalhaoPanel';
 import ManejoAgricolaPanel from './components/ManejoAgricola/ManejoAgricolaPanel';
@@ -100,6 +103,12 @@ function App() {
         return <DashboardOverview />;
       case 'financeiro':
         return <FinanceiroPanel />;
+      case 'dividas-financiamentos':
+        return <DividasFinanciamentosPanel />;
+      case 'documentos':
+        return <DocumentosPanel />;
+      case 'pragas-doencas':
+        return <PragasDoencasPanel />;
       case 'custo-safra':
         return <CustoSafraPanel />;
       case 'custo-por-talhao':

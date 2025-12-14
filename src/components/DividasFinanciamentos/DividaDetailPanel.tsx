@@ -1,0 +1,234 @@
+import { Divida } from './mockDividas';
+import { X, Edit2, Trash2, CheckCircle } from 'lucide-react';
+
+interface DividaDetailPanelProps {
+  divida: Divida | null;
+  isOpen: boolean;
+  onClose: () => void;
+  onEdit: (id: number) => void;
+  onLiquidar: (id: number) => void;
+  onDelete: (id: number) => void;
+}
+
+const getSituacaoBadgeColor = (situacao: string) => {
+  switch (situacao) {
+    case 'Ativa':
+      return 'bg-blue-100 text-blue-800';
+    case 'Liquidada':
+      return 'bg-green-100 text-green-800';
+    case 'Renegociada':
+      return 'bg-amber-100 text-amber-800';
+    default:
+      return 'bg-gray-100 text-gray-800';
+  }
+};
+
+const DetailField = ({ label, value }: { label: string; value?: string | number | null }) => {
+  if (!value) return null;
+  return (
+    <div className="mb-4">
+      <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">{label}</p>
+      <p className="text-sm text-gray-900">{value}</p>
+    </div>
+  );
+};
+
+export default function DividaDetailPanel({
+  divida,
+  isOpen,
+  onClose,
+  onEdit,
+  onLiquidar,
+  onDelete,
+}: DividaDetailPanelProps) {
+  if (!isOpen || !divida) return null;
+
+  return (
+    <>
+      {/* Overlay */}
+      <div
+        className="fixed inset-0 bg-black bg-opacity-30 z-40 transition-opacity"
+        onClick={onClose}
+      />
+
+      {/* Panel */}
+      <div className="fixed right-0 top-0 h-full w-96 bg-white shadow-2xl z-50 flex flex-col overflow-hidden animate-in slide-in-from-right-96">
+        {/* Header */}
+        <div className="border-b border-gray-200 p-6 flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">{divida.nome}</h2>
+            <p className="text-sm text-gray-600 mt-1">{divida.credor}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <X className="w-5 h-5 text-gray-500" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {/* Status Badge */}
+          <div className="flex items-center gap-2">
+            <span className={`px-4 py-2 rounded-full text-sm font-semibold ${getSituacaoBadgeColor(divida.situacao)}`}>
+              {divida.situacao}
+            </span>
+          </div>
+
+          {/* Informações Básicas */}
+          <div>
+            <h3 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">
+              Informações Básicas
+            </h3>
+            <DetailField label="Tipo" value={divida.tipo} />
+            <DetailField label="Credor" value={divida.credor} />
+            <DetailField label="Data da Contratação" value={divida.dataContratacao} />
+            <DetailField label="Responsável" value={divida.responsavel} />
+          </div>
+
+          {/* Valores e Taxas */}
+          <div>
+            <h3 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">
+              Valores e Taxas
+            </h3>
+            <DetailField
+              label="Valor Contratado"
+              value={`R$ ${divida.valorContratado.toLocaleString('pt-BR')}`}
+            />
+            <DetailField label="Taxa" value={divida.taxa} />
+            <DetailField label="Carência" value={divida.carencia} />
+          </div>
+
+          {/* Garantias e Pagamento */}
+          <div>
+            <h3 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">
+              Garantias e Pagamento
+            </h3>
+            <DetailField label="Garantia" value={divida.garantia} />
+            <DetailField label="Forma de Pagamento" value={divida.formaPagamento} />
+          </div>
+
+          {/* Observações */}
+          {divida.observacoes && (
+            <div>
+              <h3 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">
+                Observações
+              </h3>
+              <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
+                {divida.observacoes}
+              </p>
+            </div>
+          )}
+
+          {/* Cronograma de Pagamento */}
+          {(divida.pagamentoParcelado || divida.pagamentoParcela || divida.pagamentoProducao) && (
+            <div>
+              <h3 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">
+                Cronograma de Pagamento
+              </h3>
+              {divida.pagamentoParcelado && (
+                <div className="bg-gray-50 p-3 rounded-lg space-y-2 mb-3">
+                  <p className="text-sm text-gray-700">
+                    <strong>Parcelado:</strong> {divida.pagamentoParcelado.numParcelas} parcelas de R${' '}
+                    {divida.pagamentoParcelado.valorParcela.toLocaleString('pt-BR', {
+                      minimumFractionDigits: 2,
+                    })}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Primeira parcela: {divida.pagamentoParcelado.primeiradata}
+                  </p>
+                </div>
+              )}
+              {divida.pagamentoParcela && (
+                <div className="bg-gray-50 p-3 rounded-lg space-y-2 mb-3">
+                  <p className="text-sm text-gray-700">
+                    <strong>Parcela Única:</strong> R${' '}
+                    {divida.pagamentoParcela.valor.toLocaleString('pt-BR', {
+                      minimumFractionDigits: 2,
+                    })}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Data: {divida.pagamentoParcela.data}
+                  </p>
+                </div>
+              )}
+              {divida.pagamentoProducao && (
+                <div className="bg-gray-50 p-3 rounded-lg space-y-2">
+                  <p className="text-sm text-gray-700">
+                    <strong>Com Produção:</strong> {divida.pagamentoProducao.quantidadeSacas} sacas de{' '}
+                    {divida.pagamentoProducao.produto}
+                  </p>
+                  {divida.pagamentoProducao.precoPorSaca && (
+                    <p className="text-sm text-gray-600">
+                      Preço: R$ {divida.pagamentoProducao.precoPorSaca.toLocaleString('pt-BR')} / saca
+                    </p>
+                  )}
+                  <p className="text-sm text-gray-600">
+                    Período: {divida.pagamentoProducao.dataPeriodo}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Anexos */}
+          {divida.anexos && divida.anexos.length > 0 && (
+            <div>
+              <h3 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">
+                Anexos
+              </h3>
+              <div className="space-y-2">
+                {divida.anexos.map((anexo, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg text-sm text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors"
+                  >
+                    <div className="w-5 h-5 bg-gray-300 rounded flex items-center justify-center text-xs font-bold text-gray-700">
+                      📄
+                    </div>
+                    {anexo}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer com botões */}
+        <div className="border-t border-gray-200 p-4 space-y-2">
+          <button
+            onClick={() => {
+              onEdit(divida.id);
+              onClose();
+            }}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-[#00A651] hover:bg-[#008c44] text-white rounded-lg font-medium transition-colors"
+          >
+            <Edit2 className="w-4 h-4" />
+            Editar
+          </button>
+          <button
+            onClick={() => {
+              onLiquidar(divida.id);
+              onClose();
+            }}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-green-200 hover:bg-green-50 text-green-700 rounded-lg font-medium transition-colors"
+          >
+            <CheckCircle className="w-4 h-4" />
+            Liquidar
+          </button>
+          <button
+            onClick={() => {
+              onDelete(divida.id);
+              onClose();
+            }}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-red-200 hover:bg-red-50 text-red-700 rounded-lg font-medium transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+            Excluir
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
