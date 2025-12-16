@@ -22,10 +22,6 @@ const getStatusColor = (status: string) => {
   }
 };
 
-const getOrigemColor = (origem: string) => {
-  return origem === 'WhatsApp' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800';
-};
-
 const renderField = (label: string, value?: string | null) => {
   if (!value) return null;
   return (
@@ -66,9 +62,6 @@ export default function OcorrenciaCard({
           <div className="flex gap-1 mt-2 flex-wrap">
             <span className={`px-2 py-0.5 rounded text-xs font-semibold ${getStatusColor(ocorrencia.status)}`}>
               {ocorrencia.status}
-            </span>
-            <span className={`px-2 py-0.5 rounded text-xs font-semibold ${getOrigemColor(ocorrencia.origem)}`}>
-              {ocorrencia.origem}
             </span>
           </div>
         </div>

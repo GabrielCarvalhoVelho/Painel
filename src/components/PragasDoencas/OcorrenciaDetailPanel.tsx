@@ -67,9 +67,6 @@ export default function OcorrenciaDetailPanel({
               <span className={`px-2 py-0.5 rounded text-xs font-semibold ${getStatusColor(ocorrencia.status)}`}>
                 {ocorrencia.status}
               </span>
-              <span className="px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-800">
-                {ocorrencia.origem}
-              </span>
             </div>
           </div>
           <button
