@@ -1,18 +1,67 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
-import { mockOcorrencias, Ocorrencia } from './mockOcorrencias';
+import { Ocorrencia } from './mockOcorrencias';
 import OcorrenciaCard from './OcorrenciaCard';
 import OcorrenciaDetailPanel from './OcorrenciaDetailPanel';
 import OcorrenciaFormModal from './OcorrenciaFormModal';
 import LoadingSpinner from '../Dashboard/LoadingSpinner';
+import { PragasDoencasService, PragaDoencaComTalhoes } from '../../services/pragasDoencasService';
+
+const TEMP_USER_ID = 'e60c8e2a-db11-4e6c-a223-b9d2b0dd65e7';
+
+function adaptarParaOcorrencia(praga: PragaDoencaComTalhoes): Ocorrencia {
+  const nomeTalhao = praga.talhoes_vinculados && praga.talhoes_vinculados.length > 0
+    ? praga.talhoes_vinculados[0].nome_talhao || 'Sem talhão'
+    : praga.talhoes || 'Sem talhão';
+
+  return {
+    id: praga.id,
+    origem: (praga.origem as 'WhatsApp' | 'Painel') || 'Painel',
+    talhao: nomeTalhao,
+    dataOcorrencia: praga.data_da_ocorrencia,
+    faseLavoura: (praga.fase_da_lavoura as any) || 'Vegetativo',
+    tipoOcorrencia: (praga.tipo_de_ocorrencia as any) || 'Praga',
+    severidade: (praga.nivel_da_gravidade as any) || 'Média',
+    areaAfetada: praga.area_afetada || '',
+    sintomas: praga.sintomas_observados || '',
+    acaoTomada: praga.acao_tomada || '',
+    nomePraga: praga.nome_praga,
+    diagnostico: (praga.diagnostico as any),
+    descricaoDetalhada: praga.descricao_detalhada,
+    climaRecente: praga.clima_recente,
+    produtosAplicados: praga.produtos_aplicados,
+    dataAplicacao: praga.data_aplicacao,
+    recomendacoes: praga.recomendacoes,
+    status: (praga.status as any) || 'Nova',
+    anexos: praga.anexos,
+    fotoPrincipal: praga.foto_principal || PragasDoencasService.getOcorrenciaIcon(praga.tipo_de_ocorrencia),
+  };
+}
 
 export default function PragasDoencasPanel() {
-  const [ocorrencias, setOcorrencias] = useState<Ocorrencia[]>(mockOcorrencias);
+  const [ocorrencias, setOcorrencias] = useState<Ocorrencia[]>([]);
   const [selectedOcorrencia, setSelectedOcorrencia] = useState<Ocorrencia | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingOcorrencia, setEditingOcorrencia] = useState<Ocorrencia | null>(null);
-  const [loading] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadOcorrencias();
+  }, []);
+
+  const loadOcorrencias = async () => {
+    setLoading(true);
+    try {
+      const data = await PragasDoencasService.getOcorrencias(TEMP_USER_ID);
+      const adaptadas = data.map(adaptarParaOcorrencia);
+      setOcorrencias(adaptadas);
+    } catch (error) {
+      console.error('Erro ao carregar ocorrências:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleViewDetails = (ocorrencia: Ocorrencia) => {
     setSelectedOcorrencia(ocorrencia);
@@ -25,8 +74,20 @@ export default function PragasDoencasPanel() {
     setIsDetailOpen(false);
   };
 
-  const handleMarkResolved = (ocorrencia: Ocorrencia) => {
+  const handleMarkResolved = async (ocorrencia: Ocorrencia) => {
     console.log('✅ Marcando como resolvida:', ocorrencia.id);
+
+    const { error } = await PragasDoencasService.updateStatus(
+      ocorrencia.id,
+      'Resolvida',
+      TEMP_USER_ID
+    );
+
+    if (error) {
+      console.error('Erro ao atualizar status:', error);
+      return;
+    }
+
     const updated = ocorrencias.map((o) =>
       o.id === ocorrencia.id ? { ...o, status: 'Resolvida' as const } : o
     );
@@ -34,34 +95,93 @@ export default function PragasDoencasPanel() {
     setSelectedOcorrencia(updated.find((o) => o.id === ocorrencia.id) || null);
   };
 
-  const handleDelete = (ocorrenciaId: number) => {
+  const handleDelete = async (ocorrenciaId: number) => {
     console.log('🗑️ Deletando ocorrência:', ocorrenciaId);
+
+    const { error } = await PragasDoencasService.deleteOcorrencia(ocorrenciaId);
+
+    if (error) {
+      console.error('Erro ao deletar ocorrência:', error);
+      return;
+    }
+
     setOcorrencias(ocorrencias.filter((o) => o.id !== ocorrenciaId));
     setIsDetailOpen(false);
     setSelectedOcorrencia(null);
   };
 
-  const handleFormSubmit = (formData: Partial<Ocorrencia>) => {
+  const handleFormSubmit = async (formData: Partial<Ocorrencia>) => {
     if (editingOcorrencia) {
       console.log('✏️ Editando ocorrência:', editingOcorrencia.id, formData);
-      const updated = ocorrencias.map((o) =>
-        o.id === editingOcorrencia.id
-          ? { ...o, ...formData }
-          : o
+
+      const payload = {
+        user_id: TEMP_USER_ID,
+        talhoes: formData.talhao,
+        data_da_ocorrencia: formData.dataOcorrencia,
+        fase_da_lavoura: formData.faseLavoura,
+        tipo_de_ocorrencia: formData.tipoOcorrencia,
+        nivel_da_gravidade: formData.severidade,
+        area_afetada: formData.areaAfetada,
+        sintomas_observados: formData.sintomas,
+        acao_tomada: formData.acaoTomada,
+        nome_praga: formData.nomePraga,
+        diagnostico: formData.diagnostico,
+        descricao_detalhada: formData.descricaoDetalhada,
+        clima_recente: formData.climaRecente,
+        produtos_aplicados: formData.produtosAplicados,
+        data_aplicacao: formData.dataAplicacao,
+        recomendacoes: formData.recomendacoes,
+        status: formData.status,
+        origem: formData.origem || 'Painel',
+        foto_principal: formData.fotoPrincipal,
+      };
+
+      const { error } = await PragasDoencasService.updateOcorrencia(
+        editingOcorrencia.id,
+        payload
       );
-      setOcorrencias(updated);
+
+      if (error) {
+        console.error('Erro ao atualizar ocorrência:', error);
+        return;
+      }
+
+      await loadOcorrencias();
       setEditingOcorrencia(null);
     } else {
       console.log('➕ Criando nova ocorrência:', formData);
-      const newId = Math.max(...ocorrencias.map((o) => o.id), 0) + 1;
-      const newOcorrencia: Ocorrencia = {
-        id: newId,
+
+      const payload = {
+        user_id: TEMP_USER_ID,
+        talhoes: formData.talhao,
+        data_da_ocorrencia: formData.dataOcorrencia || new Date().toISOString().split('T')[0],
+        fase_da_lavoura: formData.faseLavoura || 'Vegetativo',
+        tipo_de_ocorrencia: formData.tipoOcorrencia || 'Praga',
+        nivel_da_gravidade: formData.severidade || 'Média',
+        area_afetada: formData.areaAfetada || '',
+        sintomas_observados: formData.sintomas || '',
+        acao_tomada: formData.acaoTomada || '',
+        nome_praga: formData.nomePraga,
+        diagnostico: formData.diagnostico,
+        descricao_detalhada: formData.descricaoDetalhada,
+        clima_recente: formData.climaRecente,
+        produtos_aplicados: formData.produtosAplicados || [],
+        data_aplicacao: formData.dataAplicacao,
+        recomendacoes: formData.recomendacoes,
+        status: formData.status || 'Nova',
         origem: 'Painel',
+        foto_principal: formData.fotoPrincipal || PragasDoencasService.getOcorrenciaIcon(formData.tipoOcorrencia),
         anexos: [],
-        fotoPrincipal: '🌾',
-        ...formData,
-      } as Ocorrencia;
-      setOcorrencias([newOcorrencia, ...ocorrencias]);
+      };
+
+      const { error } = await PragasDoencasService.createOcorrencia(payload);
+
+      if (error) {
+        console.error('Erro ao criar ocorrência:', error);
+        return;
+      }
+
+      await loadOcorrencias();
     }
     setIsFormOpen(false);
   };
@@ -75,7 +195,6 @@ export default function PragasDoencasPanel() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Pragas e Doenças</h1>
@@ -90,7 +209,6 @@ export default function PragasDoencasPanel() {
         </button>
       </div>
 
-      {/* Cards Grid */}
       {ocorrencias.length === 0 ? (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
           <div className="text-6xl mb-4">🌾</div>
@@ -120,7 +238,6 @@ export default function PragasDoencasPanel() {
         </div>
       )}
 
-      {/* Detail Panel */}
       {isDetailOpen && selectedOcorrencia && (
         <OcorrenciaDetailPanel
           ocorrencia={selectedOcorrencia}
@@ -135,7 +252,6 @@ export default function PragasDoencasPanel() {
         />
       )}
 
-      {/* Form Modal */}
       <OcorrenciaFormModal
         isOpen={isFormOpen}
         onClose={() => {

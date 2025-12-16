@@ -266,3 +266,41 @@ export function anexoPathFor(atividade_id: string, ext?: string) {
 export function getAnexoPublicUrl(bucket: string, path: string) {
   return supabase.storage.from(bucket).getPublicUrl(path);
 }
+
+// ------------------
+// Tipos para Pragas e Doenças
+// ------------------
+
+export interface PragaDoenca {
+  id: number;
+  user_id: string;
+  talhoes?: string;
+  data_da_ocorrencia: string;
+  fase_da_lavoura?: string;
+  tipo_de_ocorrencia?: string;
+  nivel_da_gravidade?: string;
+  area_afetada?: string;
+  sintomas_observados?: string;
+  acao_tomada?: string;
+  origem?: string;
+  nome_praga?: string;
+  diagnostico?: string;
+  descricao_detalhada?: string;
+  clima_recente?: string;
+  produtos_aplicados?: string[];
+  data_aplicacao?: string;
+  recomendacoes?: string;
+  status?: string;
+  anexos?: string[];
+  foto_principal?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface PragaDoencaTalhao {
+  id: number;
+  praga_doenca_id: number;
+  talhao_id: string;
+  user_id?: string;
+  created_at?: string;
+}
