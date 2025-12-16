@@ -6,8 +6,8 @@ interface OcorrenciaDetailPanelProps {
   ocorrencia: Ocorrencia | null;
   isOpen: boolean;
   onClose: () => void;
-  onEdit: (id: number) => void;
-  onMarkResolved: (id: number) => void;
+  onEdit: (ocorrencia: Ocorrencia) => void;
+  onMarkResolved: (ocorrencia: Ocorrencia) => void;
   onDelete: (id: number) => void;
 }
 
@@ -161,11 +161,10 @@ export default function OcorrenciaDetailPanel({
           )}
         </div>
 
-        {/* Footer com botões */}
         <div className="border-t border-gray-200 p-4 md:p-6 space-y-2">
           <button
             onClick={() => {
-              onEdit(ocorrencia.id);
+              onEdit(ocorrencia);
               onClose();
             }}
             className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-[#00A651] hover:bg-[#008c44] text-white rounded-lg font-medium transition-colors text-sm"
@@ -176,7 +175,7 @@ export default function OcorrenciaDetailPanel({
           {ocorrencia.status !== 'Resolvida' && (
             <button
               onClick={() => {
-                onMarkResolved(ocorrencia.id);
+                onMarkResolved(ocorrencia);
                 onClose();
               }}
               className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-green-200 hover:bg-green-50 text-green-700 rounded-lg font-medium transition-colors text-sm"

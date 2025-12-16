@@ -658,6 +658,27 @@ static async getProdutividadeFazendaTeste(
   }
 }
   
+  static async getTalhoesByUserId(userId: string): Promise<Array<{ id_talhao: string; nome: string }>> {
+    try {
+      const { data, error } = await supabase
+        .from('talhoes')
+        .select('id_talhao, nome')
+        .eq('user_id', userId)
+        .eq('ativo', true)
+        .order('nome');
+
+      if (error) {
+        console.error('Error fetching talhoes by user_id:', error);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error in getTalhoesByUserId:', error);
+      return [];
+    }
+  }
+
   static async getProdutividadeFazendaPeso(
   userId: string,
   propriedadeId?: string

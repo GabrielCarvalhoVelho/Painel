@@ -7,21 +7,27 @@ import OcorrenciaFormModal from './OcorrenciaFormModal';
 import LoadingSpinner from '../Dashboard/LoadingSpinner';
 import { PragasDoencasService, PragaDoencaComTalhoes } from '../../services/pragasDoencasService';
 
-const TEMP_USER_ID = 'e60c8e2a-db11-4e6c-a223-b9d2b0dd65e7';
+const TEMP_USER_ID = 'c7f13743-67ef-45d4-807c-9f5de81d4999';
 
-function adaptarParaOcorrencia(praga: PragaDoencaComTalhoes): Ocorrencia {
-  const nomeTalhao = praga.talhoes_vinculados && praga.talhoes_vinculados.length > 0
-    ? praga.talhoes_vinculados[0].nome_talhao || 'Sem talhão'
-    : praga.talhoes || 'Sem talhão';
+interface OcorrenciaComTalhaoIds extends Ocorrencia {
+  talhaoIds?: string[];
+}
+
+function adaptarParaOcorrencia(praga: PragaDoencaComTalhoes): OcorrenciaComTalhaoIds {
+  const talhaoNames = praga.talhoes_vinculados && praga.talhoes_vinculados.length > 0
+    ? praga.talhoes_vinculados.map(t => t.nome_talhao || 'Sem nome').join(', ')
+    : praga.talhoes || 'Sem talhao';
+
+  const talhaoIds = praga.talhoes_vinculados?.map(t => t.talhao_id) || [];
 
   return {
     id: praga.id,
     origem: (praga.origem as 'WhatsApp' | 'Painel') || 'Painel',
-    talhao: nomeTalhao,
+    talhao: talhaoNames,
     dataOcorrencia: praga.data_da_ocorrencia,
     faseLavoura: (praga.fase_da_lavoura as any) || 'Vegetativo',
     tipoOcorrencia: (praga.tipo_de_ocorrencia as any) || 'Praga',
-    severidade: (praga.nivel_da_gravidade as any) || 'Média',
+    severidade: (praga.nivel_da_gravidade as any) || 'Media',
     areaAfetada: praga.area_afetada || '',
     sintomas: praga.sintomas_observados || '',
     acaoTomada: praga.acao_tomada || '',
@@ -35,15 +41,16 @@ function adaptarParaOcorrencia(praga: PragaDoencaComTalhoes): Ocorrencia {
     status: (praga.status as any) || 'Nova',
     anexos: praga.anexos,
     fotoPrincipal: praga.foto_principal || PragasDoencasService.getOcorrenciaIcon(praga.tipo_de_ocorrencia),
+    talhaoIds,
   };
 }
 
 export default function PragasDoencasPanel() {
-  const [ocorrencias, setOcorrencias] = useState<Ocorrencia[]>([]);
-  const [selectedOcorrencia, setSelectedOcorrencia] = useState<Ocorrencia | null>(null);
+  const [ocorrencias, setOcorrencias] = useState<OcorrenciaComTalhaoIds[]>([]);
+  const [selectedOcorrencia, setSelectedOcorrencia] = useState<OcorrenciaComTalhaoIds | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingOcorrencia, setEditingOcorrencia] = useState<Ocorrencia | null>(null);
+  const [editingOcorrencia, setEditingOcorrencia] = useState<OcorrenciaComTalhaoIds | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -57,26 +64,26 @@ export default function PragasDoencasPanel() {
       const adaptadas = data.map(adaptarParaOcorrencia);
       setOcorrencias(adaptadas);
     } catch (error) {
-      console.error('Erro ao carregar ocorrências:', error);
+      console.error('Erro ao carregar ocorrencias:', error);
     } finally {
       setLoading(false);
     }
   };
 
   const handleViewDetails = (ocorrencia: Ocorrencia) => {
-    setSelectedOcorrencia(ocorrencia);
+    const fullOcorrencia = ocorrencias.find(o => o.id === ocorrencia.id);
+    setSelectedOcorrencia(fullOcorrencia || ocorrencia as OcorrenciaComTalhaoIds);
     setIsDetailOpen(true);
   };
 
   const handleEdit = (ocorrencia: Ocorrencia) => {
-    setEditingOcorrencia(ocorrencia);
+    const fullOcorrencia = ocorrencias.find(o => o.id === ocorrencia.id);
+    setEditingOcorrencia(fullOcorrencia || ocorrencia as OcorrenciaComTalhaoIds);
     setIsFormOpen(true);
     setIsDetailOpen(false);
   };
 
   const handleMarkResolved = async (ocorrencia: Ocorrencia) => {
-    console.log('✅ Marcando como resolvida:', ocorrencia.id);
-
     const { error } = await PragasDoencasService.updateStatus(
       ocorrencia.id,
       'Resolvida',
@@ -96,12 +103,10 @@ export default function PragasDoencasPanel() {
   };
 
   const handleDelete = async (ocorrenciaId: number) => {
-    console.log('🗑️ Deletando ocorrência:', ocorrenciaId);
-
     const { error } = await PragasDoencasService.deleteOcorrencia(ocorrenciaId);
 
     if (error) {
-      console.error('Erro ao deletar ocorrência:', error);
+      console.error('Erro ao deletar ocorrencia:', error);
       return;
     }
 
@@ -110,10 +115,8 @@ export default function PragasDoencasPanel() {
     setSelectedOcorrencia(null);
   };
 
-  const handleFormSubmit = async (formData: Partial<Ocorrencia>) => {
+  const handleFormSubmit = async (formData: Partial<Ocorrencia>, talhaoIds: string[]) => {
     if (editingOcorrencia) {
-      console.log('✏️ Editando ocorrência:', editingOcorrencia.id, formData);
-
       const payload = {
         user_id: TEMP_USER_ID,
         talhoes: formData.talhao,
@@ -138,26 +141,25 @@ export default function PragasDoencasPanel() {
 
       const { error } = await PragasDoencasService.updateOcorrencia(
         editingOcorrencia.id,
-        payload
+        payload,
+        talhaoIds.length > 0 ? talhaoIds : undefined
       );
 
       if (error) {
-        console.error('Erro ao atualizar ocorrência:', error);
+        console.error('Erro ao atualizar ocorrencia:', error);
         return;
       }
 
       await loadOcorrencias();
       setEditingOcorrencia(null);
     } else {
-      console.log('➕ Criando nova ocorrência:', formData);
-
       const payload = {
         user_id: TEMP_USER_ID,
         talhoes: formData.talhao,
         data_da_ocorrencia: formData.dataOcorrencia || new Date().toISOString().split('T')[0],
         fase_da_lavoura: formData.faseLavoura || 'Vegetativo',
         tipo_de_ocorrencia: formData.tipoOcorrencia || 'Praga',
-        nivel_da_gravidade: formData.severidade || 'Média',
+        nivel_da_gravidade: formData.severidade || 'Media',
         area_afetada: formData.areaAfetada || '',
         sintomas_observados: formData.sintomas || '',
         acao_tomada: formData.acaoTomada || '',
@@ -174,10 +176,10 @@ export default function PragasDoencasPanel() {
         anexos: [],
       };
 
-      const { error } = await PragasDoencasService.createOcorrencia(payload);
+      const { error } = await PragasDoencasService.createOcorrencia(payload, talhaoIds);
 
       if (error) {
-        console.error('Erro ao criar ocorrência:', error);
+        console.error('Erro ao criar ocorrencia:', error);
         return;
       }
 
@@ -197,31 +199,31 @@ export default function PragasDoencasPanel() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Pragas e Doenças</h1>
-          <p className="text-gray-600 mt-1">Acompanhe ocorrências de pragas e doenças nas suas culturas</p>
+          <h1 className="text-3xl font-bold text-gray-900">Pragas e Doencas</h1>
+          <p className="text-gray-600 mt-1">Acompanhe ocorrencias de pragas e doencas nas suas culturas</p>
         </div>
         <button
           onClick={handleNewOcorrencia}
           className="flex items-center gap-2 px-4 py-2 bg-[#00A651] hover:bg-[#008c44] text-white rounded-lg font-medium transition-colors"
         >
           <Plus className="w-5 h-5" />
-          Nova Ocorrência
+          Nova Ocorrencia
         </button>
       </div>
 
       {ocorrencias.length === 0 ? (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
           <div className="text-6xl mb-4">🌾</div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">Nenhuma ocorrência registrada</h3>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">Nenhuma ocorrencia registrada</h3>
           <p className="text-gray-600 mb-6">
-            Comece registrando uma nova ocorrência de praga ou doença
+            Comece registrando uma nova ocorrencia de praga ou doenca
           </p>
           <button
             onClick={handleNewOcorrencia}
             className="inline-flex items-center gap-2 px-6 py-2 bg-[#00A651] hover:bg-[#008c44] text-white rounded-lg font-medium transition-colors"
           >
             <Plus className="w-5 h-5" />
-            Registrar Ocorrência
+            Registrar Ocorrencia
           </button>
         </div>
       ) : (
@@ -260,6 +262,8 @@ export default function PragasDoencasPanel() {
         }}
         onSubmit={handleFormSubmit}
         initialData={editingOcorrencia}
+        userId={TEMP_USER_ID}
+        initialTalhaoIds={editingOcorrencia?.talhaoIds || []}
       />
     </div>
   );

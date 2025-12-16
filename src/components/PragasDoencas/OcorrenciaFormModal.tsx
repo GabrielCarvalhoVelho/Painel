@@ -1,12 +1,20 @@
-import { useState } from 'react';
-import { X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, Check } from 'lucide-react';
 import { Ocorrencia } from './mockOcorrencias';
+import { TalhaoService } from '../../services/talhaoService';
+
+interface TalhaoOption {
+  id_talhao: string;
+  nome: string;
+}
 
 interface OcorrenciaFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (ocorrencia: Partial<Ocorrencia>) => void;
+  onSubmit: (ocorrencia: Partial<Ocorrencia>, talhaoIds: string[]) => void;
   initialData?: Ocorrencia | null;
+  userId: string;
+  initialTalhaoIds?: string[];
 }
 
 const fasesOptions = ['Vegetativo', 'Floração', 'Granação', 'Pré-colheita', 'Colheita', 'Pós-colheita'];
@@ -20,6 +28,8 @@ export default function OcorrenciaFormModal({
   onClose,
   onSubmit,
   initialData,
+  userId,
+  initialTalhaoIds = [],
 }: OcorrenciaFormModalProps) {
   const [formData, setFormData] = useState<Partial<Ocorrencia>>(
     initialData || {
@@ -43,6 +53,36 @@ export default function OcorrenciaFormModal({
   );
 
   const [produtoInput, setProdutoInput] = useState('');
+  const [talhoes, setTalhoes] = useState<TalhaoOption[]>([]);
+  const [selectedTalhaoIds, setSelectedTalhaoIds] = useState<string[]>(initialTalhaoIds);
+  const [loadingTalhoes, setLoadingTalhoes] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && userId) {
+      loadTalhoes();
+    }
+  }, [isOpen, userId]);
+
+  useEffect(() => {
+    if (initialData) {
+      setFormData(initialData);
+    }
+    if (initialTalhaoIds.length > 0) {
+      setSelectedTalhaoIds(initialTalhaoIds);
+    }
+  }, [initialData, initialTalhaoIds]);
+
+  const loadTalhoes = async () => {
+    setLoadingTalhoes(true);
+    try {
+      const data = await TalhaoService.getTalhoesByUserId(userId);
+      setTalhoes(data);
+    } catch (error) {
+      console.error('Erro ao carregar talhoes:', error);
+    } finally {
+      setLoadingTalhoes(false);
+    }
+  };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -52,6 +92,16 @@ export default function OcorrenciaFormModal({
       ...prev,
       [name]: value,
     }));
+  };
+
+  const handleTalhaoToggle = (talhaoId: string) => {
+    setSelectedTalhaoIds((prev) => {
+      if (prev.includes(talhaoId)) {
+        return prev.filter((id) => id !== talhaoId);
+      } else {
+        return [...prev, talhaoId];
+      }
+    });
   };
 
   const handleAddProduto = () => {
@@ -73,8 +123,17 @@ export default function OcorrenciaFormModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('📝 Formulário de ocorrência enviado:', formData);
-    onSubmit(formData);
+    const selectedTalhaoNames = talhoes
+      .filter((t) => selectedTalhaoIds.includes(t.id_talhao))
+      .map((t) => t.nome)
+      .join(', ');
+
+    const dataToSubmit = {
+      ...formData,
+      talhao: selectedTalhaoNames || formData.talhao,
+    };
+
+    onSubmit(dataToSubmit, selectedTalhaoIds);
     onClose();
   };
 
@@ -82,19 +141,16 @@ export default function OcorrenciaFormModal({
 
   return (
     <>
-      {/* Overlay */}
       <div
         className="fixed inset-0 bg-black bg-opacity-40 z-50 transition-opacity"
         onClick={onClose}
       />
 
-      {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col">
-          {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <h2 className="text-2xl font-bold text-gray-900">
-              {initialData ? 'Editar Ocorrência' : 'Nova Ocorrência'}
+              {initialData ? 'Editar Ocorrencia' : 'Nova Ocorrencia'}
             </h2>
             <button
               onClick={onClose}
@@ -104,35 +160,54 @@ export default function OcorrenciaFormModal({
             </button>
           </div>
 
-          {/* Form Content */}
           <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6">
             <div className="space-y-4">
-              {/* SEÇÃO 1: Campos Obrigatórios */}
               <div>
                 <h3 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">
-                  Informações da Ocorrência
+                  Informacoes da Ocorrencia
                 </h3>
 
-                {/* 1. Talhão */}
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Talhão / Área *
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Talhoes Afetados *
                   </label>
-                  <input
-                    type="text"
-                    name="talhao"
-                    value={formData.talhao || ''}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
-                    placeholder="Ex: Talhão 3"
-                    required
-                  />
+                  {loadingTalhoes ? (
+                    <div className="text-sm text-gray-500">Carregando talhoes...</div>
+                  ) : talhoes.length === 0 ? (
+                    <div className="text-sm text-gray-500 p-3 bg-gray-50 rounded-lg">
+                      Nenhum talhao cadastrado. Cadastre seus talhoes primeiro.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 border border-gray-200 rounded-lg">
+                      {talhoes.map((talhao) => (
+                        <button
+                          key={talhao.id_talhao}
+                          type="button"
+                          onClick={() => handleTalhaoToggle(talhao.id_talhao)}
+                          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            selectedTalhaoIds.includes(talhao.id_talhao)
+                              ? 'bg-[#00A651] text-white'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          {selectedTalhaoIds.includes(talhao.id_talhao) && (
+                            <Check className="w-4 h-4" />
+                          )}
+                          {talhao.nome}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {selectedTalhaoIds.length > 0 && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      {selectedTalhaoIds.length} talhao(s) selecionado(s)
+                    </p>
+                  )}
                 </div>
 
-                {/* 2. Data da ocorrência */}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Data da Ocorrência *
+                    Data da Ocorrencia *
                   </label>
                   <input
                     type="date"
@@ -144,7 +219,6 @@ export default function OcorrenciaFormModal({
                   />
                 </div>
 
-                {/* 3. Fase da lavoura */}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Fase da Lavoura *
@@ -164,10 +238,9 @@ export default function OcorrenciaFormModal({
                   </select>
                 </div>
 
-                {/* 4. Tipo da ocorrência */}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tipo da Ocorrência *
+                    Tipo da Ocorrencia *
                   </label>
                   <select
                     name="tipoOcorrencia"
@@ -184,14 +257,13 @@ export default function OcorrenciaFormModal({
                   </select>
                 </div>
 
-                {/* 5. Severidade */}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Severidade *
                   </label>
                   <select
                     name="severidade"
-                    value={formData.severidade || 'Média'}
+                    value={formData.severidade || 'Media'}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
                     required
@@ -204,10 +276,9 @@ export default function OcorrenciaFormModal({
                   </select>
                 </div>
 
-                {/* 6. Área afetada */}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Área Afetada Aproximada *
+                    Area Afetada Aproximada *
                   </label>
                   <input
                     type="text"
@@ -215,12 +286,11 @@ export default function OcorrenciaFormModal({
                     value={formData.areaAfetada || ''}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
-                    placeholder="Ex: ~10% do talhão"
+                    placeholder="Ex: ~10% do talhao"
                     required
                   />
                 </div>
 
-                {/* 7. Sintomas observados */}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Sintomas Observados *
@@ -236,10 +306,9 @@ export default function OcorrenciaFormModal({
                   />
                 </div>
 
-                {/* 8. Ação tomada */}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Ação Tomada *
+                    Acao Tomada *
                   </label>
                   <textarea
                     name="acaoTomada"
@@ -247,22 +316,20 @@ export default function OcorrenciaFormModal({
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none resize-none"
                     rows={2}
-                    placeholder="Qual ação foi tomada para contornar o problema"
+                    placeholder="Qual acao foi tomada para contornar o problema"
                     required
                   />
                 </div>
               </div>
 
-              {/* SEÇÃO 2: Campos Extras (apenas no painel) */}
               <div className="pt-4 border-t border-gray-200">
                 <h3 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">
-                  Informações Adicionais
+                  Informacoes Adicionais
                 </h3>
 
-                {/* 9. Nome da praga/doença */}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nome da Praga / Doença
+                    Nome da Praga / Doenca
                   </label>
                   <input
                     type="text"
@@ -274,14 +341,13 @@ export default function OcorrenciaFormModal({
                   />
                 </div>
 
-                {/* 10. Confirmação do diagnóstico */}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Confirmação do Diagnóstico
+                    Confirmacao do Diagnostico
                   </label>
                   <select
                     name="diagnostico"
-                    value={formData.diagnostico || 'Sugerido pela IA (não confirmado)'}
+                    value={formData.diagnostico || 'Sugerido pela IA (nao confirmado)'}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
                   >
@@ -293,10 +359,9 @@ export default function OcorrenciaFormModal({
                   </select>
                 </div>
 
-                {/* 11. Descrição detalhada */}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Descrição Detalhada dos Sintomas
+                    Descricao Detalhada dos Sintomas
                   </label>
                   <textarea
                     name="descricaoDetalhada"
@@ -308,7 +373,6 @@ export default function OcorrenciaFormModal({
                   />
                 </div>
 
-                {/* 12. Clima recente */}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Clima Recente
@@ -319,11 +383,10 @@ export default function OcorrenciaFormModal({
                     value={formData.climaRecente || ''}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
-                    placeholder="Ex: Últimos 7 dias com muita chuva"
+                    placeholder="Ex: Ultimos 7 dias com muita chuva"
                   />
                 </div>
 
-                {/* 13. Produtos aplicados */}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Produtos Aplicados
@@ -333,7 +396,7 @@ export default function OcorrenciaFormModal({
                       type="text"
                       value={produtoInput}
                       onChange={(e) => setProdutoInput(e.target.value)}
-                      placeholder="Ex: Fungicida X – 0,5 L/ha"
+                      placeholder="Ex: Fungicida X - 0,5 L/ha"
                       className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none text-sm"
                       onKeyPress={(e) => {
                         if (e.key === 'Enter') {
@@ -363,7 +426,7 @@ export default function OcorrenciaFormModal({
                             onClick={() => handleRemoveProduto(idx)}
                             className="text-red-600 hover:text-red-800 font-medium"
                           >
-                            ✕
+                            X
                           </button>
                         </div>
                       ))}
@@ -371,10 +434,9 @@ export default function OcorrenciaFormModal({
                   )}
                 </div>
 
-                {/* 14. Data da aplicação */}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Data da Aplicação
+                    Data da Aplicacao
                   </label>
                   <input
                     type="date"
@@ -385,10 +447,9 @@ export default function OcorrenciaFormModal({
                   />
                 </div>
 
-                {/* 15. Recomendações */}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Próximas Recomendações / Acompanhamento
+                    Proximas Recomendacoes / Acompanhamento
                   </label>
                   <textarea
                     name="recomendacoes"
@@ -396,14 +457,13 @@ export default function OcorrenciaFormModal({
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none resize-none"
                     rows={2}
-                    placeholder="Recomendações para acompanhamento futuro"
+                    placeholder="Recomendacoes para acompanhamento futuro"
                   />
                 </div>
 
-                {/* 16. Status */}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Status da Ocorrência *
+                    Status da Ocorrencia *
                   </label>
                   <select
                     name="status"
@@ -419,23 +479,10 @@ export default function OcorrenciaFormModal({
                     ))}
                   </select>
                 </div>
-
-                {/* 17. Anexos (mockado) */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Anexos Adicionais (Mockado)
-                  </label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-not-allowed opacity-50">
-                    <p className="text-sm text-gray-600">
-                      Upload desabilitado (mock apenas)
-                    </p>
-                  </div>
-                </div>
               </div>
             </div>
           </form>
 
-          {/* Footer */}
           <div className="border-t border-gray-200 p-4 md:p-6 flex gap-3 justify-end">
             <button
               onClick={onClose}

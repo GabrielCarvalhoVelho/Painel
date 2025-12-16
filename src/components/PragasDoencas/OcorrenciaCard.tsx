@@ -4,9 +4,9 @@ import { formatDateBR } from '../../lib/dateUtils';
 
 interface OcorrenciaCardProps {
   ocorrencia: Ocorrencia;
-  onViewDetails: (id: number) => void;
-  onEdit: (id: number) => void;
-  onMarkResolved: (id: number) => void;
+  onViewDetails: (ocorrencia: Ocorrencia) => void;
+  onEdit: (ocorrencia: Ocorrencia) => void;
+  onMarkResolved: (ocorrencia: Ocorrencia) => void;
 }
 
 const getStatusColor = (status: string) => {
@@ -96,26 +96,24 @@ export default function OcorrenciaCard({
 
       {/* Rodapé: Botões */}
       {isMobile ? (
-        // Mobile: Apenas Ver detalhes grande
         <button
-          onClick={() => onViewDetails(ocorrencia.id)}
+          onClick={() => onViewDetails(ocorrencia)}
           className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-[#00A651] hover:bg-[#008c44] text-white rounded-lg text-sm font-medium transition-colors"
         >
           Ver detalhes
           <ChevronRight className="w-4 h-4" />
         </button>
       ) : (
-        // Desktop: Três botões
         <div className="flex gap-2">
           <button
-            onClick={() => onViewDetails(ocorrencia.id)}
+            onClick={() => onViewDetails(ocorrencia)}
             className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg text-xs font-medium text-gray-700 transition-colors"
           >
             Ver
             <ChevronRight className="w-3 h-3" />
           </button>
           <button
-            onClick={() => onEdit(ocorrencia.id)}
+            onClick={() => onEdit(ocorrencia)}
             className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-[#00A651] hover:bg-[#008c44] text-white rounded-lg text-xs font-medium transition-colors"
           >
             <Edit2 className="w-3 h-3" />
@@ -123,7 +121,7 @@ export default function OcorrenciaCard({
           </button>
           {ocorrencia.status !== 'Resolvida' && (
             <button
-              onClick={() => onMarkResolved(ocorrencia.id)}
+              onClick={() => onMarkResolved(ocorrencia)}
               className="flex-1 flex items-center justify-center gap-1 px-3 py-2 border border-green-200 hover:bg-green-50 text-green-700 rounded-lg text-xs font-medium transition-colors"
             >
               <CheckCircle className="w-3 h-3" />
