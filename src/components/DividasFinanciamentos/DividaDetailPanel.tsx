@@ -1,13 +1,13 @@
-import { Divida } from './mockDividas';
+import { DividaFinanciamento } from '../../services/dividasFinanciamentosService';
 import { X, Edit2, Trash2, CheckCircle } from 'lucide-react';
 
 interface DividaDetailPanelProps {
-  divida: Divida | null;
+  divida: DividaFinanciamento | null;
   isOpen: boolean;
   onClose: () => void;
-  onEdit: (id: number) => void;
-  onLiquidar: (id: number) => void;
-  onDelete: (id: number) => void;
+  onEdit: (id: string) => void;
+  onLiquidar: (id: string) => void;
+  onDelete: (id: string) => void;
 }
 
 const getSituacaoBadgeColor = (situacao: string) => {
@@ -83,7 +83,7 @@ export default function DividaDetailPanel({
             </h3>
             <DetailField label="Tipo" value={divida.tipo} />
             <DetailField label="Credor" value={divida.credor} />
-            <DetailField label="Data da Contratação" value={divida.dataContratacao} />
+            <DetailField label="Data da Contratação" value={divida.data_contratacao} />
             <DetailField label="Responsável" value={divida.responsavel} />
           </div>
 
@@ -94,7 +94,7 @@ export default function DividaDetailPanel({
             </h3>
             <DetailField
               label="Valor Contratado"
-              value={`R$ ${divida.valorContratado.toLocaleString('pt-BR')}`}
+              value={`R$ ${divida.valor_contratado.toLocaleString('pt-BR')}`}
             />
             <DetailField label="Taxa" value={divida.taxa} />
             <DetailField label="Carência" value={divida.carencia} />
@@ -106,7 +106,7 @@ export default function DividaDetailPanel({
               Garantias e Pagamento
             </h3>
             <DetailField label="Garantia" value={divida.garantia} />
-            <DetailField label="Forma de Pagamento" value={divida.formaPagamento} />
+            <DetailField label="Forma de Pagamento" value={divida.forma_pagamento} />
           </div>
 
           {/* Observações */}
@@ -122,50 +122,50 @@ export default function DividaDetailPanel({
           )}
 
           {/* Cronograma de Pagamento */}
-          {(divida.pagamentoParcelado || divida.pagamentoParcela || divida.pagamentoProducao) && (
+          {(divida.pagamento_parcelado || divida.pagamento_parcela || divida.pagamento_producao) && (
             <div>
               <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">
                 Cronograma de Pagamento
               </h3>
-              {divida.pagamentoParcelado && (
+              {divida.pagamento_parcelado && (
                 <div className="bg-gray-50 p-3 rounded-lg space-y-2 mb-3">
                   <p className="text-sm text-gray-700">
-                    <strong>Parcelado:</strong> {divida.pagamentoParcelado.numParcelas} parcelas de R${' '}
-                    {divida.pagamentoParcelado.valorParcela.toLocaleString('pt-BR', {
+                    <strong>Parcelado:</strong> {divida.pagamento_parcelado.numParcelas} parcelas de R${' '}
+                    {divida.pagamento_parcelado.valorParcela.toLocaleString('pt-BR', {
                       minimumFractionDigits: 2,
                     })}
                   </p>
                   <p className="text-sm text-gray-600">
-                    Primeira parcela: {divida.pagamentoParcelado.primeiradata}
+                    Primeira parcela: {divida.pagamento_parcelado.primeiradata}
                   </p>
                 </div>
               )}
-              {divida.pagamentoParcela && (
+              {divida.pagamento_parcela && (
                 <div className="bg-gray-50 p-3 rounded-lg space-y-2 mb-3">
                   <p className="text-sm text-gray-700">
                     <strong>Parcela Única:</strong> R${' '}
-                    {divida.pagamentoParcela.valor.toLocaleString('pt-BR', {
+                    {divida.pagamento_parcela.valor.toLocaleString('pt-BR', {
                       minimumFractionDigits: 2,
                     })}
                   </p>
                   <p className="text-sm text-gray-600">
-                    Data: {divida.pagamentoParcela.data}
+                    Data: {divida.pagamento_parcela.data}
                   </p>
                 </div>
               )}
-              {divida.pagamentoProducao && (
+              {divida.pagamento_producao && (
                 <div className="bg-gray-50 p-3 rounded-lg space-y-2">
                   <p className="text-sm text-gray-700">
-                    <strong>Com Produção:</strong> {divida.pagamentoProducao.quantidadeSacas} sacas de{' '}
-                    {divida.pagamentoProducao.produto}
+                    <strong>Com Produção:</strong> {divida.pagamento_producao.quantidadeSacas} sacas de{' '}
+                    {divida.pagamento_producao.produto}
                   </p>
-                  {divida.pagamentoProducao.precoPorSaca && (
+                  {divida.pagamento_producao.precoPorSaca && (
                     <p className="text-sm text-gray-600">
-                      Preço: R$ {divida.pagamentoProducao.precoPorSaca.toLocaleString('pt-BR')} / saca
+                      Preço: R$ {divida.pagamento_producao.precoPorSaca.toLocaleString('pt-BR')} / saca
                     </p>
                   )}
                   <p className="text-sm text-gray-600">
-                    Período: {divida.pagamentoProducao.dataPeriodo}
+                    Período: {divida.pagamento_producao.dataPeriodo}
                   </p>
                 </div>
               )}

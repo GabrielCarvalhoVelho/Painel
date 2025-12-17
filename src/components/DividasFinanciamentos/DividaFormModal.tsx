@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
-import { Divida } from './mockDividas';
+import { DividaFinanciamento } from '../../services/dividasFinanciamentosService';
 
 interface DividaFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (divida: Partial<Divida>) => void;
-  initialData?: Divida | null;
+  onSubmit: (divida: Partial<DividaFinanciamento>) => void;
+  initialData?: DividaFinanciamento | null;
 }
 
 const tipoOptions = [
@@ -33,15 +33,15 @@ export default function DividaFormModal({
   onSubmit,
   initialData,
 }: DividaFormModalProps) {
-  const [formData, setFormData] = useState<Partial<Divida>>(
+  const [formData, setFormData] = useState<Partial<DividaFinanciamento>>(
     initialData || {
       nome: '',
       credor: '',
       tipo: '',
-      dataContratacao: '',
-      valorContratado: 0,
+      data_contratacao: '',
+      valor_contratado: 0,
       taxa: '',
-      jurosAA: 'a.a.',
+      juros_aa: 'a.a.',
       indexador: 'Fixo',
       carencia: '',
       garantia: '',
@@ -49,11 +49,11 @@ export default function DividaFormModal({
       observacoes: '',
       situacao: 'Ativa',
       anexos: [],
-      pagamentoParcela: { valor: 0, data: '' },
-      pagamentoParcelado: { numParcelas: 0, valorParcela: 0, primeiradata: '' },
-      pagamentoProducao: { produto: '', quantidadeSacas: 0, dataPeriodo: '' },
-      cronogramaManual: '',
-      formaPagamento: '',
+      pagamento_parcela: { valor: 0, data: '' },
+      pagamento_parcelado: { numParcelas: 0, valorParcela: 0, primeiradata: '' },
+      pagamento_producao: { produto: '', quantidadeSacas: 0, dataPeriodo: '' },
+      cronograma_manual: '',
+      forma_pagamento: '',
     }
   );
 
@@ -78,7 +78,7 @@ export default function DividaFormModal({
   };
 
   const handleNestedChange = (
-    parent: 'pagamentoParcela' | 'pagamentoParcelado' | 'pagamentoProducao',
+    parent: 'pagamento_parcela' | 'pagamento_parcelado' | 'pagamento_producao',
     field: string,
     value: any
   ) => {
@@ -187,8 +187,8 @@ export default function DividaFormModal({
                 </label>
                 <input
                   type="date"
-                  name="dataContratacao"
-                  value={formData.dataContratacao || ''}
+                  name="data_contratacao"
+                  value={formData.data_contratacao || ''}
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-100 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
                 />
@@ -201,8 +201,8 @@ export default function DividaFormModal({
                 </label>
                 <input
                   type="number"
-                  name="valorContratado"
-                  value={formData.valorContratado || 0}
+                  name="valor_contratado"
+                  value={formData.valor_contratado || 0}
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-100 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
                   placeholder="0.00"
@@ -232,8 +232,8 @@ export default function DividaFormModal({
                   Juros
                 </label>
                 <select
-                  name="jurosAA"
-                  value={formData.jurosAA || 'a.a.'}
+                  name="juros_aa"
+                  value={formData.juros_aa || 'a.a.'}
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-100 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
                 >
@@ -269,8 +269,8 @@ export default function DividaFormModal({
                 <div className="col-span-1 md:col-span-2">
                   <input
                     type="text"
-                    name="indexadorOutro"
-                    value={formData.indexadorOutro || ''}
+                    name="indexador_outro"
+                    value={formData.indexador_outro || ''}
                     onChange={handleChange}
                     placeholder="Especifique o indexador"
                     className="w-full px-3 py-2 border border-gray-100 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
@@ -357,10 +357,10 @@ export default function DividaFormModal({
                     </label>
                     <input
                       type="number"
-                      value={formData.pagamentoParcela?.valor || 0}
+                      value={formData.pagamento_parcela?.valor || 0}
                       onChange={(e) =>
                         handleNestedChange(
-                          'pagamentoParcela',
+                          'pagamento_parcela',
                           'valor',
                           parseFloat(e.target.value) || 0
                         )
@@ -376,9 +376,9 @@ export default function DividaFormModal({
                     </label>
                     <input
                       type="date"
-                      value={formData.pagamentoParcela?.data || ''}
+                      value={formData.pagamento_parcela?.data || ''}
                       onChange={(e) =>
-                        handleNestedChange('pagamentoParcela', 'data', e.target.value)
+                        handleNestedChange('pagamento_parcela', 'data', e.target.value)
                       }
                       className="w-full px-3 py-2 border border-gray-100 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
                     />
@@ -396,10 +396,10 @@ export default function DividaFormModal({
                     </label>
                     <input
                       type="number"
-                      value={formData.pagamentoParcelado?.numParcelas || 0}
+                      value={formData.pagamento_parcelado?.numParcelas || 0}
                       onChange={(e) =>
                         handleNestedChange(
-                          'pagamentoParcelado',
+                          'pagamento_parcelado',
                           'numParcelas',
                           parseInt(e.target.value) || 0
                         )
@@ -414,10 +414,10 @@ export default function DividaFormModal({
                     </label>
                     <input
                       type="number"
-                      value={formData.pagamentoParcelado?.valorParcela || 0}
+                      value={formData.pagamento_parcelado?.valorParcela || 0}
                       onChange={(e) =>
                         handleNestedChange(
-                          'pagamentoParcelado',
+                          'pagamento_parcelado',
                           'valorParcela',
                           parseFloat(e.target.value) || 0
                         )
@@ -433,9 +433,9 @@ export default function DividaFormModal({
                     </label>
                     <input
                       type="date"
-                      value={formData.pagamentoParcelado?.primeiradata || ''}
+                      value={formData.pagamento_parcelado?.primeiradata || ''}
                       onChange={(e) =>
-                        handleNestedChange('pagamentoParcelado', 'primeiradata', e.target.value)
+                        handleNestedChange('pagamento_parcelado', 'primeiradata', e.target.value)
                       }
                       className="w-full px-3 py-2 border border-gray-100 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
                     />
@@ -453,9 +453,9 @@ export default function DividaFormModal({
                     </label>
                     <input
                       type="text"
-                      value={formData.pagamentoProducao?.produto || ''}
+                      value={formData.pagamento_producao?.produto || ''}
                       onChange={(e) =>
-                        handleNestedChange('pagamentoProducao', 'produto', e.target.value)
+                        handleNestedChange('pagamento_producao', 'produto', e.target.value)
                       }
                       className="w-full px-3 py-2 border border-gray-100 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
                       placeholder="Ex: Café"
@@ -467,10 +467,10 @@ export default function DividaFormModal({
                     </label>
                     <input
                       type="number"
-                      value={formData.pagamentoProducao?.quantidadeSacas || 0}
+                      value={formData.pagamento_producao?.quantidadeSacas || 0}
                       onChange={(e) =>
                         handleNestedChange(
-                          'pagamentoProducao',
+                          'pagamento_producao',
                           'quantidadeSacas',
                           parseInt(e.target.value) || 0
                         )
@@ -485,10 +485,10 @@ export default function DividaFormModal({
                     </label>
                     <input
                       type="number"
-                      value={formData.pagamentoProducao?.precoPorSaca || ''}
+                      value={formData.pagamento_producao?.precoPorSaca || ''}
                       onChange={(e) =>
                         handleNestedChange(
-                          'pagamentoProducao',
+                          'pagamento_producao',
                           'precoPorSaca',
                           parseFloat(e.target.value) || undefined
                         )
@@ -504,9 +504,9 @@ export default function DividaFormModal({
                     </label>
                     <input
                       type="text"
-                      value={formData.pagamentoProducao?.dataPeriodo || ''}
+                      value={formData.pagamento_producao?.dataPeriodo || ''}
                       onChange={(e) =>
-                        handleNestedChange('pagamentoProducao', 'dataPeriodo', e.target.value)
+                        handleNestedChange('pagamento_producao', 'dataPeriodo', e.target.value)
                       }
                       className="w-full px-3 py-2 border border-gray-100 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none"
                       placeholder="Ex: Junho 2025"
@@ -521,8 +521,8 @@ export default function DividaFormModal({
                   Cronograma Manual
                 </label>
                 <textarea
-                  name="cronogramaManual"
-                  value={formData.cronogramaManual || ''}
+                  name="cronograma_manual"
+                  value={formData.cronograma_manual || ''}
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-100 rounded-lg focus:ring-2 focus:ring-[#00A651] focus:border-transparent outline-none resize-none"
                   rows={3}

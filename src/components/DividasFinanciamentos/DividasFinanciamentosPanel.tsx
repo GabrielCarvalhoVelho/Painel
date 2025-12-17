@@ -1,45 +1,91 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
-import { mockDividas, Divida } from './mockDividas';
+import { DividasFinanciamentosService, DividaFinanciamento } from '../../services/dividasFinanciamentosService';
+import { useSupabase } from '../../lib/useSupabase';
 import DividaCard from './DividaCard';
 import DividaDetailPanel from './DividaDetailPanel';
 import DividaFormModal from './DividaFormModal';
 
 export default function DividasFinanciamentosPanel() {
-  const [dividas, setDividas] = useState<Divida[]>(mockDividas);
-  const [selectedDivida, setSelectedDivida] = useState<Divida | null>(null);
+  const { user } = useSupabase();
+  const [dividas, setDividas] = useState<DividaFinanciamento[]>([]);
+  const [selectedDivida, setSelectedDivida] = useState<DividaFinanciamento | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handleViewDetails = (id: number) => {
+  useEffect(() => {
+    if (user?.id) {
+      loadDividas();
+    }
+  }, [user]);
+
+  const loadDividas = async () => {
+    if (!user?.id) return;
+
+    setIsLoading(true);
+    const data = await DividasFinanciamentosService.getAll(user.id);
+    setDividas(data);
+    setIsLoading(false);
+  };
+
+  const handleViewDetails = (id: string) => {
     const divida = dividas.find((d) => d.id === id);
     if (divida) {
       setSelectedDivida(divida);
       setIsDetailOpen(true);
-      console.log('👁️ Ver detalhes da dívida:', id);
     }
   };
 
-  const handleEdit = (id: number) => {
+  const handleEdit = (id: string) => {
     console.log('✏️ Editar dívida:', id);
-    // Em uma implementação real, abriria o formulário com dados preenchidos
     setIsFormOpen(true);
   };
 
-  const handleLiquidar = (id: number) => {
-    console.log('✅ Liquidar dívida:', id);
-    // Em uma implementação real, alteraria o status para "Liquidada"
+  const handleLiquidar = async (id: string) => {
+    const success = await DividasFinanciamentosService.liquidar(id);
+    if (success) {
+      await loadDividas();
+      if (isDetailOpen) {
+        setIsDetailOpen(false);
+        setSelectedDivida(null);
+      }
+    }
   };
 
-  const handleDelete = (id: number) => {
-    console.log('🗑️ Deletar dívida:', id);
-    // Em uma implementação real, removeria a dívida
+  const handleDelete = async (id: string) => {
+    const success = await DividasFinanciamentosService.delete(id);
+    if (success) {
+      await loadDividas();
+      if (isDetailOpen) {
+        setIsDetailOpen(false);
+        setSelectedDivida(null);
+      }
+    }
   };
 
-  const handleFormSubmit = (formData: Partial<Divida>) => {
-    console.log('💾 Nova dívida/financiamento cadastrado:', formData);
-    // Em uma implementação real, adicionaria ao banco de dados
+  const handleFormSubmit = async (formData: Partial<DividaFinanciamento>) => {
+    if (!user?.id) return;
+
+    const dividaData = {
+      ...formData,
+      user_id: user.id,
+    } as Omit<DividaFinanciamento, 'id' | 'created_at' | 'updated_at'>;
+
+    const newDivida = await DividasFinanciamentosService.create(dividaData);
+    if (newDivida) {
+      await loadDividas();
+      setIsFormOpen(false);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-gray-600">Carregando...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -58,17 +104,19 @@ export default function DividasFinanciamentosPanel() {
       </div>
 
       {/* Cards Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {dividas.map((divida) => (
-          <DividaCard
-            key={divida.id}
-            divida={divida}
-            onViewDetails={handleViewDetails}
-            onEdit={handleEdit}
-            onLiquidar={handleLiquidar}
-          />
-        ))}
-      </div>
+      {dividas.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {dividas.map((divida) => (
+            <DividaCard
+              key={divida.id}
+              divida={divida}
+              onViewDetails={handleViewDetails}
+              onEdit={handleEdit}
+              onLiquidar={handleLiquidar}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Empty State */}
       {dividas.length === 0 && (

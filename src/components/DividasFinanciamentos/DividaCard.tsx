@@ -1,11 +1,11 @@
-import { Divida } from './mockDividas';
+import { DividaFinanciamento } from '../../services/dividasFinanciamentosService';
 import { ChevronRight } from 'lucide-react';
 
 interface DividaCardProps {
-  divida: Divida;
-  onViewDetails: (id: number) => void;
-  onEdit: (id: number) => void;
-  onLiquidar: (id: number) => void;
+  divida: DividaFinanciamento;
+  onViewDetails: (id: string) => void;
+  onEdit: (id: string) => void;
+  onLiquidar: (id: string) => void;
 }
 
 const getSituacaoBadgeColor = (situacao: string) => {
@@ -53,8 +53,8 @@ export default function DividaCard({
       {/* Campos exibidos (ocultando os vazios) */}
       <div className="space-y-2 mb-5 pb-4 border-b border-gray-100">
         {renderField('Tipo', divida.tipo)}
-        {renderField('Data da Contratação', divida.dataContratacao)}
-        {renderField('Valor Contratado', `R$ ${divida.valorContratado.toLocaleString('pt-BR')}`)}
+        {renderField('Data da Contratação', divida.data_contratacao)}
+        {renderField('Valor Contratado', `R$ ${divida.valor_contratado.toLocaleString('pt-BR')}`)}
         {renderField('Taxa', divida.taxa)}
         {renderField('Carência', divida.carencia)}
         {renderField('Garantia', divida.garantia)}
@@ -65,7 +65,7 @@ export default function DividaCard({
       {/* Forma de pagamento */}
       <div className="mb-5 pb-4 border-b border-gray-100">
         <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">Forma de Pagamento</p>
-        <p className="text-sm text-gray-900 font-medium">{divida.formaPagamento}</p>
+        <p className="text-sm text-gray-900 font-medium">{divida.forma_pagamento}</p>
       </div>
 
       {/* Ações */}
