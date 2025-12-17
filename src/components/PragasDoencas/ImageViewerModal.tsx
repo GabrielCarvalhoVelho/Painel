@@ -46,7 +46,7 @@ export default function ImageViewerModal({
       </button>
 
       {/* Image Container */}
-      <div className="relative w-full max-w-sm md:max-w-2xl max-h-[50vh] md:max-h-[80vh]">
+      <div className="relative w-full max-w-xs md:max-w-lg max-h-[50vh] md:max-h-[70vh]">
         <img
           src={imageUrl}
           alt={altText}
