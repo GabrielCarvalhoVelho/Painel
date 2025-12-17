@@ -141,6 +141,8 @@ export class PragasDoencasService {
       const fileName = `${ocorrenciaId}.${fileExt}`;
       const filePath = fileName;
 
+      console.log('📸 Iniciando upload da imagem:', { fileName, fileSize: file.size, fileType: file.type });
+
       const { error: uploadError } = await supabase.storage
         .from('pragas_e_doencas')
         .upload(filePath, file, {
@@ -149,7 +151,7 @@ export class PragasDoencasService {
         });
 
       if (uploadError) {
-        console.error('Erro ao fazer upload da imagem:', uploadError);
+        console.error('❌ Erro ao fazer upload da imagem:', uploadError);
         return null;
       }
 
@@ -157,9 +159,11 @@ export class PragasDoencasService {
         .from('pragas_e_doencas')
         .getPublicUrl(filePath);
 
+      console.log('✅ URL da imagem gerada:', publicUrlData.publicUrl);
+
       return publicUrlData.publicUrl;
     } catch (err) {
-      console.error('Erro no upload da imagem:', err);
+      console.error('❌ Erro no upload da imagem:', err);
       return null;
     }
   }
@@ -184,12 +188,22 @@ export class PragasDoencasService {
       const ocorrenciaId = (data as any).id;
 
       if (imageFile) {
+        console.log('🖼️ Processando upload de imagem para ocorrência:', ocorrenciaId);
         const imageUrl = await this.uploadImage(imageFile, ocorrenciaId);
         if (imageUrl) {
-          await supabase
+          console.log('💾 Atualizando banco com URL da imagem:', imageUrl);
+          const { error: updateError } = await supabase
             .from('pragas_e_doencas')
             .update({ foto_principal: imageUrl })
             .eq('id', ocorrenciaId);
+
+          if (updateError) {
+            console.error('❌ Erro ao atualizar foto_principal no banco:', updateError);
+          } else {
+            console.log('✅ foto_principal atualizada com sucesso no banco');
+          }
+        } else {
+          console.error('❌ Não foi possível obter URL da imagem');
         }
       }
 
