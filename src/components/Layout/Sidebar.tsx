@@ -31,13 +31,14 @@ const menuItems = [
   { id: 'dividas-financiamentos', icon: FileText, label: 'Dívidas e Financiamentos', description: 'Gestão de dívidas' },
   { id: 'custo-safra', icon: Calculator, label: 'Custo Safra', description: 'Análise de custos' },
   { id: 'custo-por-talhao', icon: BarChart3, label: 'Custo por Talhão', description: 'Competência por Área' },
-  { id: 'dre', icon: TrendingDown, label: 'Resultados da Operação (DRE)', description: 'DRE da Fazenda' },
   { id: 'manejo-agricola', icon: Sprout, label: 'Manejo Agrícola', description: 'Atividades técnicas' },
   { id: 'pragas-doencas', icon: Bug, label: 'Pragas e Doenças', description: 'Ocorrências de pragas' },
   { id: 'minha-fazenda', icon: LandPlot, label: 'Minha Fazenda', description: 'Detalhes dos talhões'},
-  { id: 'documentos', icon: Folder, label: 'Documentos', description: 'Gestão de arquivos' },
   { id: 'estoque', icon: Package, label: 'Estoque', description: 'Controle de insumos' },
   { id: 'maquinas', icon: Settings, label: 'Máquinas e Equipamentos', description: 'Controle de máquinas' },
+  // abas com funcionalidades ainda não implementadas — deixamos por último
+  { id: 'documentos', icon: Folder, label: 'Documentos', description: 'Gestão de arquivos' },
+  { id: 'dre', icon: TrendingDown, label: 'Resultados da Operação (DRE)', description: 'DRE da Fazenda' },
   // { id: 'estoque-cafe', icon: Coffee, label: 'Estoque de Café', description: 'Armazenamento' },
   // { id: 'vendas', icon: TrendingUp, label: 'Vendas', description: 'Simulador e histórico' },
   // { id: 'agenda', icon: Calendar, label: 'Agenda', description: 'Atividades técnicas' },
@@ -84,7 +85,18 @@ export default function Sidebar({ activeTab, setActiveTab, onClose }: SidebarPro
               <div className="flex items-center space-x-3">
                 <item.icon className={`w-[18px] h-[18px] ${active ? 'text-[#00A651]' : 'text-[rgba(255,255,255,0.7)]'}`} />
                 <div className="text-left">
-                  <div className={`font-medium text-[15px] ${active ? 'text-white' : 'text-[rgba(255,255,255,0.85)]'}`}>{item.label}</div>
+                  <div className={`font-medium text-[15px] ${active ? 'text-white' : 'text-[rgba(255,255,255,0.85)]'}`}> 
+                    <span>{item.label}</span>
+                    {(item.id === 'documentos' || item.id === 'dre') && (
+                      <span className={
+                        active
+                          ? 'ml-2 text-[11px] font-semibold bg-white/20 text-white px-2 py-0.5 rounded-full'
+                          : 'ml-2 text-[11px] font-semibold bg-[#FFF1E6] text-[#F7941F] px-2 py-0.5 rounded-full'
+                      }>
+                        Em breve
+                      </span>
+                    )}
+                  </div>
                   <div className={`text-xs ${active ? 'text-white/80' : 'text-[rgba(255,255,255,0.7)]'}`}>{item.description}</div>
                 </div>
               </div>
