@@ -45,8 +45,16 @@ export default function OcorrenciaCard({
       {/* Topo: Foto + Título + Tags */}
       <div className="flex gap-3 mb-3">
         {/* Foto Miniatura */}
-        <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 text-3xl">
-          {ocorrencia.fotoPrincipal || '📋'}
+        <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 text-3xl overflow-hidden">
+          {ocorrencia.fotoPrincipal && (ocorrencia.fotoPrincipal.startsWith('http') || ocorrencia.fotoPrincipal.startsWith('/')) ? (
+            <img
+              src={ocorrencia.fotoPrincipal}
+              alt="Foto da ocorrência"
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <span>{ocorrencia.fotoPrincipal || '📋'}</span>
+          )}
         </div>
 
         {/* Título e Subtítulo */}

@@ -83,8 +83,16 @@ export default function OcorrenciaDetailPanel({
           {ocorrencia.fotoPrincipal && (
             <div>
               <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-2">Foto Principal</p>
-              <div className="w-full h-40 bg-gray-100 rounded-lg flex items-center justify-center text-5xl">
-                {ocorrencia.fotoPrincipal}
+              <div className="w-full h-40 bg-gray-100 rounded-lg flex items-center justify-center text-5xl overflow-hidden">
+                {(ocorrencia.fotoPrincipal.startsWith('http') || ocorrencia.fotoPrincipal.startsWith('/')) ? (
+                  <img
+                    src={ocorrencia.fotoPrincipal}
+                    alt="Foto da ocorrência"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span>{ocorrencia.fotoPrincipal}</span>
+                )}
               </div>
             </div>
           )}
