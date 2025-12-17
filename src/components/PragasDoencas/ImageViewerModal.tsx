@@ -29,7 +29,7 @@ export default function ImageViewerModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 md:p-8">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 md:p-12">
       {/* Overlay */}
       <div
         className="absolute inset-0 bg-black bg-opacity-90"
@@ -47,11 +47,11 @@ export default function ImageViewerModal({
 
       {/* Image Container */}
       <div className="relative w-full h-full flex items-center justify-center">
-        <div className="relative w-full max-w-[90vw] md:max-w-4xl max-h-[85vh] md:max-h-[90vh] flex items-center justify-center">
+        <div className="relative w-full max-w-[90vw] md:max-w-6xl max-h-[85vh] md:max-h-[80vh] flex items-center justify-center md:aspect-auto">
           <img
             src={imageUrl}
             alt={altText}
-            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl md:rounded-2xl"
             onClick={(e) => e.stopPropagation()}
           />
         </div>
