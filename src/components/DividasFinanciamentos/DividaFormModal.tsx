@@ -102,6 +102,11 @@ export default function DividaFormModal({
     } else {
       setFormData(getEmptyFormData());
       setShowIndexadorOutro(false);
+      // garantir que o modal de criação venha totalmente limpo
+      setExistingAnexos([]);
+      setRemovedAnexos([]);
+      setSignedExisting({});
+      setSelectedFiles([]);
     }
     // reset arquivos selecionados quando troca entre editar/novo
     setSelectedFiles([]);
@@ -134,7 +139,13 @@ export default function DividaFormModal({
 
   // quando modal fecha, garantir que o state de arquivos seja resetado
   useEffect(() => {
-    if (!isOpen) setSelectedFiles([]);
+    if (!isOpen) {
+      setSelectedFiles([]);
+      setExistingAnexos([]);
+      setRemovedAnexos([]);
+      setSignedExisting({});
+      setFormData(getEmptyFormData());
+    }
   }, [isOpen]);
 
   const handleChange = (
