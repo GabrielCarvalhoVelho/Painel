@@ -45,35 +45,100 @@ CREATE POLICY "Pragas: select owner-or-service-or-occurrence-id" ON storage.obje
   );
 
 -- atividades_agricolas
-CREATE POLICY "Allow authenticated insert into atividades_agricolas" ON storage.objects
+-- LIMPEZA: remover policies existentes que referenciam o bucket 'atividades_agricolas'
+DO $$
+DECLARE
+  r RECORD;
+  expr text;
+BEGIN
+  FOR r IN
+    SELECT pol.polname, pol.polrelid, n.nspname, c.relname
+    FROM pg_policy pol
+    JOIN pg_class c ON pol.polrelid = c.oid
+    JOIN pg_namespace n ON c.relnamespace = n.oid
+    WHERE n.nspname = 'storage' AND c.relname = 'objects'
+  LOOP
+    -- tentar recuperar a expressão da policy e verificar se menciona 'atividades_agricolas'
+    BEGIN
+      expr := pg_get_expr((SELECT pol.polqual FROM pg_policy WHERE polname = r.polname AND polrelid = r.polrelid), r.polrelid);
+    EXCEPTION WHEN OTHERS THEN
+      expr := NULL;
+    END;
+
+    IF expr IS NOT NULL AND expr LIKE '%atividades_agricolas%' THEN
+      EXECUTE format('DROP POLICY IF EXISTS %I ON storage.objects;', r.polname);
+    END IF;
+  END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+
+-- atividades_agricolas
+-- Policies ownership-by-activity: permite ação pelo `service_role` ou
+-- pelo usuário dono da atividade identificada no path: imagens/<atividade_id> ou arquivos/<atividade_id>.<ext>
+DROP POLICY IF EXISTS "Atividades: user owns object (insert)" ON storage.objects;
+CREATE POLICY "Atividades: user owns object (insert)" ON storage.objects
 FOR INSERT
 WITH CHECK (
-  auth.role() = 'authenticated' AND
-  bucket_id = 'atividades_agricolas'
+  bucket_id = 'atividades_agricolas' AND (
+    auth.role() = 'service_role' OR
+    EXISTS (
+      SELECT 1 FROM public.lancamentos_agricolas a
+      WHERE a.atividade_id::text = (substring(name FROM '^(?:imagens|arquivos)/([^/.]+)'))::text
+        AND a.user_id::text = auth.uid()::text
+    )
+  )
 );
 
-CREATE POLICY "Allow authenticated update atividades_agricolas" ON storage.objects
+DROP POLICY IF EXISTS "Atividades: user owns object (update)" ON storage.objects;
+CREATE POLICY "Atividades: user owns object (update)" ON storage.objects
 FOR UPDATE
 USING (
-  auth.role() = 'authenticated' AND
-  bucket_id = 'atividades_agricolas'
+  bucket_id = 'atividades_agricolas' AND (
+    auth.role() = 'service_role' OR
+    EXISTS (
+      SELECT 1 FROM public.lancamentos_agricolas a
+      WHERE a.atividade_id::text = (substring(name FROM '^(?:imagens|arquivos)/([^/.]+)'))::text
+        AND a.user_id::text = auth.uid()::text
+    )
+  )
 )
 WITH CHECK (
-  auth.role() = 'authenticated' AND
-  bucket_id = 'atividades_agricolas'
+  bucket_id = 'atividades_agricolas' AND (
+    auth.role() = 'service_role' OR
+    EXISTS (
+      SELECT 1 FROM public.lancamentos_agricolas a
+      WHERE a.atividade_id::text = (substring(name FROM '^(?:imagens|arquivos)/([^/.]+)'))::text
+        AND a.user_id::text = auth.uid()::text
+    )
+  )
 );
 
-CREATE POLICY "Allow authenticated delete atividades_agricolas" ON storage.objects
+DROP POLICY IF EXISTS "Atividades: user owns object (delete)" ON storage.objects;
+CREATE POLICY "Atividades: user owns object (delete)" ON storage.objects
 FOR DELETE
 USING (
-  auth.role() = 'authenticated' AND
-  bucket_id = 'atividades_agricolas'
+  bucket_id = 'atividades_agricolas' AND (
+    auth.role() = 'service_role' OR
+    EXISTS (
+      SELECT 1 FROM public.lancamentos_agricolas a
+      WHERE a.atividade_id::text = (substring(name FROM '^(?:imagens|arquivos)/([^/.]+)'))::text
+        AND a.user_id::text = auth.uid()::text
+    )
+  )
 );
 
-CREATE POLICY "Allow select atividades_agricolas" ON storage.objects
+DROP POLICY IF EXISTS "Atividades: select owner-or-service" ON storage.objects;
+CREATE POLICY "Atividades: select owner-or-service" ON storage.objects
 FOR SELECT
 USING (
-  bucket_id = 'atividades_agricolas'
+  bucket_id = 'atividades_agricolas' AND (
+    auth.role() = 'service_role' OR
+    EXISTS (
+      SELECT 1 FROM public.lancamentos_agricolas a
+      WHERE a.atividade_id::text = (substring(name FROM '^(?:imagens|arquivos)/([^/.]+)'))::text
+        AND a.user_id::text = auth.uid()::text
+    )
+  )
 );
 
 -- produtos

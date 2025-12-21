@@ -300,6 +300,14 @@ export default function ActivityAttachmentModal({
 
   if (!isOpen) return null;
 
+  const buildImageSrc = (url: string | undefined, key: number) => {
+    if (!url) return '';
+    // se for blob URL, não adiciona cache-bust
+    if (url.startsWith('blob:')) return url;
+    // caso já contenha query string, use &t=, caso contrário ?t=
+    return url.includes('?') ? `${url}&t=${key}` : `${url}?t=${key}`;
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
       {confirmState.type && (
@@ -394,7 +402,7 @@ export default function ActivityAttachmentModal({
             <div className="flex flex-col items-center gap-2 bg-gray-50 p-3 rounded-lg border">
               <img
                 key={imageKey}
-                src={`${attachments.find(a => a.type === 'image')?.url}&t=${imageKey}`}
+                src={buildImageSrc(attachments.find(a => a.type === 'image')?.url, imageKey)}
                 alt="Imagem anexada"
                 className="max-h-32 mb-2 rounded border"
                 onLoad={() => console.log('🖼️ Imagem carregada:', imageKey)}

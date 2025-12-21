@@ -148,29 +148,69 @@ export class ActivityAttachmentService {
         data = result.data;
       }
 
-      if (!data?.publicUrl) {
-        console.log('❌ Não foi possível obter URL pública');
-        return null;
+      // Se houver URL pública, confirma com HEAD e retorna
+      if (data?.publicUrl) {
+        const cleanUrl = data.publicUrl.split('?')[0];
+        try {
+          const headResp = await fetch(cleanUrl, { method: 'HEAD', cache: 'no-cache' });
+          if (!headResp.ok) {
+            console.log('⚠️ HEAD retornou não-ok para imagem:', headResp.status, cleanUrl);
+            // cairá para tentativa de signed URL abaixo
+          } else {
+            const timestamp = Date.now();
+            const random = Math.random().toString(36).substring(7);
+            const urlWithTimestamp = `${cleanUrl}?v=${timestamp}&r=${random}`;
+            console.log('📎 URL gerada do storage (verificada):', urlWithTimestamp);
+            return urlWithTimestamp;
+          }
+        } catch (err) {
+          console.log('⚠️ Erro ao checar existência da imagem via HEAD:', err);
+          // tentar signed URL abaixo
+        }
       }
 
-      // Verifica se o arquivo realmente existe fazendo um HEAD na URL pública.
-      const cleanUrl = data.publicUrl.split('?')[0];
+      // Se não há public URL ou HEAD falhou, pedir signed URL ao backend
       try {
-        const headResp = await fetch(cleanUrl, { method: 'HEAD', cache: 'no-cache' });
-        if (!headResp.ok) {
-          console.log('⚠️ HEAD retornou não-ok para imagem:', headResp.status, cleanUrl);
-          return null;
+        const server = import.meta.env.VITE_SIGNED_URL_SERVER_URL || import.meta.env.VITE_API_URL || '';
+        if (server) {
+          const resp = await fetch(`${server.replace(/\/$/, '')}/signed-url`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bucket: this.BUCKET_NAME, path: fileName, expires: 60 })
+          });
+          if (resp.ok) {
+            const payload = await resp.json();
+            if (payload?.signedUrl) {
+              console.log('🔐 Obtido signedUrl do servidor para imagem');
+              return payload.signedUrl;
+            }
+          } else {
+            console.log('⚠️ Signed-url server retornou erro', resp.status);
+          }
+        } else {
+          console.log('⚠️ VITE_SIGNED_URL_SERVER_URL não configurado, não foi possível solicitar signed URL');
         }
       } catch (err) {
-        console.log('⚠️ Erro ao checar existência da imagem via HEAD:', err);
-        return null;
+        console.error('💥 Erro ao solicitar signed URL ao servidor:', err);
       }
 
-      const timestamp = Date.now();
-      const random = Math.random().toString(36).substring(7);
-      const urlWithTimestamp = `${cleanUrl}?v=${timestamp}&r=${random}`;
-      console.log('📎 URL gerada do storage (verificada):', urlWithTimestamp);
-      return urlWithTimestamp;
+      console.log('❌ Não foi possível obter URL pública nem signed URL para a imagem');
+      // Fallback: tentar baixar o blob diretamente com o cliente (se a policy permitir)
+      try {
+        const { data: blobData, error: dlErr } = await supabase.storage
+          .from(this.BUCKET_NAME)
+          .download(fileName);
+
+        if (!dlErr && blobData) {
+          const url = URL.createObjectURL(blobData);
+          console.log('📦 Obtido blob URL via download fallback para imagem');
+          return url;
+        }
+      } catch (err) {
+        console.log('⚠️ Falha no download fallback da imagem:', err);
+      }
+
+      return null;
     } catch (error) {
       console.error('💥 Erro ao obter URL da imagem:', error);
       return null;
@@ -195,15 +235,60 @@ export class ActivityAttachmentService {
         }
 
         if (data?.publicUrl) {
-          const response = await fetch(data.publicUrl, { method: 'HEAD', cache: 'no-cache' });
-          if (response.ok) {
-            const cleanUrl = data.publicUrl.split('?')[0];
-            const timestamp = Date.now();
-            const random = Math.random().toString(36).substring(7);
-            const urlWithTimestamp = `${cleanUrl}?v=${timestamp}&r=${random}`;
-            console.log('📎 URL gerada do storage:', urlWithTimestamp);
-            return urlWithTimestamp;
+          try {
+            const response = await fetch(data.publicUrl, { method: 'HEAD', cache: 'no-cache' });
+            if (response.ok) {
+              const cleanUrl = data.publicUrl.split('?')[0];
+              const timestamp = Date.now();
+              const random = Math.random().toString(36).substring(7);
+              const urlWithTimestamp = `${cleanUrl}?v=${timestamp}&r=${random}`;
+              console.log('📎 URL gerada do storage:', urlWithTimestamp);
+              return urlWithTimestamp;
+            }
+            // se HEAD falhar, tentar signed URL abaixo
+          } catch (err) {
+            // continuar para tentativa de signed URL
           }
+        }
+
+        // tentar signed URL pelo servidor
+        try {
+          const server = import.meta.env.VITE_SIGNED_URL_SERVER_URL || import.meta.env.VITE_API_URL || '';
+          if (server) {
+            const resp = await fetch(`${server.replace(/\/$/, '')}/signed-url`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ bucket: this.BUCKET_NAME, path: fileName, expires: 60 })
+            });
+            if (resp.ok) {
+              const payload = await resp.json();
+              if (payload?.signedUrl) {
+                console.log('🔐 Obtido signedUrl do servidor para arquivo');
+                return payload.signedUrl;
+              }
+            } else {
+              console.log('⚠️ Signed-url server retornou erro', resp.status);
+            }
+          } else {
+            console.log('⚠️ VITE_SIGNED_URL_SERVER_URL não configurado, não foi possível solicitar signed URL');
+          }
+        } catch (err) {
+          console.error('💥 Erro ao solicitar signed URL ao servidor:', err);
+        }
+
+        // Fallback: tentar baixar o blob diretamente com o cliente (se a policy permitir)
+        try {
+          const { data: blobData, error: dlErr } = await supabase.storage
+            .from(this.BUCKET_NAME)
+            .download(fileName);
+
+          if (!dlErr && blobData) {
+            const url = URL.createObjectURL(blobData);
+            console.log('📦 Obtido blob URL via download fallback para arquivo');
+            return url;
+          }
+        } catch (err) {
+          console.log('⚠️ Falha no download fallback do arquivo:', err);
         }
       }
 
