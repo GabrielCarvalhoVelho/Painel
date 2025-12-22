@@ -1163,66 +1163,95 @@ export class AttachmentService {
       candidates.push('');
     }
 
+    const tried: Array<{ file: string; publicStatus?: string; signedStatus?: string; error?: string }> = [];
+
     for (const folder of candidates) {
       for (const ext of extensionsList) {
         const fileName = folder ? `${folder}/${fileId}.${ext}` : `${fileId}.${ext}`;
-        console.log(`📦 Verificando arquivo: ${fileName}`);
-        // Primeiro tentar obter a URL pública via SDK (pode respeitar as configurações do projeto)
-        let publicUrl: string;
+        // Agrupar logs por candidato para legibilidade
         try {
-          const { data: pubData, error: pubErr } = await supabaseServiceRole.storage
-            .from(this.BUCKET_NAME)
-            .getPublicUrl(fileName);
+          console.groupCollapsed(`Anexo: ${fileName}`);
+          // Primeiro tentar obter a URL pública via SDK (pode respeitar as configurações do projeto)
+          let publicUrl: string;
+          try {
+            const { data: pubData, error: pubErr } = await supabaseServiceRole.storage
+              .from(this.BUCKET_NAME)
+              .getPublicUrl(fileName);
 
-          if (!pubErr && pubData?.publicUrl) {
-            publicUrl = pubData.publicUrl;
-          } else {
-            // fallback para construir manualmente (pode falhar em alguns casos)
-            publicUrl = this.buildPublicUrl(fileName);
-            if (pubErr) console.warn('⚠️ getPublicUrl retornou erro ou sem publicUrl:', pubErr);
-          }
-        } catch (err) {
-          // SDK pode falhar no browser ou estar indisponível; construir manualmente
-          publicUrl = this.buildPublicUrl(fileName);
-        }
-
-        try {
-          const response = await fetch(publicUrl, { method: 'GET', cache: 'no-cache', mode: 'cors' });
-          if (response.ok) {
-            console.log(`✅ ${isFile ? 'Arquivo' : 'Imagem'} encontrado: ${fileName}`);
-            return true;
-          }
-          console.log(`ℹ️ Verificação pública retornou: ${response.status} ${response.statusText} para ${publicUrl}`);
-
-          // Se o bucket for privado ou a URL pública falhar com 400/403, tentar signed URL via SDK (service role)
-          if (response.status === 400 || response.status === 403 || response.status === 404) {
-            try {
-              const objectPath = this.normalizeStoredPath(fileName);
-              if (serviceRole && serviceRole.length) {
-                const { data: signedData, error: signedError } = await supabaseServiceRole.storage
-                  .from(this.BUCKET_NAME)
-                  .createSignedUrl(objectPath, 120);
-                if (!signedError && signedData?.signedUrl) {
-                  console.log('🔐 Verificação via signedUrl:', signedData.signedUrl);
-                  const sres = await fetch(signedData.signedUrl, { method: 'GET', cache: 'no-cache', mode: 'cors' });
-                  if (sres.ok) return true;
-                  console.log('ℹ️ signedUrl retornou:', sres.status, sres.statusText);
-                } else {
-                  console.warn('⚠️ createSignedUrl retornou erro ou sem signedUrl:', signedError);
-                }
-              }
-            } catch (err) {
-              console.warn('⚠️ Erro ao tentar createSignedUrl/fetch:', err);
+            if (!pubErr && pubData?.publicUrl) {
+              publicUrl = pubData.publicUrl;
+              console.log('→ publicUrl (SDK):', publicUrl);
+            } else {
+              publicUrl = this.buildPublicUrl(fileName);
+              console.log('→ publicUrl (construída):', publicUrl);
+              if (pubErr) console.warn('   getPublicUrl retornou erro:', pubErr);
             }
+          } catch (err) {
+            publicUrl = this.buildPublicUrl(fileName);
+            console.log('→ publicUrl (construída, SDK indisponível):', publicUrl);
           }
-        } catch (err) {
-          console.warn('⚠️ Erro ao verificar URL pública (GET):', publicUrl, err);
-          // continuar tentando outras extensões/folders
+
+          try {
+            const response = await fetch(publicUrl, { method: 'GET', cache: 'no-cache', mode: 'cors' });
+            if (response.ok) {
+              console.log(`✅ Encontrado (público): ${fileName} — ${response.status}`);
+              console.groupEnd();
+              return true;
+            }
+            const statusInfo = `${response.status} ${response.statusText}`;
+            console.log(`ℹ️ Verificação pública: ${statusInfo}`);
+            tried.push({ file: fileName, publicStatus: statusInfo });
+
+            // Se o bucket for privado ou a URL pública falhar com 400/403/404, tentar signed URL via SDK (service role)
+            if ([400, 403, 404].includes(response.status)) {
+              try {
+                const objectPath = this.normalizeStoredPath(fileName);
+                if (serviceRole && serviceRole.length) {
+                  const { data: signedData, error: signedError } = await supabaseServiceRole.storage
+                    .from(this.BUCKET_NAME)
+                    .createSignedUrl(objectPath, 120);
+                  if (!signedError && signedData?.signedUrl) {
+                    console.log('→ signedUrl gerada via SDK');
+                    const sres = await fetch(signedData.signedUrl, { method: 'GET', cache: 'no-cache', mode: 'cors' });
+                    if (sres.ok) {
+                      console.log(`✅ Encontrado (signed): ${fileName} — ${sres.status}`);
+                      console.groupEnd();
+                      return true;
+                    }
+                    const sStatus = `${sres.status} ${sres.statusText}`;
+                    console.log('ℹ️ signedUrl retornou:', sStatus);
+                    // registrar tentativa signed
+                    tried[tried.length - 1].signedStatus = sStatus;
+                  } else {
+                    console.warn('⚠️ createSignedUrl retornou erro ou sem signedUrl:', signedError);
+                    tried[tried.length - 1].signedStatus = 'erro-gerar-signedUrl';
+                  }
+                } else {
+                  console.log('→ service_role indisponível; não foi possível gerar signedUrl via SDK');
+                  tried[tried.length - 1].signedStatus = 'service_role_missing';
+                }
+              } catch (err) {
+                console.warn('⚠️ Erro ao tentar createSignedUrl/fetch:', err);
+                tried[tried.length - 1].error = String(err?.message || err);
+              }
+            }
+          } catch (err) {
+            console.warn('⚠️ Erro ao verificar URL pública (GET):', publicUrl, err);
+            tried.push({ file: fileName, error: String(err?.message || err) });
+          }
+        } finally {
+          console.groupEnd();
         }
       }
     }
 
-      console.log(`❌ Nenhum ${isFile ? 'arquivo' : 'imagem'} encontrado`);
+      if (tried && tried.length) {
+        console.groupCollapsed(`❌ Resumo: nenhuma ${isFile ? 'arquivo' : 'imagem'} encontrada — tentativas: ${tried.length}`);
+        console.table(tried.map(t => ({ Arquivo: t.file, Public: t.publicStatus || '-', Signed: t.signedStatus || '-', Erro: t.error || '-' })) );
+        console.groupEnd();
+      } else {
+        console.log(`❌ Nenhum ${isFile ? 'arquivo' : 'imagem'} encontrado`);
+      }
       return false;
     } catch (error) {
       console.error('💥 Erro na verificação por URL:', error);
