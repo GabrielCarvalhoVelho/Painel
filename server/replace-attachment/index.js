@@ -19,6 +19,11 @@ if (!SUPABASE_URL || !SERVICE_ROLE) {
 
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
 
+// Health check
+app.get('/health', (_req, res) => {
+  res.json({ ok: true, service: 'replace-attachment' });
+});
+
 app.post('/replace-attachment', async (req, res) => {
   try {
     const { transactionId, fileBase64, fileName } = req.body;
@@ -55,6 +60,28 @@ app.post('/replace-attachment', async (req, res) => {
     return res.json({ success: true, url: publicUrl });
   } catch (err) {
     console.error('Unexpected error:', err);
+    return res.status(500).json({ success: false, error: err.message || String(err) });
+  }
+});
+
+/**
+ * Gera signed URL para um objeto no bucket (usando service role no servidor).
+ * Request body: { bucket: string (opcional, default notas_fiscais), path: string, expires?: number }
+ */
+app.post('/signed-url', async (req, res) => {
+  try {
+    const { bucket = BUCKET, path, expires = 120 } = req.body || {};
+    if (!path) return res.status(400).json({ success: false, error: 'Missing path' });
+
+    const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, Number(expires));
+    if (error) {
+      console.error('createSignedUrl error:', error);
+      return res.status(500).json({ success: false, error: error.message || error });
+    }
+
+    return res.json({ success: true, signedUrl: data.signedUrl });
+  } catch (err) {
+    console.error('signed-url unexpected error:', err);
     return res.status(500).json({ success: false, error: err.message || String(err) });
   }
 });
