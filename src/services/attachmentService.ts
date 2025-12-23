@@ -2250,4 +2250,64 @@ export class AttachmentService {
   };
   return contentTypes[fileExtension.toLowerCase()] || 'application/octet-stream';
 }
+  /**
+   * Obtém a URL de anexo financeiro (imagem) com fallback robusto (padrão Manejo)
+   * Tenta: pública → signed-url → blob
+   */
+  static async getAttachmentUrlFinanceiro(transactionId: string): Promise<string | null> {
+    try {
+      // 1. Tenta URL pública (pode funcionar em buckets públicos ou dev)
+      const fileId = await this.getStorageFileId(transactionId);
+      const user = AuthService.getInstance().getCurrentUser();
+      const userPath = user ? `${user.user_id}` : '';
+      const fileName = `${fileId}.jpg`;
+      const objectPath = userPath ? `${userPath}/${fileName}` : fileName;
+      const publicUrl = this.buildPublicUrl(objectPath, this.BUCKET_NAME);
+      // Testa acesso à URL pública
+      const res = await fetch(publicUrl, { method: 'HEAD' });
+      if (res.ok) {
+        return publicUrl;
+      }
+      // 2. Tenta signed-url (backend Express)
+      const signedUrlServer = import.meta.env.VITE_SIGNED_URL_SERVER_URL;
+      if (signedUrlServer) {
+        try {
+          const response = await fetch(`${signedUrlServer}/signed-url`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              path: objectPath,
+              bucket: this.BUCKET_NAME,
+              expires: 120
+            })
+          });
+          const data = await response.json();
+          if (data?.url) {
+            // Testa se a URL realmente existe
+            const test = await fetch(data.url, { method: 'HEAD' });
+            if (test.ok) {
+              return data.url;
+            }
+          }
+        } catch (err) {
+          console.warn('Erro ao tentar signed-url:', err);
+        }
+      }
+      // 3. Fallback: tenta baixar o blob e criar URL local
+      try {
+        const { data, error } = await supabaseServiceRole.storage
+          .from(this.BUCKET_NAME)
+          .download(objectPath);
+        if (data && !error) {
+          return URL.createObjectURL(data);
+        }
+      } catch (err) {
+        console.warn('Erro no fallback blob:', err);
+      }
+      return null;
+    } catch (error) {
+      console.error('Erro getAttachmentUrlFinanceiro:', error);
+      return null;
+    }
+  }
 }
