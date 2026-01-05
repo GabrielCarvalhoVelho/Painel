@@ -1,80 +1,119 @@
 # Copilot Instructions — Painel Solos.ag
 
-## Contexto Essencial
+## Contexto
 
-SPA agrícola para cafeicultores: **React 18 + TypeScript + Vite + TailwindCSS + Supabase**. Autenticação via JWT do n8n (armazenado em `localStorage` como `ze_safra_token`). Supabase usa RLS em produção, bypass em DEV.
+SPA agrícola para cafeicultores: **React 18 + TypeScript + Vite + TailwindCSS + Supabase**. Autenticação via JWT do n8n (armazenado em `localStorage` como `ze_safra_token`). Supabase usa RLS em produção, bypass DEV (service_role).
 
-## Arquitetura e Fluxo
+## Arquitetura
 
 ```
-App.tsx (autenticação + renderContent switch)
-├─ Sidebar (menuItems → activeTab)
-├─ [Domínio]Panel (useState/useEffect)
-│   └─ Service.método() [classe estática]
-│       └─ supabase singleton (RLS/DEV bypass)
-└─ Header + main
+App.tsx (auth check + renderContent switch)
+├─ Sidebar (menuItems[] → activeTab state)
+├─ [Domínio]Panel (useState/useEffect → Service calls)
+│   └─ Service.método() [classe estática, métodos estáticos]
+│       └─ supabase singleton (RLS ou service_role)
+└─ Header + main content
 ```
 
-**Navegação:** Tab-based, sem React Router. Sidebar controla `activeTab`; App.tsx faz switch para renderizar painéis.
+**Navegação:** Tab-based via `activeTab` state — **sem React Router**. Sidebar define `menuItems[]`; App.tsx faz switch em `renderContent()`.
 
-## Padrões e Convenções
+## Padrões Obrigatórios
 
-- **Nunca** query Supabase direto em componentes — use sempre Services (classe + métodos estáticos)
-- **AuthService** é singleton: `AuthService.getInstance().getCurrentUser()`
-- **Token:** JWT manual, decode local, nunca Supabase Auth nativo
-- **DEV:** localhost/127.0.0.1 usa service_role (bypass RLS)
-- **PROD:** JWT injetado no Supabase client para RLS
-- **Services retornam `[]` ou `null` em erro** (nunca lançam exceção)
-- **Painéis**: sempre estado `loading` com `<LoadingSpinner />` ao carregar
-- **User ID:** sempre via `AuthService.getInstance().getCurrentUser()?.user_id`
-- **Datas:** use `parseDateFromDB()` (`lib/dateUtils.ts`) para evitar bugs de timezone
-- **Valores monetários:** use `formatCurrency`/`formatSmartCurrency` (`lib/currencyFormatter.ts`)
-- **Unidades:** estoque usa conversão FIFO (`lib/unitConverter.ts`)
+### Services (src/services/)
 
-## Serviços Principais (src/services/)
+- **Nunca** query Supabase direto em componentes — sempre via Services
+- Services são **classes com métodos estáticos** (exceto AuthService que é singleton)
+- **Sempre retorne `[]` ou `null` em erro** — nunca lance exceção
+- Trate `error` de toda query Supabase com log + fallback
 
-| Serviço         | Responsabilidade        | Exemplo                                      |
-| --------------- | ----------------------- | -------------------------------------------- |
-| authService     | JWT decode, user_id     | `AuthService.getInstance().getCurrentUser()` |
-| financeService  | Transações, resumo      | `FinanceService.getResumoFinanceiro(userId)` |
-| activityService | Lançamentos agrícolas   | `ActivityService.getLancamentos(userId, 50)` |
-| estoqueService  | Produtos, movimentações | `EstoqueService.getProdutos()`               |
-| talhaoService   | Talhões, áreas          | `TalhaoService.getTalhoes(userId)`           |
+```typescript
+// Padrão correto para métodos de Service:
+static async getDados(userId: string): Promise<Dado[]> {
+  const { data, error } = await supabase
+    .from('tabela')
+    .select('*')
+    .eq('user_id', userId);
+
+  if (error) {
+    console.error('Erro ao buscar dados:', error);
+    return [];  // NUNCA throw
+  }
+  return data || [];
+}
+```
+
+### Autenticação
+
+- **AuthService é singleton:** `AuthService.getInstance().getCurrentUser()`
+- **User ID:** sempre `AuthService.getInstance().getCurrentUser()?.user_id`
+- JWT decodificado localmente (não usa Supabase Auth nativo)
+- **DEV:** localhost/127.0.0.1 usa `service_role` key (bypass RLS)
+- **PROD:** JWT injetado via `setAccessToken()` para RLS funcionar
+
+### Componentes Panel
+
+- Sempre usar estado `loading` com `<LoadingSpinner />` (de `../Dashboard/LoadingSpinner`)
+- Buscar dados em `useEffect` inicial, setar `loading = false` após
+
+```typescript
+const [loading, setLoading] = useState(true);
+useEffect(() => {
+  async function load() {
+    const userId = AuthService.getInstance().getCurrentUser()?.user_id;
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
+    const dados = await MeuService.getDados(userId);
+    setDados(dados);
+    setLoading(false);
+  }
+  load();
+}, []);
+if (loading) return <LoadingSpinner />;
+```
+
+### Utilitários Obrigatórios (src/lib/)
+
+| Utilitário                | Uso                                              | Exemplo                         |
+| ------------------------- | ------------------------------------------------ | ------------------------------- |
+| `parseDateFromDB()`       | Converte datas DB → Date (evita bug timezone BR) | `parseDateFromDB('2025-10-06')` |
+| `formatDateBR()`          | Data para dd/MM/yyyy                             | `formatDateBR(dataString)`      |
+| `formatCurrency()`        | Valor para R$ 1.234,56                           | `formatCurrency(1234.56)`       |
+| `formatSmartCurrency()`   | Decimais dinâmicos (valores pequenos)            | `formatSmartCurrency(0.0025)`   |
+| `convertToStandardUnit()` | Normaliza unidades (kg→mg, L→mL)                 | Estoque FIFO                    |
 
 ## Criar Novo Módulo
 
-1. Criar componente: `src/components/NovoModulo/NovoModuloPanel.tsx`
-2. Criar service: `src/services/novoModuloService.ts` (classe estática)
-3. Adicionar ao menu: `Sidebar.tsx` → `menuItems[]`
-4. Adicionar ao switch: `App.tsx` → `renderContent()`
+1. `src/components/NovoModulo/NovoModuloPanel.tsx` — usar pattern de loading acima
+2. `src/services/novoModuloService.ts` — classe estática com métodos async
+3. `src/components/Layout/Sidebar.tsx` → adicionar em `menuItems[]`
+4. `src/App.tsx` → adicionar case em `renderContent()` switch
 
-## Comandos Úteis
+## Serviços Existentes
+
+| Serviço                | Responsabilidade                        |
+| ---------------------- | --------------------------------------- |
+| `AuthService`          | Singleton, JWT decode, getCurrentUser() |
+| `FinanceService`       | Transações financeiras, resumos, saldos |
+| `ActivityService`      | Lançamentos de manejo agrícola          |
+| `EstoqueService`       | Produtos, movimentações de estoque      |
+| `TalhaoService`        | Talhões e áreas da fazenda              |
+| `MaquinaService`       | Máquinas e equipamentos                 |
+| `PragasDoencasService` | Ocorrências de pragas/doenças           |
+
+## Comandos
 
 ```bash
 npm run dev      # Dev server :5173
-npm run build    # Build prod
-npm run lint     # ESLint
-npm run preview  # Preview build
+npm run build    # Build produção
+npm run lint     # ESLint check
 ```
 
-## Armadilhas Comuns
+## Armadilhas
 
-- Sempre trate `error` em queries Supabase e retorne `[]`/`null`
-- Nunca lance exceção em Services
-- Use sempre os utilitários de data/moeda/unidade
-- DEV bypass detectado por múltiplos métodos (env/hostname)
-- Não use React Router; navegação é por tab-state
-
-## Exemplos de Arquivos-Chave
-
-- Navegação/tab: [src/App.tsx], [src/components/Layout/Sidebar.tsx]
-- Service pattern: [src/services/authService.ts], [src/services/financeService.ts]
-- Utilitários: [src/lib/dateUtils.ts], [src/lib/currencyFormatter.ts], [src/lib/unitConverter.ts]
-
----
-
-### Template Service (Padrão Real)
-
-```typescript
-
-```
+- **Datas:** SEMPRE use `parseDateFromDB()` — JavaScript converte UTC→local e mostra dia anterior
+- **Exceções:** Services NUNCA lançam — retornam `[]`/`null` e logam erro
+- **Router:** NÃO existe — navegação é por `activeTab` state
+- **Supabase direto:** NUNCA em componentes — sempre via Service
+- **DEV bypass:** Detectado por `import.meta.env.MODE`, hostname, `VITE_ZE_AMBIENTE`
