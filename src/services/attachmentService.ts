@@ -41,48 +41,17 @@ export interface FileDownloadResult {
 /**
  * Informações resumidas sobre anexos financeiros
  */
-                  userId ? `${userId}/${fileName}` : fileName, // 1. userId/filename
-                  userId ? `${userId}/imagens/${fileName}` : `imagens/${fileName}`, // 2. userId/imagens/filename
-                  `imagens/${fileName}`, // 3. imagens/filename
-                  fileName, // 4. filename (raiz)
-                ];
-
-                for (const path of pathsToTry) {
-                  try {
-                    // 1. Tenta public URL (caso esteja público)
-                    const publicUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/${bucket}/${path}`;
-                    const headResp = await fetch(publicUrl, { method: 'HEAD' });
-                    console.log('[Financeiro Attachment][DEBUG] HEAD', publicUrl, '->', headResp.status);
-                    if (headResp.ok) {
-                      console.log('[Financeiro Attachment] Encontrado public URL:', publicUrl);
-                      return publicUrl;
-                    }
-                    // 2. Tenta signed URL via backend
-                    const backendUrl = `${import.meta.env.VITE_SIGNED_URL_ENDPOINT || '/signed-url'}`;
-                    const res = await fetch(backendUrl, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ path, bucket, expires: 120 }),
-                    });
-                    console.log('[Financeiro Attachment][DEBUG] POST', backendUrl, '{ path:', path, ', bucket:', bucket, ' } ->', res.status);
-                    if (res.ok) {
-                      const { url } = await res.json();
-                      if (url) {
-                        console.log('[Financeiro Attachment] Signed URL gerada:', url, 'para path:', path);
-                        return url;
-                      } else {
-                        console.warn('[Financeiro Attachment][DEBUG] Resposta sem URL para', path);
-                      }
-                    } else {
-                      console.warn('[Financeiro Attachment] Falha ao obter signed URL para', path, 'Status:', res.status);
-                    }
-                  } catch (err) {
-                    console.error('[Financeiro Attachment] Erro ao tentar path', path, err);
-                  }
-                }
-                console.warn('[Financeiro Attachment] Nenhum caminho válido encontrado para', fileName);
-                return null;
-              }
+export interface AttachmentInfo {
+  id: string;
+  url_primeiro_envio?: string | null;
+  url_segundo_envio?: string | null;
+  hasPrimeiroEnvio?: boolean;
+  hasSegundoEnvio?: boolean;
+  hasAnyFiles?: boolean;
+  fileCount?: number;
+  primeiroEnvioType?: string | null;
+  segundoEnvioType?: string | null;
+}
 
 export class AttachmentService {
   private static readonly BUCKET_NAME = 'notas_fiscais';
