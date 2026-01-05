@@ -203,7 +203,7 @@ export default function DocumentoDetailPanel({
             className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 text-gray-700 rounded-lg font-medium transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Download className="w-4 h-4" />
-            {documento.arquivo_url ? 'Baixar / Abrir' : 'Arquivo indisponível'}
+            {documento.arquivo_url ? 'Baixar' : 'Arquivo indisponível'}
           </button>
           <button
             onClick={() => {
@@ -213,7 +213,7 @@ export default function DocumentoDetailPanel({
             className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-[#00A651] hover:bg-[#008c44] text-white rounded-lg font-medium transition-colors text-sm"
           >
             <Edit2 className="w-4 h-4" />
-            Editar Metadados
+            Editar
           </button>
           <button
             onClick={() => {
