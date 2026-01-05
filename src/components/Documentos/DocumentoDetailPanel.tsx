@@ -89,6 +89,7 @@ export default function DocumentoDetailPanel({
 
   const fileExtension = getFileExtension(documento.arquivo_url);
   const icon = getPreviewIcon(fileExtension);
+  const isImage = ["JPG", "JPEG", "PNG", "GIF", "WEBP", "BMP"].includes(fileExtension);
 
   const handleDownload = () => {
     if (documento.arquivo_url) {
@@ -132,15 +133,38 @@ export default function DocumentoDetailPanel({
         <div className="flex-1 overflow-y-auto p-4 md:p-6">
           {/* Preview */}
           <div className="bg-gray-50 rounded-lg border border-gray-200 p-8 mb-6 flex items-center justify-center min-h-[200px]">
-            <div className="text-center">
-              <div className="text-6xl mb-3">{icon}</div>
-              <p className="text-sm text-gray-600">
-                Arquivo {fileExtension}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                Clique em "Baixar" para abrir/fazer download
-              </p>
-            </div>
+            {isImage && documento.arquivo_url ? (
+              <div className="w-full max-w-sm">
+                <img
+                  src={documento.arquivo_url}
+                  alt={documento.titulo || 'Preview do documento'}
+                  className="w-full h-auto rounded-lg shadow-sm"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    e.currentTarget.parentElement!.innerHTML = `
+                      <div class="text-center">
+                        <div class="text-6xl mb-3">${icon}</div>
+                        <p class="text-sm text-gray-600">Arquivo ${fileExtension}</p>
+                        <p class="text-xs text-gray-500 mt-1">Clique em "Baixar" para abrir/fazer download</p>
+                      </div>
+                    `;
+                  }}
+                />
+                <p className="text-xs text-gray-500 mt-3 text-center">
+                  Clique em "Baixar" para abrir em tamanho original
+                </p>
+              </div>
+            ) : (
+              <div className="text-center">
+                <div className="text-6xl mb-3">{icon}</div>
+                <p className="text-sm text-gray-600">
+                  Arquivo {fileExtension}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Clique em "Baixar" para abrir/fazer download
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Badges de tipo e status */}
