@@ -23,24 +23,20 @@ const StatsCard = ({
   return (
     <>
       <div className="bg-white rounded-xl shadow-card p-6 relative transition-transform duration-200 hover:scale-[1.01]">
-        <div className="absolute top-5 right-5 w-10 h-10 bg-[rgba(0,166,81,0.06)] rounded-md flex items-center justify-center flex-shrink-0">
-          <Icon className="w-5 h-5 text-[#004417]/90" />
-        </div>
-        
         {modalContent && (
         <button
           onClick={() => setIsModalOpen(true)}
-          className="absolute top-5 right-[72px] p-1 hover:bg-[rgba(0,166,81,0.06)] rounded-full transition-colors group z-10"
+          className="absolute top-5 right-5 p-1 hover:bg-[rgba(0,166,81,0.06)] rounded-full transition-colors group z-10"
           aria-label="Mais informações"
         >
-          <Info 
-            size={14} 
-            className="text-[#004417]/60 group-hover:text-[#00A651] transition-colors" 
+          <Info
+            size={14}
+            className="text-[#004417]/60 group-hover:text-[#00A651] transition-colors"
           />
         </button>
         )}
-        
-        <div className="pr-16">
+
+        <div>
           <div className="flex items-center space-x-2 mb-1">
             <h3 className="text-sm font-semibold text-[#004417] leading-tight flex-1">
               {title}
