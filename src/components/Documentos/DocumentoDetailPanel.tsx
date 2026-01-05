@@ -115,13 +115,13 @@ export default function DocumentoDetailPanel({
     <>
       {/* Overlay */}
       <div
-        className="fixed inset-0 bg-black bg-opacity-30 z-40 transition-opacity md:hidden"
+        className="fixed inset-0 bg-black bg-opacity-30 z-[60] transition-opacity md:hidden"
         onClick={onClose}
       />
 
       {/* Panel */}
       <div
-        className={`fixed right-0 top-0 bottom-0 w-full md:w-96 bg-white shadow-2xl z-50 flex flex-col overflow-hidden transition-transform duration-300 ${
+        className={`fixed right-0 top-0 bottom-0 w-full md:w-96 bg-white shadow-2xl z-[70] flex flex-col overflow-hidden transition-transform duration-300 ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
