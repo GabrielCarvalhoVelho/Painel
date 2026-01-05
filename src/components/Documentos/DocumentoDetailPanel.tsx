@@ -91,8 +91,22 @@ export default function DocumentoDetailPanel({
   const icon = getPreviewIcon(fileExtension);
   const isImage = ["JPG", "JPEG", "PNG", "GIF", "WEBP", "BMP"].includes(fileExtension);
 
-  const handleDownload = () => {
-    if (documento.arquivo_url) {
+  const handleDownload = async () => {
+    if (!documento.arquivo_url) return;
+
+    try {
+      const response = await fetch(documento.arquivo_url);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = documento.titulo || `documento.${fileExtension.toLowerCase()}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Erro ao baixar arquivo:', error);
       window.open(documento.arquivo_url, '_blank');
     }
   };
