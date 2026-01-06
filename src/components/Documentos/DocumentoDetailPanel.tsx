@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Documento } from "./mockDocumentos";
-import { X, Download, Edit2, Trash2, Loader2 } from "lucide-react";
+import { X, Download, Edit2, Trash2, Loader2, ImageIcon } from "lucide-react";
 import { formatDateBR } from "../../lib/dateUtils";
 import { DocumentosService } from "../../services/documentosService";
 
@@ -11,6 +11,10 @@ interface DocumentoDetailPanelProps {
   onEdit: (id: number) => void;
   onDelete: (id: number) => void;
 }
+
+const isImageFile = (extension: string): boolean => {
+  return ["JPG", "JPEG", "PNG", "GIF", "WEBP", "BMP"].includes(extension.toUpperCase());
+};
 
 const getFileExtension = (arquivoUrl?: string): string => {
   if (!arquivoUrl) return "FILE";
@@ -78,8 +82,41 @@ export default function DocumentoDetailPanel({
 
   const fileExtension = getFileExtension(documento.arquivo_url);
   const icon = getPreviewIcon(fileExtension);
+  const isImage = isImageFile(fileExtension);
 
   const [isDownloading, setIsDownloading] = useState(false);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [imageLoading, setImageLoading] = useState(false);
+  const [imageError, setImageError] = useState(false);
+
+  // Carrega preview da imagem quando o painel abre
+  useEffect(() => {
+    if (isOpen && isImage && documento.arquivo_url) {
+      setImageLoading(true);
+      setImageError(false);
+      
+      DocumentosService.getSignedUrl(documento.arquivo_url, 600)
+        .then((url) => {
+          if (url) {
+            setImagePreviewUrl(url);
+          } else {
+            setImageError(true);
+          }
+        })
+        .catch(() => {
+          setImageError(true);
+        })
+        .finally(() => {
+          setImageLoading(false);
+        });
+    }
+    
+    // Limpa quando fecha
+    return () => {
+      setImagePreviewUrl(null);
+      setImageError(false);
+    };
+  }, [isOpen, documento.arquivo_url, isImage]);
 
   const handleDownload = async () => {
     if (!documento.arquivo_url) return;
@@ -139,17 +176,43 @@ export default function DocumentoDetailPanel({
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 md:p-6">
           {/* Preview */}
-          <div className="bg-gray-50 rounded-lg border border-gray-200 p-8 mb-6 flex items-center justify-center min-h-[200px]">
-            <div className="text-center">
-              <div className="text-6xl mb-3">{icon}</div>
-              <p className="text-sm text-gray-600">
-                Arquivo {fileExtension}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                Toque em "Baixar" para abrir
-              </p>
+          {isImage ? (
+            <div className="bg-gray-100 rounded-lg border border-gray-200 mb-6 overflow-hidden">
+              {imageLoading ? (
+                <div className="flex items-center justify-center h-64">
+                  <Loader2 className="w-8 h-8 text-[#004417] animate-spin" />
+                </div>
+              ) : imageError ? (
+                <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+                  <ImageIcon className="w-12 h-12 mb-2" />
+                  <p className="text-sm">Não foi possível carregar a imagem</p>
+                </div>
+              ) : imagePreviewUrl ? (
+                <img
+                  src={imagePreviewUrl}
+                  alt={documento.titulo || 'Imagem do documento'}
+                  className="w-full h-auto max-h-[400px] object-contain bg-gray-50"
+                  onError={() => setImageError(true)}
+                />
+              ) : (
+                <div className="flex items-center justify-center h-64">
+                  <ImageIcon className="w-12 h-12 text-gray-400" />
+                </div>
+              )}
             </div>
-          </div>
+          ) : (
+            <div className="bg-gray-50 rounded-lg border border-gray-200 p-8 mb-6 flex items-center justify-center min-h-[200px]">
+              <div className="text-center">
+                <div className="text-6xl mb-3">{icon}</div>
+                <p className="text-sm text-gray-600">
+                  Arquivo {fileExtension}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Toque em "Baixar" para abrir
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Badges de tipo */}
           <div className="mb-4 flex gap-2 flex-wrap">
