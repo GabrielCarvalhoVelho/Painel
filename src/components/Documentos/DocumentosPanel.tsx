@@ -44,8 +44,7 @@ export default function DocumentosPanel() {
       const docs = await DocumentosService.getAll(currentUser.user_id);
       console.log(`[DocumentosPanel] ✓ ${docs.length} documentos carregados`);
 
-      // Ordena alfabeticamente por título (estado padrão sem filtros)
-      // Documentos sem título usam "Documento sem título" para ordenação correta
+      // Ordena alfabeticamente por título (estado padrão)
       const docsOrdenados = [...docs].sort((a, b) => 
         (a.titulo || 'Documento sem título').localeCompare(
           b.titulo || 'Documento sem título', 

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Filter } from "lucide-react";
+import { Search, Filter, ArrowUpDown } from "lucide-react";
 import { Documento } from "./mockDocumentos";
 
 interface DocumentosSearchBarProps {
@@ -14,6 +14,8 @@ type TipoDocumento =
   | "Laudo / Relatório"
   | "Trabalhista / Funcionário"
   | "Outro";
+
+type OrdenacaoData = "alfabetica" | "recentes" | "antigos";
 
 const TIPOS: TipoDocumento[] = [
   "Cadastro / Registro da Fazenda",
@@ -30,6 +32,7 @@ export default function DocumentosSearchBar({
 }: DocumentosSearchBarProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedType, setSelectedType] = useState<TipoDocumento | "">("");
+  const [ordenacao, setOrdenacao] = useState<OrdenacaoData>("alfabetica");
   const [showFilters, setShowFilters] = useState(false);
 
   const applyFilters = () => {
@@ -53,6 +56,30 @@ export default function DocumentosSearchBar({
       filtered = filtered.filter((doc) => doc.tipo === selectedType);
     }
 
+    // Ordenação por data
+    if (ordenacao === "recentes") {
+      filtered.sort((a, b) => {
+        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return dateB - dateA; // Mais recentes primeiro
+      });
+    } else if (ordenacao === "antigos") {
+      filtered.sort((a, b) => {
+        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return dateA - dateB; // Mais antigos primeiro
+      });
+    } else {
+      // Alfabética (padrão)
+      filtered.sort((a, b) => 
+        (a.titulo || 'Documento sem título').localeCompare(
+          b.titulo || 'Documento sem título', 
+          'pt-BR', 
+          { sensitivity: 'base' }
+        )
+      );
+    }
+
     onFilterChange(filtered);
   };
 
@@ -68,7 +95,12 @@ export default function DocumentosSearchBar({
     setTimeout(() => applyFilters(), 0);
   };
 
-  const hasActiveFilters = searchTerm.trim() || selectedType;
+  const handleOrdenacaoChange = (ordem: OrdenacaoData) => {
+    setOrdenacao(ordem);
+    setTimeout(() => applyFilters(), 0);
+  };
+
+  const hasActiveFilters = searchTerm.trim() || selectedType || ordenacao !== "alfabetica";
 
   return (
     <div className="space-y-4">
@@ -134,6 +166,46 @@ export default function DocumentosSearchBar({
                   {tipo}
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* Ordenação por Data */}
+          <div>
+            <label className="block text-sm font-medium text-[#004417] mb-2">
+              <ArrowUpDown className="w-4 h-4 inline-block mr-1" />
+              Ordenar por
+            </label>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => handleOrdenacaoChange("alfabetica")}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                  ordenacao === "alfabetica"
+                    ? "bg-[#00A651] text-white"
+                    : "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                A-Z
+              </button>
+              <button
+                onClick={() => handleOrdenacaoChange("recentes")}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                  ordenacao === "recentes"
+                    ? "bg-[#00A651] text-white"
+                    : "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                Mais recentes
+              </button>
+              <button
+                onClick={() => handleOrdenacaoChange("antigos")}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                  ordenacao === "antigos"
+                    ? "bg-[#00A651] text-white"
+                    : "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                Mais antigos
+              </button>
             </div>
           </div>
         </div>
