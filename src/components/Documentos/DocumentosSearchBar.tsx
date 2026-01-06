@@ -8,22 +8,20 @@ interface DocumentosSearchBarProps {
 }
 
 type TipoDocumento =
-  | "Pessoal"
-  | "Cadastro da fazenda"
-  | "Contratos"
-  | "Comprovantes de pagamento"
-  | "Ambiental / ESG / EUDR"
-  | "Técnico"
-  | "Outros";
+  | "Cadastro / Registro da Fazenda"
+  | "Certificação / Auditoria"
+  | "Contrato"
+  | "Laudo / Relatório"
+  | "Trabalhista / Funcionário"
+  | "Outro";
 
 const TIPOS: TipoDocumento[] = [
-  "Pessoal",
-  "Cadastro da fazenda",
-  "Contratos",
-  "Comprovantes de pagamento",
-  "Ambiental / ESG / EUDR",
-  "Técnico",
-  "Outros",
+  "Cadastro / Registro da Fazenda",
+  "Certificação / Auditoria",
+  "Contrato",
+  "Laudo / Relatório",
+  "Trabalhista / Funcionário",
+  "Outro",
 ];
 
 export default function DocumentosSearchBar({
