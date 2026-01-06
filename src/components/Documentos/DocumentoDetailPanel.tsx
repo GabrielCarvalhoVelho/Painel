@@ -1,5 +1,5 @@
 import { Documento } from "./mockDocumentos";
-import { X, Download, Edit2, Trash2 } from "lucide-react";
+import { X, Download, Edit2, Trash2, ExternalLink, Smartphone } from "lucide-react";
 import { formatDateBR } from "../../lib/dateUtils";
 
 interface DocumentoDetailPanelProps {
@@ -9,6 +9,20 @@ interface DocumentoDetailPanelProps {
   onEdit: (id: number) => void;
   onDelete: (id: number) => void;
 }
+
+// Detecta se está em navegador in-app (WhatsApp, Instagram, Facebook, etc.)
+const isInAppBrowser = (): boolean => {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || navigator.vendor || '';
+  // WhatsApp, Facebook, Instagram, Messenger, LinkedIn, Twitter, Snapchat, TikTok
+  return /FBAN|FBAV|Instagram|WhatsApp|Messenger|LinkedIn|Twitter|Snapchat|TikTok|Line\//i.test(ua);
+};
+
+// Detecta se é dispositivo móvel
+const isMobileDevice = (): boolean => {
+  if (typeof navigator === 'undefined') return false;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+};
 
 const getFileExtension = (arquivoUrl?: string): string => {
   if (!arquivoUrl) return "FILE";
@@ -94,8 +108,38 @@ export default function DocumentoDetailPanel({
   const handleDownload = async () => {
     if (!documento.arquivo_url) return;
 
+    const inApp = isInAppBrowser();
+    const mobile = isMobileDevice();
+
+    // 🔧 Estratégia 1: Navegador in-app → abrir direto (usuário salva manualmente)
+    if (inApp) {
+      // Tenta abrir no navegador padrão do sistema (funciona em alguns casos)
+      const intentUrl = `intent://${documento.arquivo_url.replace(/^https?:\/\//, '')}#Intent;scheme=https;action=android.intent.action.VIEW;end`;
+      
+      // Fallback: abre direto e instrui o usuário
+      window.location.href = documento.arquivo_url;
+      return;
+    }
+
+    // 🔧 Estratégia 2: Mobile (navegador normal) → link direto com download
+    if (mobile) {
+      const link = document.createElement('a');
+      link.href = documento.arquivo_url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      // Força download se possível
+      link.setAttribute('download', documento.titulo || `documento.${fileExtension.toLowerCase()}`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return;
+    }
+
+    // 🔧 Estratégia 3: Desktop → fetch + blob (mais confiável)
     try {
       const response = await fetch(documento.arquivo_url);
+      if (!response.ok) throw new Error('Falha no fetch');
+      
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -107,9 +151,13 @@ export default function DocumentoDetailPanel({
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Erro ao baixar arquivo:', error);
+      // Fallback final: abre em nova aba
       window.open(documento.arquivo_url, '_blank');
     }
   };
+
+  // Verifica se está em navegador in-app para mostrar instrução
+  const showInAppWarning = isInAppBrowser();
 
   return (
     <>
@@ -226,13 +274,39 @@ export default function DocumentoDetailPanel({
 
         {/* Footer com botões */}
         <div className="border-t border-gray-200 p-4 md:p-6 space-y-2">
+          {/* Aviso para navegador in-app (WhatsApp) */}
+          {showInAppWarning && documento.arquivo_url && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-2">
+              <div className="flex items-start gap-2">
+                <Smartphone className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                <div className="text-xs text-amber-800">
+                  <p className="font-semibold">Abrindo pelo WhatsApp?</p>
+                  <p className="mt-1">
+                    {isImage 
+                      ? "Toque em \"Abrir Arquivo\", depois pressione e segure a imagem para salvar."
+                      : "Toque em \"Abrir Arquivo\" para visualizar. O arquivo abrirá no navegador."}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+          
           <button
             onClick={handleDownload}
             disabled={!documento.arquivo_url}
             className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 text-gray-700 rounded-lg font-medium transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Download className="w-4 h-4" />
-            {documento.arquivo_url ? 'Baixar' : 'Arquivo indisponível'}
+            {showInAppWarning ? (
+              <>
+                <ExternalLink className="w-4 h-4" />
+                Abrir Arquivo
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4" />
+                {documento.arquivo_url ? 'Baixar' : 'Arquivo indisponível'}
+              </>
+            )}
           </button>
           <button
             onClick={() => {
