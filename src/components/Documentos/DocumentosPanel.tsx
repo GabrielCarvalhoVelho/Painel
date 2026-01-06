@@ -44,8 +44,13 @@ export default function DocumentosPanel() {
       const docs = await DocumentosService.getAll(currentUser.user_id);
       console.log(`[DocumentosPanel] ✓ ${docs.length} documentos carregados`);
 
-      setDocumentos(docs);
-      setFilteredDocumentos(docs);
+      // Ordena alfabeticamente por título (estado padrão sem filtros)
+      const docsOrdenados = [...docs].sort((a, b) => 
+        (a.titulo || '').localeCompare(b.titulo || '', 'pt-BR', { sensitivity: 'base' })
+      );
+
+      setDocumentos(docsOrdenados);
+      setFilteredDocumentos(docsOrdenados);
     } catch (error) {
       console.error("[DocumentosPanel] ✗ Erro ao carregar documentos:", error);
     } finally {
