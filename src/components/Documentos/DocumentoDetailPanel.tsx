@@ -418,20 +418,20 @@ export default function DocumentoDetailPanel({
         }`}
       >
         {/* Header */}
-        <div className="border-b border-gray-200 p-4 md:p-6 flex items-start justify-between">
+        <div className="border-b border-[rgba(0,68,23,0.08)] p-4 md:p-6 flex items-start justify-between">
           <div className="flex-1">
-            <h2 className="text-lg md:text-xl font-bold text-[#004417] break-words">
+            <h2 className="font-semibold text-[#004417] break-words">
               {documento.titulo || 'Documento sem título'}
             </h2>
-            <p className="text-xs md:text-sm text-gray-500 mt-1">
+            <p className="text-xs md:text-sm text-[rgba(0,68,23,0.75)] font-medium mt-1">
               {fileExtension}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0 ml-2"
+            className="p-2 hover:bg-[rgba(0,68,23,0.05)] rounded-lg transition-colors flex-shrink-0 ml-2"
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X className="w-5 h-5 text-[rgba(0,68,23,0.5)]" />
           </button>
         </div>
 
