@@ -168,7 +168,7 @@ export default function DocumentosPanel() {
             </p>
             <div className="flex gap-3 mt-2 w-full">
               <button
-                className="flex-1 px-4 py-2 rounded-lg bg-white border border-[rgba(0,68,23,0.12)] text-[#004417] hover:bg-[rgba(0,68,23,0.03)] font-medium transition-colors"
+                className="flex-1 px-4 py-2 rounded-lg bg-white text-[#004417] hover:bg-[rgba(0,68,23,0.03)] font-medium transition-colors"
                 onClick={handleDeleteCancel}
               >
                 Cancelar

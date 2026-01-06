@@ -88,7 +88,7 @@ export default function Sidebar({ activeTab, setActiveTab, onClose }: SidebarPro
                   <div className={`font-medium text-[15px] ${active ? 'text-white' : 'text-[rgba(255,255,255,0.85)]'}`}> 
                     <span>{item.label}</span>
                     {item.id === 'dre' && (
-                      <span className="ml-2 text-[11px] font-semibold bg-white text-[#00A651] px-2 py-0.5 rounded-full border border-[rgba(0,166,81,0.08)]">
+                      <span className="ml-2 text-[11px] font-semibold bg-white text-[#00A651] px-2 py-0.5 rounded-full">
                         Em breve
                       </span>
                     )}

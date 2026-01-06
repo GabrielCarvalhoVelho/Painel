@@ -47,11 +47,11 @@ export default function Pagination({
   if (totalPages <= 1) return null;
 
   return (
-    <div className="flex items-center justify-center gap-2 px-4 py-3 bg-gray-50 rounded-lg border border-gray-200">
+    <div className="flex items-center justify-center gap-2 px-4 py-3 bg-gray-50 rounded-lg">
         <button
           onClick={handleFirstPage}
           disabled={currentPage === 1 || isLoading}
-          className="p-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="p-2 rounded-lg bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           title="Primeira página"
         >
           <ChevronsLeft className="w-4 h-4 text-gray-600" />
@@ -60,20 +60,20 @@ export default function Pagination({
         <button
           onClick={handlePreviousPage}
           disabled={currentPage === 1 || isLoading}
-          className="p-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="p-2 rounded-lg bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           title="Página anterior"
         >
           <ChevronLeft className="w-4 h-4 text-gray-600" />
         </button>
 
-        <div className="px-4 py-2 text-xs font-medium text-gray-900 bg-white border border-gray-300 rounded-lg">
+        <div className="px-4 py-2 text-xs font-medium text-gray-900 bg-white rounded-lg">
           Página {currentPage} de {totalPages}
         </div>
 
         <button
           onClick={handleNextPage}
           disabled={currentPage === totalPages || isLoading}
-          className="p-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="p-2 rounded-lg bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           title="Próxima página"
         >
           <ChevronRight className="w-4 h-4 text-gray-600" />
@@ -82,7 +82,7 @@ export default function Pagination({
         <button
           onClick={handleLastPage}
           disabled={currentPage === totalPages || isLoading}
-          className="p-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="p-2 rounded-lg bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           title="Última página"
         >
           <ChevronsRight className="w-4 h-4 text-gray-600" />

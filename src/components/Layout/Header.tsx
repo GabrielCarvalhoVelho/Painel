@@ -65,7 +65,7 @@ export default function Header({ onMenuClick, sidebarOpen, user: _user, onLogout
           {/* Botão menu hamburguer flutuante (mobile) */}
           <button
             onClick={onMenuClick}
-            className={`md:hidden p-3 bg-white/10 hover:bg-white/80 active:bg-white/90 shadow-lg border border-gray-200/30 text-[#004417] hover:text-[#00A651] rounded-full transition-all duration-200 backdrop-blur-sm ${showFloatingMenu ? 'fixed left-4 top-4 z-50' : ''}`}
+            className={`md:hidden p-3 bg-white/10 hover:bg-white/80 active:bg-white/90 shadow-lg text-[#004417] hover:text-[#00A651] rounded-full transition-all duration-200 backdrop-blur-sm ${showFloatingMenu ? 'fixed left-4 top-4 z-50' : ''}`}
             style={showFloatingMenu ? { boxShadow: '0 4px 16px rgba(0,0,0,0.10)' } : {}}
             aria-label="Abrir menu"
           >
@@ -94,7 +94,7 @@ export default function Header({ onMenuClick, sidebarOpen, user: _user, onLogout
         
         <div className="flex items-center space-x-4">
           {isDevelopment && (
-            <div className="hidden md:flex items-center space-x-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="hidden md:flex items-center space-x-2 px-3 py-1.5 bg-amber-50 rounded-lg">
               <Code className="w-4 h-4 text-amber-600" />
               <span className="text-xs font-semibold text-amber-700">MODO DEV</span>
             </div>

@@ -142,7 +142,7 @@ export default function DocumentoCard({
       <div className="flex gap-2">
         <button
           onClick={() => onViewDetails(documento.id)}
-          className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg text-xs font-medium text-gray-700 transition-colors"
+          className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded-lg text-xs font-medium text-gray-700 transition-colors"
         >
           Ver
           <ChevronRight className="w-3 h-3" />
@@ -156,7 +156,7 @@ export default function DocumentoCard({
         </button>
         <button
           onClick={() => onDelete(documento.id)}
-          className="flex items-center justify-center gap-1 px-3 py-2 border border-[#F7941F]/30 hover:bg-[#F7941F]/10 rounded-lg text-xs font-medium text-[#F7941F] transition-colors"
+          className="flex items-center justify-center gap-1 px-3 py-2 hover:bg-[#F7941F]/10 rounded-lg text-xs font-medium text-[#F7941F] transition-colors"
           title="Excluir documento"
         >
           <Trash2 className="w-3 h-3" />

@@ -93,7 +93,7 @@ export default function ListaProdutosMobile({
                 </div>
                 <button
                   onClick={() => onAjustarEstoque?.(item)}
-                  className="w-full px-3 py-1.5 text-[12px] font-semibold text-[#004417] bg-white border border-[rgba(0,68,23,0.18)] rounded-lg active:bg-[rgba(0,68,23,0.05)] transition-colors"
+                  className="w-full px-3 py-1.5 text-[12px] font-semibold text-[#004417] bg-white rounded-lg active:bg-[rgba(0,68,23,0.05)] transition-colors"
                 >
                   Ajustar estoque
                 </button>

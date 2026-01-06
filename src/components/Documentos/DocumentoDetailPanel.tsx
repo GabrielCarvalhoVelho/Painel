@@ -439,8 +439,8 @@ export default function DocumentoDetailPanel({
         <div className="flex-1 overflow-y-auto p-4 md:p-6">
           {/* Preview */}
           {isImage ? (
-            <div 
-              className="bg-gray-100 rounded-lg border border-gray-200 mb-6 overflow-hidden cursor-pointer relative group"
+            <div
+              className="bg-gray-100 rounded-lg mb-6 overflow-hidden cursor-pointer relative group"
               onClick={() => imagePreviewUrl && setShowFullscreenModal(true)}
             >
               {imageLoading ? (
@@ -474,7 +474,7 @@ export default function DocumentoDetailPanel({
               )}
             </div>
           ) : (
-            <div className="bg-gray-50 rounded-lg border border-gray-200 p-6 mb-6 flex items-center justify-center">
+            <div className="bg-gray-50 rounded-lg p-6 mb-6 flex items-center justify-center">
               <div className="text-center">
                 <p className="text-lg font-semibold text-[#004417]">
                   {getFileTypeName(fileExtension)}
@@ -514,7 +514,7 @@ export default function DocumentoDetailPanel({
                 <h3 className="text-[13px] font-bold text-[#004417] mb-3 uppercase tracking-wide">
                   Observação
                 </h3>
-                <p className="text-[13px] text-[rgba(0,68,23,0.75)] font-medium bg-[rgba(0,68,23,0.02)] p-3 rounded-lg border border-[rgba(0,68,23,0.08)]">
+                <p className="text-[13px] text-[rgba(0,68,23,0.75)] font-medium bg-[rgba(0,68,23,0.02)] p-3 rounded-lg">
                   {documento.observacao}
                 </p>
               </div>
@@ -596,7 +596,7 @@ export default function DocumentoDetailPanel({
               onDelete(documento.id);
               onClose();
             }}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-[#F7941F]/30 hover:bg-[#F7941F]/10 text-[#F7941F] rounded-lg font-medium transition-colors text-sm"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 hover:bg-[#F7941F]/10 text-[#F7941F] rounded-lg font-medium transition-colors text-sm"
           >
             <Trash2 className="w-4 h-4" />
             Excluir

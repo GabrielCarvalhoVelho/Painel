@@ -211,7 +211,7 @@ export default function RemoveQuantityModal({
           <label className="block text-[14px] font-semibold text-[#004417] mb-2">
             Quantidade a Remover
           </label>
-          <div className="flex items-center bg-[rgba(0,68,23,0.03)] border border-[rgba(0,68,23,0.08)] rounded-xl h-12 overflow-hidden">
+          <div className="flex items-center bg-[rgba(0,68,23,0.03)] rounded-xl h-12 overflow-hidden">
             <button
               onClick={handleDecrement}
               className="px-4 h-full bg-white hover:bg-[rgba(0,68,23,0.05)] text-[#004417] hover:text-[#00A651] text-[18px] font-bold transition-colors active:bg-[rgba(0,68,23,0.08)]"
@@ -266,7 +266,7 @@ export default function RemoveQuantityModal({
         <div className="flex justify-center gap-3 pt-2">
           <button
             onClick={onClose}
-            className="px-8 py-2.5 border border-[rgba(0,68,23,0.2)] rounded-xl text-[#004417] font-semibold hover:bg-[rgba(0,68,23,0.05)] transition-all duration-200"
+            className="px-8 py-2.5 rounded-xl text-[#004417] font-semibold hover:bg-[rgba(0,68,23,0.05)] transition-all duration-200"
           >
             Cancelar
           </button>

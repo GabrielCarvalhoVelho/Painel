@@ -413,14 +413,14 @@ export default function EstoquePanel() {
           {!mostrarTodos ? (
             <button
               onClick={() => setMostrarTodos(true)}
-              className="px-6 py-2.5 text-[13px] font-semibold text-[#004417] bg-white border-2 border-[#00A651] rounded-xl hover:bg-[rgba(0,166,81,0.08)] transition-all"
+              className="px-6 py-2.5 text-[13px] font-semibold text-[#004417] bg-white rounded-xl hover:bg-[rgba(0,166,81,0.08)] transition-all"
             >
               Ver todos ({produtosAgrupadosFiltrados.length} grupos)
             </button>
           ) : (
             <button
               onClick={() => setMostrarTodos(false)}
-              className="px-6 py-2.5 text-[13px] font-semibold text-[rgba(0,68,23,0.7)] bg-[rgba(0,68,23,0.03)] border-2 border-[rgba(0,68,23,0.1)] rounded-xl hover:bg-[rgba(0,68,23,0.05)] transition-all"
+              className="px-6 py-2.5 text-[13px] font-semibold text-[rgba(0,68,23,0.7)] bg-[rgba(0,68,23,0.03)] rounded-xl hover:bg-[rgba(0,68,23,0.05)] transition-all"
             >
               Ver menos
             </button>
