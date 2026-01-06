@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Documento } from "./mockDocumentos";
-import { X, Download, Edit2, Trash2, Loader2, ImageIcon, ZoomIn } from "lucide-react";
+import { X, Download, Edit2, Trash2, Loader2, ImageIcon, ZoomIn, FileText } from "lucide-react";
 import { formatDateBR } from "../../lib/dateUtils";
 import { DocumentosService } from "../../services/documentosService";
 
@@ -14,6 +14,17 @@ interface DocumentoDetailPanelProps {
 
 const isImageFile = (extension: string): boolean => {
   return ["JPG", "JPEG", "PNG", "GIF", "WEBP", "BMP"].includes(extension.toUpperCase());
+};
+
+const isPdfFile = (extension: string): boolean => {
+  return extension.toUpperCase() === "PDF";
+};
+
+// Detecta se está no WebView do WhatsApp ou outro in-app browser
+const isInAppBrowser = (): boolean => {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  return /WhatsApp|FBAN|FBAV|Instagram|Line|Twitter|Snapchat/i.test(ua);
 };
 
 const getFileExtension = (arquivoUrl?: string): string => {
@@ -83,12 +94,15 @@ export default function DocumentoDetailPanel({
   const fileExtension = getFileExtension(documento.arquivo_url);
   const icon = getPreviewIcon(fileExtension);
   const isImage = isImageFile(fileExtension);
+  const isPdf = isPdfFile(fileExtension);
 
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [showFullscreenModal, setShowFullscreenModal] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [pdfViewerUrl, setPdfViewerUrl] = useState<string | null>(null);
+  const [showPdfViewer, setShowPdfViewer] = useState(false);
 
   // Carrega preview da imagem quando o painel abre
   useEffect(() => {
@@ -117,6 +131,8 @@ export default function DocumentoDetailPanel({
       setImagePreviewUrl(null);
       setImageError(false);
       setShowFullscreenModal(false);
+      setPdfViewerUrl(null);
+      setShowPdfViewer(false);
     };
   }, [isOpen, documento.arquivo_url, isImage]);
 
@@ -133,26 +149,42 @@ export default function DocumentoDetailPanel({
         return;
       }
 
-      // Baixa o arquivo via fetch e cria blob URL local (não expõe bucket)
-      const response = await fetch(signedUrl);
-      if (!response.ok) {
-        throw new Error('Erro ao baixar arquivo');
+      // Se for PDF e estiver em in-app browser, abre o viewer interno
+      if (isPdf && isInAppBrowser()) {
+        setPdfViewerUrl(signedUrl);
+        setShowPdfViewer(true);
+        setIsDownloading(false);
+        return;
       }
-      
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      
-      // Cria link temporário para download
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = documento.titulo || `documento.${fileExtension.toLowerCase()}`;
-      link.style.display = 'none';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      // Limpa o blob URL após um tempo
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+
+      // Tenta download via fetch + blob (funciona na maioria dos navegadores)
+      try {
+        const response = await fetch(signedUrl);
+        if (!response.ok) throw new Error('Fetch failed');
+        
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = documento.titulo || `documento.${fileExtension.toLowerCase()}`;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+      } catch {
+        // Fallback: abre em nova aba (vai mostrar URL, mas é o último recurso)
+        // Para PDFs, abre o viewer interno
+        if (isPdf) {
+          setPdfViewerUrl(signedUrl);
+          setShowPdfViewer(true);
+        } else {
+          // Para outros arquivos, tenta abrir diretamente
+          window.open(signedUrl, '_blank');
+        }
+      }
       
     } catch (error) {
       console.error('Erro ao baixar:', error);
@@ -161,6 +193,53 @@ export default function DocumentoDetailPanel({
       setIsDownloading(false);
     }
   };
+
+  // Modal visualizador de PDF
+  if (showPdfViewer && pdfViewerUrl) {
+    return (
+      <div className="fixed inset-0 bg-black/95 z-[100] flex flex-col">
+        {/* Header do modal */}
+        <div className="flex items-center justify-between p-4 bg-gradient-to-b from-black/80 to-transparent">
+          <div className="flex items-center gap-2 flex-1 mr-4">
+            <FileText className="w-5 h-5 text-white" />
+            <p className="text-white text-sm font-medium truncate">
+              {documento.titulo || 'Documento PDF'}
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              setShowPdfViewer(false);
+              setPdfViewerUrl(null);
+            }}
+            className="p-2 bg-white/20 hover:bg-white/30 rounded-full transition-colors"
+          >
+            <X className="w-5 h-5 text-white" />
+          </button>
+        </div>
+
+        {/* PDF Viewer */}
+        <div className="flex-1 bg-gray-100">
+          <iframe
+            src={pdfViewerUrl}
+            className="w-full h-full border-0"
+            title={documento.titulo || 'Visualizador de PDF'}
+          />
+        </div>
+
+        {/* Footer com instrução */}
+        <div className="p-4 bg-gradient-to-t from-black/80 to-transparent">
+          <div className="bg-white/10 rounded-lg p-3 text-center">
+            <p className="text-white text-sm font-medium">
+              📄 Visualizando documento
+            </p>
+            <p className="text-white/70 text-xs mt-1">
+              Use os controles do visualizador para navegar ou fazer zoom
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Modal Fullscreen para imagens
   if (showFullscreenModal && imagePreviewUrl) {
