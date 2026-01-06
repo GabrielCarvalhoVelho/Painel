@@ -74,10 +74,10 @@ const MetadataField = ({
   if (!value) return null;
   return (
     <div className="mb-3">
-      <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">
+      <p className="text-[13px] text-[rgba(0,68,23,0.75)] font-medium uppercase tracking-wide mb-1">
         {label}
       </p>
-      <p className="text-sm text-gray-900">{value}</p>
+      <p className="text-[13px] font-semibold text-[#004417]">{value}</p>
     </div>
   );
 };
@@ -502,7 +502,7 @@ export default function DocumentoDetailPanel({
           {/* Metadados */}
           <div className="space-y-4">
             <div>
-              <h3 className="text-sm font-bold text-[#004417] mb-3 uppercase tracking-wide">
+              <h3 className="text-[13px] font-bold text-[#004417] mb-3 uppercase tracking-wide">
                 Informações
               </h3>
               <MetadataField label="Safra" value={documento.safra} />
@@ -511,10 +511,10 @@ export default function DocumentoDetailPanel({
 
             {documento.observacao && (
               <div>
-                <h3 className="text-sm font-bold text-[#004417] mb-3 uppercase tracking-wide">
+                <h3 className="text-[13px] font-bold text-[#004417] mb-3 uppercase tracking-wide">
                   Observação
                 </h3>
-                <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
+                <p className="text-[13px] text-[rgba(0,68,23,0.75)] font-medium bg-[rgba(0,68,23,0.02)] p-3 rounded-lg border border-[rgba(0,68,23,0.08)]">
                   {documento.observacao}
                 </p>
               </div>
