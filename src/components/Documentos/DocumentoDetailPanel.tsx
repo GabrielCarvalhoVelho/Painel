@@ -230,26 +230,21 @@ export default function DocumentoDetailPanel({
     try {
       const userId = AuthService.getInstance().getCurrentUser()?.user_id;
       if (!userId) {
-        alert('Usuário não autenticado. Faça login novamente.');
+        setIsSendingWhatsApp(false);
         return;
       }
 
       const usuario = await UserService.getUserById(userId);
       if (!usuario?.telefone) {
-        alert('Telefone não cadastrado. Entre em contato com o suporte.');
+        setIsSendingWhatsApp(false);
         return;
       }
 
-      const result = await DocumentosService.sendToWhatsApp(documento.id, usuario.telefone);
-      
-      if (result.success) {
-        alert('✅ ' + (result.message || 'Documento enviado para seu WhatsApp!'));
-      } else {
-        alert('❌ ' + (result.error || 'Falha ao enviar para WhatsApp'));
-      }
+      await DocumentosService.sendToWhatsApp(documento.id, usuario.telefone);
+      // Não exibe alertas de sucesso ou erro
     } catch (error) {
       console.error('Erro ao enviar WhatsApp:', error);
-      alert('Erro ao enviar. Tente novamente.');
+      // Não exibe alertas
     } finally {
       setIsSendingWhatsApp(false);
     }
