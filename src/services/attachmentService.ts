@@ -574,45 +574,44 @@ export class AttachmentService {
 
       console.log('📊 [Delete Image] Path salvo no banco:', storedPath || 'N/A');
 
+      const fileId = await this.getStorageFileId(transactionId);
+      const user = AuthService.getInstance().getCurrentUser();
+      const pathsToTry: string[] = [];
+
       if (storedPath) {
         const pathToDelete = this.normalizeStoredPath(storedPath);
-        console.log('📍 [Delete Image] Usando path normalizado:', pathToDelete);
+        console.log('📍 [Delete Image] Path normalizado:', pathToDelete);
+        pathsToTry.push(pathToDelete);
+      }
+
+      if (user?.user_id) {
+        pathsToTry.push(`${user.user_id}/${fileId}.jpg`);
+        pathsToTry.push(`${user.user_id}/imagens/${fileId}.jpg`);
+      }
+      pathsToTry.push(`${fileId}.jpg`);
+      pathsToTry.push(`imagens/${fileId}.jpg`);
+
+      console.log('🔍 [Delete Image] Tentando excluir paths:', pathsToTry);
+
+      for (const path of pathsToTry) {
+        console.log(`🗑️ Tentando excluir: ${path}`);
 
         const { data, error } = await supabase.storage
           .from(this.BUCKET_NAME)
-          .remove([pathToDelete]);
+          .remove([path]);
 
-        if (error) {
-          console.error('❌ Erro ao excluir via path do banco:', error);
-          throw new Error(`Erro ao excluir anexo: ${error.message}`);
+        if (!error && data && data.length > 0) {
+          console.log('✅ Exclusão concluída:', path);
+
+          await this.updateSharedAttachmentUrl(transactionId, null);
+
+          return true;
+        } else {
+          console.log(`⚠️ Falha ao excluir ${path}:`, error?.message || 'Nenhum arquivo removido');
         }
-
-        console.log('✅ Exclusão concluída via path do banco');
-
-        await this.updateSharedAttachmentUrl(transactionId, null);
-
-        return true;
       }
 
-      console.log('🔄 Path não encontrado no banco, tentando fallback...');
-
-      const fileId = await this.getStorageFileId(transactionId);
-      const fileName = `${fileId}.jpg`;
-
-      const { data, error } = await supabase.storage
-        .from(this.BUCKET_NAME)
-        .remove([fileName]);
-
-      if (error) {
-        console.error('❌ Erro na exclusão:', error);
-        throw new Error(`Erro ao excluir anexo: ${error.message}`);
-      }
-
-      console.log('✅ Exclusão concluída via fallback');
-
-      await this.updateSharedAttachmentUrl(transactionId, null);
-
-      return true;
+      throw new Error('Arquivo não encontrado em nenhum dos caminhos tentados');
     } catch (error) {
       console.error('💥 Erro ao excluir anexo:', error);
       throw error;
