@@ -2249,8 +2249,9 @@ export class AttachmentService {
   return contentTypes[fileExtension.toLowerCase()] || 'application/octet-stream';
 }
   /**
-   * Obtém a URL de anexo financeiro (imagem) com fallback robusto (padrão Manejo)
-   * Tenta: pública -> signed-url -> blob
+   * Obtém a URL de anexo financeiro (imagem) com fallback robusto
+   * IMPORTANTE: bucket notas_fiscais é PRIVADO, URLs públicas não funcionam!
+   * Ordem: signedUrl SDK -> download blob
    */
   static async getAttachmentUrlFinanceiro(transactionId: string, forceRefresh = false): Promise<string | null> {
     try {
@@ -2291,53 +2292,28 @@ export class AttachmentService {
       for (const objectPath of uniquePaths) {
         console.log(`📍 [Financeiro] Tentando path: ${objectPath}`);
 
-        const publicUrl = this.buildPublicUrl(objectPath, this.BUCKET_NAME);
+        const { data: signedData, error: signedErr } = await supabase.storage
+          .from(this.BUCKET_NAME)
+          .createSignedUrl(objectPath, 3600);
 
-        try {
-          const headRes = await fetch(publicUrl, { method: 'HEAD', cache: 'no-cache' });
-          console.log(`   HEAD ${objectPath}: ${headRes.status}`);
-
-          if (headRes.ok) {
-            const timestamp = Date.now();
-            const urlWithCache = `${publicUrl}?v=${timestamp}`;
-            console.log('✅ [Financeiro] Encontrado via URL pública:', urlWithCache);
-            return urlWithCache;
-          }
-        } catch (headErr) {
-          console.log(`   HEAD ${objectPath} falhou:`, headErr);
-        }
-
-        const signedUrlServer = import.meta.env.VITE_SIGNED_URL_SERVER_URL || import.meta.env.VITE_API_URL;
-        if (signedUrlServer) {
+        if (signedData?.signedUrl && !signedErr) {
           try {
-            console.log(`   Tentando signed-url para: ${objectPath}`);
-            const response = await fetch(`${signedUrlServer.replace(/\/$/, '')}/signed-url`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                path: objectPath,
-                bucket: this.BUCKET_NAME,
-                expires: 120
-              })
-            });
-            const payload = await response.json().catch(() => ({}));
-            if (payload?.url || payload?.signedUrl) {
-              const signedUrl = payload.url || payload.signedUrl;
-              const testRes = await fetch(signedUrl, { method: 'HEAD', cache: 'no-cache' });
-              console.log(`   Signed-url HEAD: ${testRes.status}`);
-              if (testRes.ok) {
-                console.log('✅ [Financeiro] Encontrado via signed-url');
-                return signedUrl;
-              }
+            const testRes = await fetch(signedData.signedUrl, { method: 'HEAD', cache: 'no-cache' });
+            console.log(`   SignedUrl SDK HEAD: ${testRes.status}`);
+            if (testRes.ok) {
+              console.log('✅ [Financeiro] Encontrado via signedUrl SDK');
+              return signedData.signedUrl;
             }
-          } catch (signedErr) {
-            console.log(`   Signed-url falhou:`, signedErr);
+          } catch (headErr) {
+            console.log(`   SignedUrl HEAD falhou:`, headErr);
           }
+        } else if (signedErr) {
+          console.log(`   SignedUrl SDK erro:`, signedErr.message);
         }
 
         try {
           console.log(`   Tentando download blob: ${objectPath}`);
-          const { data: blobData, error: dlErr } = await supabaseServiceRole.storage
+          const { data: blobData, error: dlErr } = await supabase.storage
             .from(this.BUCKET_NAME)
             .download(objectPath);
 
