@@ -1578,53 +1578,84 @@ export class AttachmentService {
    */
   static async getFileAttachmentUrl(transactionId: string, forceRefresh = false): Promise<string | null> {
     try {
-      console.log('🔗 Obtendo URL do arquivo:', transactionId, forceRefresh ? '(forçando refresh)' : '');
+      console.log('🔗 [Financeiro File] Obtendo URL do arquivo:', transactionId, forceRefresh ? '(forçando refresh)' : '');
 
-      // Sempre buscar diretamente no storage (sem usar campo anexo_arquivo_url no banco)
+      const groupInfo = await this.getTransactionAttachmentGroup(transactionId);
+      const storedPath = groupInfo?.anexo_arquivo_url;
+
+      console.log('📊 [Financeiro File] Path salvo no banco:', storedPath || 'N/A');
 
       const fileId = await this.getStorageFileIdForFile(transactionId);
-  const extensions = ['pdf','xml','xls','xlsx','doc','docx','csv','txt'];
-
-      // Construir URLs públicas conhecidas (sem HEAD) para buckets públicos.
-      const baseUrl = url.replace(/\/+$/, '');
       const user = AuthService.getInstance().getCurrentUser();
+      const userId = user?.user_id || '';
+      const extensions = ['pdf', 'xml', 'xls', 'xlsx', 'doc', 'docx', 'csv', 'txt'];
 
-      // Priorizar <user_id>/arquivos, depois arquivos/, depois raiz
-      const candidateNames: string[] = [];
-      if (user?.user_id) candidateNames.push(...extensions.map(ext => `${user.user_id}/${this.FILE_FOLDER}/${fileId}.${ext}`));
-      candidateNames.push(...extensions.map(ext => `${this.FILE_FOLDER}/${fileId}.${ext}`));
-      candidateNames.push(...extensions.map(ext => `${fileId}.${ext}`));
+      console.log('📦 [Financeiro File] fileId:', fileId, '| userId:', userId);
 
-      for (const fileName of candidateNames) {
-        // Tentar criar signedUrl via SDK (se disponível) — funciona para buckets privados
-        try {
-          const objectPath = this.normalizeStoredPath(fileName);
-          if (serviceRole && serviceRole.length) {
-            const { data: signedData, error: signedError } = await supabaseServiceRole.storage
-              .from(this.BUCKET_NAME)
-              .createSignedUrl(objectPath, 120);
-            if (!signedError && signedData?.signedUrl) {
-              console.log('🔐 Obtida signedUrl para arquivo via SDK:', signedData.signedUrl);
-              return signedData.signedUrl;
-            }
-            if (signedError) console.warn('⚠️ createSignedUrl retornou erro:', signedError);
-          }
-        } catch (err) {
-          console.warn('⚠️ Falha ao tentar createSignedUrl para', fileName, err);
-        }
+      const pathsToTry: string[] = [];
 
-        const publicUrlBase = this.buildPublicUrl(fileName);
-        const timestamp = Date.now();
-        const random = Math.random().toString(36).substring(7);
-        const urlWithTimestamp = `${publicUrlBase}?v=${timestamp}&r=${random}&nocache=true`;
-        console.log('📎 URL construída (possível):', urlWithTimestamp);
-        return urlWithTimestamp;
+      if (storedPath) {
+        const normalizedPath = this.normalizeStoredPath(storedPath);
+        pathsToTry.push(normalizedPath);
+        console.log('📍 [Financeiro File] Path normalizado do banco:', normalizedPath);
       }
 
-      console.log('❌ Não foi possível construir URL pública do arquivo');
+      for (const ext of extensions) {
+        if (userId) {
+          pathsToTry.push(`${userId}/${this.FILE_FOLDER}/${fileId}.${ext}`);
+        }
+        pathsToTry.push(`${this.FILE_FOLDER}/${fileId}.${ext}`);
+        pathsToTry.push(`${fileId}.${ext}`);
+      }
+
+      const uniquePaths = [...new Set(pathsToTry)];
+      console.log('🔄 [Financeiro File] Paths a tentar:', uniquePaths.slice(0, 10), '...');
+
+      for (const objectPath of uniquePaths) {
+        console.log(`📍 [Financeiro File] Tentando path: ${objectPath}`);
+
+        const { data: signedData, error: signedErr } = await supabase.storage
+          .from(this.BUCKET_NAME)
+          .createSignedUrl(objectPath, 3600);
+
+        if (signedData?.signedUrl && !signedErr) {
+          try {
+            const testRes = await fetch(signedData.signedUrl, { method: 'HEAD', cache: 'no-cache' });
+            console.log(`   SignedUrl SDK HEAD: ${testRes.status}`);
+            if (testRes.ok) {
+              console.log('✅ [Financeiro File] Encontrado via signedUrl SDK');
+              return signedData.signedUrl;
+            }
+          } catch (headErr) {
+            console.log(`   SignedUrl HEAD falhou:`, headErr);
+          }
+        } else if (signedErr) {
+          console.log(`   SignedUrl SDK erro:`, signedErr.message);
+        }
+
+        try {
+          console.log(`   Tentando download blob: ${objectPath}`);
+          const { data: blobData, error: dlErr } = await supabase.storage
+            .from(this.BUCKET_NAME)
+            .download(objectPath);
+
+          if (blobData && !dlErr) {
+            const blobUrl = URL.createObjectURL(blobData);
+            console.log('✅ [Financeiro File] Encontrado via blob download');
+            return blobUrl;
+          }
+          if (dlErr) {
+            console.log(`   Blob download falhou:`, dlErr.message);
+          }
+        } catch (blobErr) {
+          console.log(`   Blob download exception:`, blobErr);
+        }
+      }
+
+      console.log('❌ [Financeiro File] Nenhum arquivo encontrado para:', transactionId);
       return null;
     } catch (error) {
-      console.error('💥 Erro ao obter URL do arquivo:', error);
+      console.error('💥 [Financeiro File] Erro getFileAttachmentUrl:', error);
       return null;
     }
   }

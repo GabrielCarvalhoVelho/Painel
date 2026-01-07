@@ -170,8 +170,8 @@ export default function AttachmentModal({
         return;
       }
 
-      // Determina tipo do arquivo pela URL
-      const extension = attachmentUrl.split('.').pop()?.toLowerCase() || '';
+      const urlWithoutQuery = attachmentUrl.split('?')[0];
+      const extension = (urlWithoutQuery.split('.').pop() || '').toLowerCase();
       const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension);
 
       const payload = {
