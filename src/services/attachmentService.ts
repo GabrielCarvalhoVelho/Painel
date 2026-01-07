@@ -19,6 +19,16 @@ if (!url || !storageKey) {
 
 const supabaseServiceRole = createClient(url, storageKey);
 
+function logAuthStatus(context: string) {
+  supabase.auth.getSession().then(({ data: { session } }) => {
+    console.log(`🔐 [${context}] Auth status:`, {
+      hasSession: !!session,
+      userId: session?.user?.id || 'N/A',
+      expiresAt: session?.expires_at ? new Date(session.expires_at * 1000).toISOString() : 'N/A'
+    });
+  });
+}
+
 /**
  * Resultado de operações de upload/delete de anexos financeiros
  */
@@ -444,16 +454,24 @@ export class AttachmentService {
       console.log('⬆️ [Image Upload] Iniciando upload:', transactionId);
       console.log('📁 [Image Upload] Arquivo:', file.name, file.size, file.type);
 
+      logAuthStatus('Image Upload Start');
+
       const fileId = await this.getStorageFileId(transactionId);
       const fileName = `${fileId}.jpg`;
       const user = AuthService.getInstance().getCurrentUser();
-      const filePath = user ? `${user.user_id}/${fileName}` : fileName;
 
+      if (!user?.user_id) {
+        throw new Error('Usuario nao autenticado - user_id ausente');
+      }
+
+      const filePath = `${user.user_id}/${fileName}`;
+
+      console.log('👤 [Image Upload] userId:', user.user_id);
       console.log('📍 [Image Upload] path:', filePath);
 
       const processedFile = await this.processImageFile(file, fileName);
 
-      let { data, error } = await supabase.storage
+      const { data, error } = await supabase.storage
         .from(this.BUCKET_NAME)
         .upload(filePath, processedFile, {
           cacheControl: '3600',
@@ -462,29 +480,17 @@ export class AttachmentService {
         });
 
       if (error) {
-        console.log('⚠️ [Image Upload] Client autenticado falhou:', error.message);
-        const result = await supabaseServiceRole.storage
-          .from(this.BUCKET_NAME)
-          .upload(filePath, processedFile, {
-            cacheControl: '3600',
-            upsert: true,
-            contentType: 'image/jpeg'
-          });
-        data = result.data;
-        error = result.error;
-      }
-
-      if (error) {
-        console.error('❌ [Image Upload] Erro:', error);
-        if (error.message.includes('row-level security') || error.message.includes('RLS')) {
-          throw new Error('Erro de permissao: verifique as politicas RLS do bucket');
-        }
+        console.error('❌ [Image Upload] Erro detalhado:', {
+          message: error.message,
+          statusCode: (error as any).statusCode,
+          error: error
+        });
         throw new Error(`Erro ao fazer upload: ${error.message}`);
       }
 
       if (!data?.path) {
         console.error('❌ [Image Upload] Upload retornou sem path');
-        throw new Error('Upload falhou: imagem nao foi salva no storage');
+        throw new Error('Upload falhou: imagem nao foi salva');
       }
 
       console.log('✅ [Image Upload] Concluido:', filePath);
@@ -503,16 +509,25 @@ export class AttachmentService {
   static async replaceAttachment(transactionId: string, file: File): Promise<boolean> {
     try {
       console.log('🔄 [Image Replace] Substituindo:', transactionId);
+
+      logAuthStatus('Image Replace Start');
+
       const fileId = await this.getStorageFileId(transactionId);
       const fileName = `${fileId}.jpg`;
       const user = AuthService.getInstance().getCurrentUser();
-      const filePath = user ? `${user.user_id}/${fileName}` : fileName;
 
+      if (!user?.user_id) {
+        throw new Error('Usuario nao autenticado - user_id ausente');
+      }
+
+      const filePath = `${user.user_id}/${fileName}`;
+
+      console.log('👤 [Image Replace] userId:', user.user_id);
       console.log('📍 [Image Replace] path:', filePath);
 
       const processedFile = await this.processImageFile(file, fileName);
 
-      let { data, error } = await supabase.storage
+      const { data, error } = await supabase.storage
         .from(this.BUCKET_NAME)
         .update(filePath, processedFile, {
           cacheControl: '3600',
@@ -520,22 +535,11 @@ export class AttachmentService {
         });
 
       if (error) {
-        console.log('⚠️ [Image Replace] Client autenticado falhou:', error.message);
-        const result = await supabaseServiceRole.storage
-          .from(this.BUCKET_NAME)
-          .update(filePath, processedFile, {
-            cacheControl: '3600',
-            contentType: 'image/jpeg'
-          });
-        data = result.data;
-        error = result.error;
-      }
-
-      if (error) {
-        console.error('❌ [Image Replace] Erro:', error);
-        if (error.message.includes('row-level security') || error.message.includes('RLS')) {
-          throw new Error('Erro de permissao: verifique as politicas RLS do bucket');
-        }
+        console.error('❌ [Image Replace] Erro detalhado:', {
+          message: error.message,
+          statusCode: (error as any).statusCode,
+          error: error
+        });
         throw new Error(`Erro ao substituir anexo: ${error.message}`);
       }
 
@@ -1271,19 +1275,25 @@ export class AttachmentService {
       console.log('⬆️ Fazendo upload do arquivo:', transactionId);
       console.log('📁 Arquivo original:', file.name, file.size, file.type);
 
+      logAuthStatus('File Upload Start');
+
       this.validateFile(file);
 
       const fileId = await this.getStorageFileIdForFile(transactionId);
       const ext = this.getFileExtension(file);
       const user = AuthService.getInstance().getCurrentUser();
-      const fileName = user && user.user_id
-        ? `${user.user_id}/${this.FILE_FOLDER}/${fileId}.${ext}`
-        : `${this.FILE_FOLDER}/${fileId}.${ext}`;
+
+      if (!user?.user_id) {
+        throw new Error('Usuario nao autenticado - user_id ausente');
+      }
+
+      const fileName = `${user.user_id}/${this.FILE_FOLDER}/${fileId}.${ext}`;
 
       console.log('📦 [File Upload] fileId:', fileId, 'ext:', ext);
+      console.log('👤 [File Upload] userId:', user.user_id);
       console.log('📍 [File Upload] path:', fileName);
 
-      let { data, error } = await supabase.storage
+      const { data, error } = await supabase.storage
         .from(this.BUCKET_NAME)
         .upload(fileName, file, {
           cacheControl: '3600',
@@ -1292,30 +1302,17 @@ export class AttachmentService {
         });
 
       if (error) {
-        console.log('⚠️ [File Upload] Client autenticado falhou:', error.message);
-        console.log('🔄 [File Upload] Tentando com service role...');
-        const result = await supabaseServiceRole.storage
-          .from(this.BUCKET_NAME)
-          .upload(fileName, file, {
-            cacheControl: '3600',
-            upsert: true,
-            contentType: file.type
-          });
-        data = result.data;
-        error = result.error;
-      }
-
-      if (error) {
-        console.error('❌ [File Upload] Erro:', error);
-        if (error.message.includes('row-level security') || error.message.includes('RLS')) {
-          throw new Error('Erro de permissao: verifique as politicas RLS do bucket');
-        }
+        console.error('❌ [File Upload] Erro detalhado:', {
+          message: error.message,
+          statusCode: (error as any).statusCode,
+          error: error
+        });
         throw new Error(`Erro ao fazer upload: ${error.message}`);
       }
 
       if (!data?.path) {
-        console.error('❌ [File Upload] Upload retornou sem path - arquivo nao foi salvo');
-        throw new Error('Upload falhou: arquivo nao foi salvo no storage');
+        console.error('❌ [File Upload] Upload retornou sem path');
+        throw new Error('Upload falhou: arquivo nao foi salvo');
       }
 
       console.log('✅ [File Upload] Concluido:', data);
@@ -1333,18 +1330,24 @@ export class AttachmentService {
     try {
       console.log('🔄 [File Replace] Substituindo arquivo:', transactionId);
 
+      logAuthStatus('File Replace Start');
+
       this.validateFile(file);
 
       const fileId = await this.getStorageFileIdForFile(transactionId);
       const ext = this.getFileExtension(file);
       const user = AuthService.getInstance().getCurrentUser();
-      const fileName = user && user.user_id
-        ? `${user.user_id}/${this.FILE_FOLDER}/${fileId}.${ext}`
-        : `${this.FILE_FOLDER}/${fileId}.${ext}`;
 
+      if (!user?.user_id) {
+        throw new Error('Usuario nao autenticado - user_id ausente');
+      }
+
+      const fileName = `${user.user_id}/${this.FILE_FOLDER}/${fileId}.${ext}`;
+
+      console.log('👤 [File Replace] userId:', user.user_id);
       console.log('📍 [File Replace] path:', fileName);
 
-      let { data, error } = await supabase.storage
+      const { data, error } = await supabase.storage
         .from(this.BUCKET_NAME)
         .update(fileName, file, {
           cacheControl: '3600',
@@ -1352,22 +1355,11 @@ export class AttachmentService {
         });
 
       if (error) {
-        console.log('⚠️ [File Replace] Client autenticado falhou:', error.message);
-        const result = await supabaseServiceRole.storage
-          .from(this.BUCKET_NAME)
-          .update(fileName, file, {
-            cacheControl: '3600',
-            contentType: file.type
-          });
-        data = result.data;
-        error = result.error;
-      }
-
-      if (error) {
-        console.error('❌ [File Replace] Erro:', error);
-        if (error.message.includes('row-level security') || error.message.includes('RLS')) {
-          throw new Error('Erro de permissao: verifique as politicas RLS do bucket');
-        }
+        console.error('❌ [File Replace] Erro detalhado:', {
+          message: error.message,
+          statusCode: (error as any).statusCode,
+          error: error
+        });
         throw new Error(`Erro ao substituir arquivo: ${error.message}`);
       }
 
