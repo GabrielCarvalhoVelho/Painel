@@ -1058,12 +1058,32 @@ export class AttachmentService {
   static async hasFileAttachment(transactionId: string): Promise<boolean> {
     try {
       console.log('🔍 Verificando arquivo para transação:', transactionId);
-      const fileId = await this.getStorageFileIdForFile(transactionId);
-  const extensionsList = ['pdf','xml','xls','xlsx','doc','docx','csv','txt'];
 
-  // Procurar diretamente no storage (pasta 'arquivos') por fileId e extensões suportadas
+      const { data: txData, error: txError } = await supabase
+        .from('transacoes_financeiras')
+        .select('anexo_arquivo_url')
+        .eq('id_transacao', transactionId)
+        .maybeSingle();
+
+      if (txError) {
+        console.error('❌ Erro ao buscar path do banco:', txError);
+      }
+
+      const storedPath = txData?.anexo_arquivo_url;
+
+      console.log('📊 [hasFileAttachment] Path salvo no banco:', storedPath || 'N/A');
+
+      if (storedPath) {
+        console.log('✅ [hasFileAttachment] Arquivo encontrado via banco');
+        return true;
+      }
+
+      console.log('🔄 Path não encontrado no banco, verificando storage...');
+
+      const fileId = await this.getStorageFileIdForFile(transactionId);
+      const extensionsList = ['pdf','xml','xls','xlsx','doc','docx','csv','txt'];
       const user = AuthService.getInstance().getCurrentUser();
-      // Preferir procurar em <user_id>/arquivos, depois em arquivos/, depois raiz (legado)
+
       const candidatePaths = [] as string[];
       if (user?.user_id) candidatePaths.push(`${user.user_id}/${this.FILE_FOLDER}`);
       candidatePaths.push(this.FILE_FOLDER);
@@ -1073,7 +1093,7 @@ export class AttachmentService {
       let error = null as any;
       for (const path of candidatePaths) {
         try {
-          const res = await supabaseServiceRole.storage
+          const res = await supabase.storage
             .from(this.BUCKET_NAME)
             .list(path, {
               limit: 1000,
@@ -1086,62 +1106,26 @@ export class AttachmentService {
           error = e;
         }
         if (!error && data) break;
-        // se erro, tentar cliente normal e quebrar se sucesso
-        if (error) {
-          try {
-            const clientRes = await supabase.storage
-              .from(this.BUCKET_NAME)
-              .list(path, {
-                limit: 1000,
-                search: fileId
-              });
-            data = clientRes.data;
-            error = clientRes.error;
-            if (!error && data) break;
-          } catch (e) {
-            // continuar para próximo path
-            data = null;
-            error = e;
-          }
-        }
-      }
-
-      if (error) {
-        console.log('⚠️ Erro com service role, tentando cliente normal...');
-        const result = await supabase.storage
-          .from(this.BUCKET_NAME)
-          .list(this.FILE_FOLDER, {
-            limit: 1000,
-            search: fileId
-          });
-        data = result.data;
-        error = result.error;
       }
 
       if (error) {
         console.error('❌ Erro ao listar arquivos:', error);
-        return await this.checkFileExistsByUrl(transactionId, true);
+        return false;
       }
 
       const hasFile = data && data.some(file =>
         extensionsList.some(ext => file.name === `${fileId}.${ext}`)
       );
 
-      console.log('📁 Resultado da busca de arquivo:', {
+      console.log('📁 [hasFileAttachment] Resultado da busca no storage:', {
         encontrado: hasFile,
-        arquivosProcurados: extensionsList.map(ext => `${this.FILE_FOLDER}/${fileId}.${ext}`),
         arquivosEncontrados: data?.map(f => f.name).join(', ') || 'nenhum'
       });
 
-      if (hasFile) {
-        return true;
-      }
-
-      console.log('🔄 Arquivo não encontrado na lista, tentando verificação por URL...');
-      return await this.checkFileExistsByUrl(transactionId, true);
+      return hasFile;
     } catch (error) {
       console.error('💥 Erro ao verificar arquivo:', error);
-      return await this.checkFileExistsByUrl(transactionId, true);
+      return false;
     }
   }
 
@@ -1562,10 +1546,54 @@ export class AttachmentService {
     try {
       console.log('🔗 [Financeiro File] Obtendo URL do arquivo:', transactionId, forceRefresh ? '(forçando refresh)' : '');
 
-      const groupInfo = await this.getTransactionAttachmentGroup(transactionId);
-      const storedPath = groupInfo?.anexo_arquivo_url;
+      const { data: txData, error: txError } = await supabase
+        .from('transacoes_financeiras')
+        .select('anexo_arquivo_url')
+        .eq('id_transacao', transactionId)
+        .maybeSingle();
+
+      if (txError) {
+        console.error('❌ Erro ao buscar path do banco:', txError);
+      }
+
+      const storedPath = txData?.anexo_arquivo_url;
 
       console.log('📊 [Financeiro File] Path salvo no banco:', storedPath || 'N/A');
+
+      if (storedPath) {
+        console.log('📍 [Financeiro File] Usando path do banco:', storedPath);
+
+        const { data: signedData, error: signedErr } = await supabase.storage
+          .from(this.BUCKET_NAME)
+          .createSignedUrl(storedPath, 3600);
+
+        if (signedData?.signedUrl && !signedErr) {
+          try {
+            const testRes = await fetch(signedData.signedUrl, { method: 'HEAD', cache: 'no-cache' });
+            console.log(`   SignedUrl HEAD: ${testRes.status}`);
+            if (testRes.ok) {
+              console.log('✅ [Financeiro File] Encontrado via path do banco');
+              return signedData.signedUrl;
+            }
+          } catch (headErr) {
+            console.log(`   SignedUrl HEAD falhou:`, headErr);
+          }
+        }
+
+        try {
+          const { data: blobData, error: dlErr } = await supabase.storage
+            .from(this.BUCKET_NAME)
+            .download(storedPath);
+
+          if (blobData && !dlErr) {
+            const blobUrl = URL.createObjectURL(blobData);
+            console.log('✅ [Financeiro File] Encontrado via blob download (path do banco)');
+            return blobUrl;
+          }
+        } catch (blobErr) {
+          console.log(`   Blob download falhou:`, blobErr);
+        }
+      }
 
       const fileId = await this.getStorageFileIdForFile(transactionId);
       const user = AuthService.getInstance().getCurrentUser();
@@ -1576,12 +1604,6 @@ export class AttachmentService {
 
       const pathsToTry: string[] = [];
 
-      if (storedPath) {
-        const normalizedPath = this.normalizeStoredPath(storedPath);
-        pathsToTry.push(normalizedPath);
-        console.log('📍 [Financeiro File] Path normalizado do banco:', normalizedPath);
-      }
-
       for (const ext of extensions) {
         if (userId) {
           pathsToTry.push(`${userId}/${this.FILE_FOLDER}/${fileId}.${ext}`);
@@ -1591,7 +1613,7 @@ export class AttachmentService {
       }
 
       const uniquePaths = [...new Set(pathsToTry)];
-      console.log('🔄 [Financeiro File] Paths a tentar:', uniquePaths.slice(0, 10), '...');
+      console.log('🔄 [Financeiro File] Paths a tentar (fallback):', uniquePaths.slice(0, 10), '...');
 
       for (const objectPath of uniquePaths) {
         console.log(`📍 [Financeiro File] Tentando path: ${objectPath}`);
