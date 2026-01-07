@@ -1316,6 +1316,14 @@ export class AttachmentService {
       }
 
       console.log('✅ [File Upload] Concluido:', data);
+
+      await supabase
+        .from('transacoes_financeiras')
+        .update({ anexo_arquivo_url: data.path })
+        .eq('id_transacao', transactionId);
+
+      console.log('📝 [File Upload] Path salvo no banco:', data.path);
+
       return true;
     } catch (error) {
       console.error('💥 [File Upload] Erro:', error);
@@ -1364,6 +1372,14 @@ export class AttachmentService {
       }
 
       console.log('✅ [File Replace] Concluido:', data);
+
+      await supabase
+        .from('transacoes_financeiras')
+        .update({ anexo_arquivo_url: fileName })
+        .eq('id_transacao', transactionId);
+
+      console.log('📝 [File Replace] Path salvo no banco:', fileName);
+
       return true;
     } catch (error) {
       console.error('💥 [File Replace] Erro:', error);
@@ -1412,8 +1428,14 @@ export class AttachmentService {
         throw new Error(`Erro ao excluir arquivo: ${error.message}`);
       }
 
-  console.log('✅ Exclusão concluída (storage direto):', data);
-  // Não limpamos campo anexo_arquivo_url no banco para arquivos — não mais usado para arquivos.
+      console.log('✅ Exclusão concluída (storage direto):', data);
+
+      await supabase
+        .from('transacoes_financeiras')
+        .update({ anexo_arquivo_url: null })
+        .eq('id_transacao', transactionId);
+
+      console.log('📝 [File Delete] Path removido do banco');
 
       return true;
     } catch (error) {
