@@ -732,4 +732,63 @@ export class ActivityAttachmentService {
 
     return 'pdf';
   }
+
+  /**
+   * Gera signed URL para imagem de atividade (válida por 1 hora)
+   * @param activityId - ID da atividade
+   * @param expiresIn - Tempo de expiração em segundos (padrão: 3600 = 1 hora)
+   * @returns URL assinada ou null se falhar
+   */
+  static async getSignedImageUrl(activityId: string, expiresIn: number = 3600): Promise<string | null> {
+    try {
+      const filePath = `${this.IMAGE_FOLDER}/${activityId}.jpg`;
+      console.log('🔐 Gerando signed URL para imagem:', filePath);
+
+      const { data, error } = await supabase.storage
+        .from(this.BUCKET_NAME)
+        .createSignedUrl(filePath, expiresIn);
+
+      if (error) {
+        console.error('❌ Erro ao gerar signed URL:', error);
+        return null;
+      }
+
+      console.log('✅ Signed URL gerada com sucesso');
+      return data.signedUrl;
+    } catch (err) {
+      console.error('💥 Erro ao gerar signed URL:', err);
+      return null;
+    }
+  }
+
+  /**
+   * Gera signed URL para arquivo de atividade (válida por 1 hora)
+   * @param activityId - ID da atividade
+   * @param expiresIn - Tempo de expiração em segundos (padrão: 3600 = 1 hora)
+   * @returns URL assinada ou null se falhar
+   */
+  static async getSignedFileUrl(activityId: string, expiresIn: number = 3600): Promise<string | null> {
+    try {
+      const extensions = ['pdf','xml','xls','xlsx','doc','docx','csv','txt'];
+
+      for (const ext of extensions) {
+        const filePath = `${this.FILE_FOLDER}/${activityId}.${ext}`;
+
+        const { data, error } = await supabase.storage
+          .from(this.BUCKET_NAME)
+          .createSignedUrl(filePath, expiresIn);
+
+        if (!error && data?.signedUrl) {
+          console.log('✅ Signed URL gerada para arquivo:', filePath);
+          return data.signedUrl;
+        }
+      }
+
+      console.error('❌ Não foi possível gerar signed URL para nenhuma extensão');
+      return null;
+    } catch (err) {
+      console.error('💥 Erro ao gerar signed URL:', err);
+      return null;
+    }
+  }
 }

@@ -129,14 +129,17 @@ export default function ActivityAttachmentModal({
 
   const handleEnviarWhatsApp = async (attachmentUrl: string, fileName: string, type: 'image' | 'file') => {
     console.log('📤 [ManejoAgricola] handleEnviarWhatsApp iniciado', { attachmentUrl, fileName, type });
-    const setLoading = type === 'image' ? setIsSendingImage : setIsSendingFile;
-    setLoading(true);
+    const setLoadingState = type === 'image' ? setIsSendingImage : setIsSendingFile;
+    setLoadingState(true);
+    setMessage(null);
+
     try {
       const userId = AuthService.getInstance().getCurrentUser()?.user_id;
       console.log('👤 [ManejoAgricola] userId:', userId);
       if (!userId) {
         console.error('❌ [ManejoAgricola] userId não encontrado');
-        setLoading(false);
+        setMessage({ type: 'error', text: 'Usuário não autenticado' });
+        setLoadingState(false);
         return;
       }
 
@@ -144,17 +147,43 @@ export default function ActivityAttachmentModal({
       console.log('📱 [ManejoAgricola] Telefone do usuário:', usuario?.telefone);
       if (!usuario?.telefone) {
         console.error('❌ [ManejoAgricola] Telefone não encontrado');
-        setLoading(false);
+        setMessage({ type: 'error', text: 'Telefone não cadastrado no perfil' });
+        setLoadingState(false);
         return;
       }
 
-      const urlWithoutQuery = attachmentUrl.split('?')[0];
+      console.log('🔐 [ManejoAgricola] Gerando signed URL para envio...');
+      let signedUrl: string | null = null;
+
+      if (type === 'image') {
+        signedUrl = await ActivityAttachmentService.getSignedImageUrl(activityId, 3600);
+      } else {
+        signedUrl = await ActivityAttachmentService.getSignedFileUrl(activityId, 3600);
+      }
+
+      if (!signedUrl) {
+        console.error('❌ [ManejoAgricola] Falha ao gerar signed URL');
+        setMessage({ type: 'error', text: 'Erro ao gerar URL de acesso ao arquivo' });
+        setLoadingState(false);
+        return;
+      }
+
+      console.log('✅ [ManejoAgricola] Signed URL gerada:', signedUrl);
+
+      if (signedUrl.startsWith('blob:')) {
+        console.error('⚠️ [ManejoAgricola] ERRO: Signed URL retornou blob URL!');
+        setMessage({ type: 'error', text: 'Erro ao acessar arquivo no storage' });
+        setLoadingState(false);
+        return;
+      }
+
+      const urlWithoutQuery = signedUrl.split('?')[0];
       const extension = (urlWithoutQuery.split('.').pop() || '').toLowerCase();
       const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension);
 
       const payload = {
         telefone: usuario.telefone.replace(/\D/g, ''),
-        arquivo_url: attachmentUrl,
+        arquivo_url: signedUrl,
         titulo: activityDescription || 'Anexo de Atividade',
         tipo_arquivo: isImage ? 'image' : 'document',
         mime_type: isImage ? `image/${extension === 'jpg' ? 'jpeg' : extension}` : 'application/octet-stream',
@@ -175,6 +204,8 @@ export default function ActivityAttachmentModal({
 
       if (!webhookUrl) {
         console.error('❌ [ManejoAgricola] Webhook URL não configurada');
+        setMessage({ type: 'error', text: 'Serviço de WhatsApp não configurado' });
+        setLoadingState(false);
         return;
       }
 
@@ -185,11 +216,36 @@ export default function ActivityAttachmentModal({
         body: JSON.stringify(payload)
       });
 
-      console.log('✅ [ManejoAgricola] Resposta recebida:', response.status, response.statusText);
+      console.log('📬 [ManejoAgricola] Resposta recebida:', response.status, response.statusText);
+
+      const responseText = await response.text();
+      console.log('📄 [ManejoAgricola] Response body:', responseText);
+
+      let json: any = {};
+      try {
+        json = responseText ? JSON.parse(responseText) : {};
+      } catch (parseErr) {
+        console.error('❌ [ManejoAgricola] Erro ao parsear resposta:', parseErr);
+      }
+
+      if (response.ok && json?.success) {
+        console.log('✅ [ManejoAgricola] Enviado com sucesso!');
+        setMessage({ type: 'success', text: 'Arquivo enviado para seu WhatsApp!' });
+      } else {
+        console.error('❌ [ManejoAgricola] Falha no envio:', json);
+        setMessage({
+          type: 'error',
+          text: json?.error || json?.message || `Erro ${response.status}: ${response.statusText}`
+        });
+      }
     } catch (error) {
       console.error('💥 [ManejoAgricola] Erro ao enviar WhatsApp:', error);
+      setMessage({
+        type: 'error',
+        text: 'Erro de conexão. Tente novamente.'
+      });
     } finally {
-      setLoading(false);
+      setLoadingState(false);
       console.log('🏁 [ManejoAgricola] handleEnviarWhatsApp finalizado');
     }
   };
@@ -511,29 +567,8 @@ export default function ActivityAttachmentModal({
                 <button
                   className="bg-[#25D366] hover:bg-[#128C7E] text-white px-2 py-1 rounded flex items-center gap-1 transition-colors disabled:opacity-50"
                   onClick={() => {
-                    console.log('🔘 [v2-FIX] Botão Enviar Imagem clicado');
-                    console.log('📸 [v2-FIX] imageAttachment:', imageAttachment);
-                    console.log('🔗 [v2-FIX] displayUrl:', imageAttachment?.url);
-                    console.log('🌐 [v2-FIX] storageUrl:', imageAttachment?.storageUrl);
-
-                    if (!imageAttachment) {
-                      console.error('❌ [v2-FIX] imageAttachment não encontrado!');
-                      return;
-                    }
-
-                    // CRÍTICO: Usa storageUrl se disponível, caso contrário URL blob
-                    const urlToSend = imageAttachment.storageUrl || imageAttachment.url;
-                    console.log('📤 [v2-FIX] URL que será enviada:', urlToSend);
-
-                    // VALIDAÇÃO: Verifica se não é blob URL
-                    if (urlToSend.startsWith('blob:')) {
-                      console.error('⚠️ [v2-FIX] ATENÇÃO: Ainda enviando blob URL!');
-                      console.error('⚠️ [v2-FIX] storageUrl não está disponível. Verificar getAttachmentUrl()');
-                    } else {
-                      console.log('✅ [v2-FIX] URL válida HTTP/HTTPS detectada');
-                    }
-
-                    handleEnviarWhatsApp(urlToSend, `${activityId}.jpg`, 'image');
+                    console.log('🔘 [ManejoAgricola] Botão Enviar Imagem clicado');
+                    handleEnviarWhatsApp('', `${activityId}.jpg`, 'image');
                   }}
                   disabled={isSendingImage || loading}
                 >
@@ -597,7 +632,8 @@ export default function ActivityAttachmentModal({
                 <button
                   className="bg-[#25D366] hover:bg-[#128C7E] text-white px-2 py-1 rounded flex items-center gap-1 transition-colors disabled:opacity-50"
                   onClick={() => {
-                    if (fileAttachment) handleEnviarWhatsApp(fileAttachment.url, fileAttachment.name, 'file');
+                    console.log('🔘 [ManejoAgricola] Botão Enviar Arquivo clicado');
+                    if (fileAttachment) handleEnviarWhatsApp('', fileAttachment.name, 'file');
                   }}
                   disabled={isSendingFile || loading}
                 >
