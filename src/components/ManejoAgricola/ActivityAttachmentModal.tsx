@@ -73,23 +73,26 @@ export default function ActivityAttachmentModal({
   const checkAttachments = async (forceRefresh = false) => {
     try {
       setLoading(true);
-      console.log('🔄 Verificando anexos para atividade:', activityId, forceRefresh ? '(refresh forçado)' : '');
+      console.log('🔄 [v2-FIX] Verificando anexos para atividade:', activityId, forceRefresh ? '(refresh forçado)' : '');
 
       const files: AttachmentFile[] = [];
 
       const imageUrlResult = await ActivityAttachmentService.getAttachmentUrl(activityId, forceRefresh);
-      console.log('📸 Resultado da URL da imagem:', imageUrlResult);
+      console.log('📸 [v2-FIX] Resultado getAttachmentUrl:', imageUrlResult);
 
       if (imageUrlResult) {
-        files.push({
+        const attachmentFile = {
           url: imageUrlResult.displayUrl,
           storageUrl: imageUrlResult.storageUrl || undefined,
-          type: 'image',
+          type: 'image' as const,
           name: `${activityId}.jpg`
-        });
-        console.log('✅ Imagem adicionada à lista de anexos');
-        console.log('   - displayUrl:', imageUrlResult.displayUrl);
-        console.log('   - storageUrl:', imageUrlResult.storageUrl);
+        };
+        files.push(attachmentFile);
+        console.log('✅ [v2-FIX] Imagem adicionada:');
+        console.log('   displayUrl:', imageUrlResult.displayUrl);
+        console.log('   storageUrl:', imageUrlResult.storageUrl);
+        console.log('   É blob?', imageUrlResult.displayUrl.startsWith('blob:'));
+        console.log('   storageUrl válida?', imageUrlResult.storageUrl && !imageUrlResult.storageUrl.startsWith('blob:'));
       }
 
       const fileUrl = await ActivityAttachmentService.getFileAttachmentUrl(activityId, forceRefresh);
@@ -508,17 +511,29 @@ export default function ActivityAttachmentModal({
                 <button
                   className="bg-[#25D366] hover:bg-[#128C7E] text-white px-2 py-1 rounded flex items-center gap-1 transition-colors disabled:opacity-50"
                   onClick={() => {
-                    console.log('🔘 [ManejoAgricola] Botão Enviar Imagem clicado');
-                    console.log('📸 [ManejoAgricola] imageAttachment:', imageAttachment);
-                    console.log('🔗 [ManejoAgricola] displayUrl:', imageAttachment?.url);
-                    console.log('🌐 [ManejoAgricola] storageUrl:', imageAttachment?.storageUrl);
-                    if (imageAttachment) {
-                      const urlToSend = imageAttachment.storageUrl || imageAttachment.url;
-                      console.log('✅ [ManejoAgricola] Enviando URL:', urlToSend);
-                      handleEnviarWhatsApp(urlToSend, `${activityId}.jpg`, 'image');
-                    } else {
-                      console.error('❌ [ManejoAgricola] imageAttachment não encontrado!');
+                    console.log('🔘 [v2-FIX] Botão Enviar Imagem clicado');
+                    console.log('📸 [v2-FIX] imageAttachment:', imageAttachment);
+                    console.log('🔗 [v2-FIX] displayUrl:', imageAttachment?.url);
+                    console.log('🌐 [v2-FIX] storageUrl:', imageAttachment?.storageUrl);
+
+                    if (!imageAttachment) {
+                      console.error('❌ [v2-FIX] imageAttachment não encontrado!');
+                      return;
                     }
+
+                    // CRÍTICO: Usa storageUrl se disponível, caso contrário URL blob
+                    const urlToSend = imageAttachment.storageUrl || imageAttachment.url;
+                    console.log('📤 [v2-FIX] URL que será enviada:', urlToSend);
+
+                    // VALIDAÇÃO: Verifica se não é blob URL
+                    if (urlToSend.startsWith('blob:')) {
+                      console.error('⚠️ [v2-FIX] ATENÇÃO: Ainda enviando blob URL!');
+                      console.error('⚠️ [v2-FIX] storageUrl não está disponível. Verificar getAttachmentUrl()');
+                    } else {
+                      console.log('✅ [v2-FIX] URL válida HTTP/HTTPS detectada');
+                    }
+
+                    handleEnviarWhatsApp(urlToSend, `${activityId}.jpg`, 'image');
                   }}
                   disabled={isSendingImage || loading}
                 >
