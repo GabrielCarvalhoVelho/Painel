@@ -70,6 +70,94 @@ export default function FileAttachmentModal({
     }
   }, [isOpen, maquinaId]);
 
+  const resolveUrls = async (path: string): Promise<{ displayUrl: string | null; storageUrl: string | null }> => {
+    try {
+      let displayUrl: string | null = null;
+      let storageUrl: string | null = null;
+      const BUCKET_NAME = 'maquinas_equipamentos';
+
+      console.log('[Maquinas] Resolvendo URLs para:', path);
+
+      // SEMPRE usa signed URL (igual ao Estoque)
+      const server = import.meta.env.VITE_SIGNED_URL_SERVER_URL || import.meta.env.VITE_API_URL || '';
+      console.log('[Maquinas] Servidor de signed URL:', server);
+
+      if (server) {
+        try {
+          const payload = { bucket: BUCKET_NAME, path, expires: 3600 };
+          console.log('[Maquinas] Requisitando signed URL com payload:', payload);
+
+          const resp = await fetch(`${server.replace(/\/$/, '')}/signed-url`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+
+          console.log('[Maquinas] Resposta signed URL:', { status: resp.status, ok: resp.ok });
+
+          if (resp.ok) {
+            const data = await resp.json();
+            console.log('[Maquinas] Signed URL obtida:', data.signedUrl);
+
+            if (data?.signedUrl) {
+              displayUrl = data.signedUrl;
+              storageUrl = data.signedUrl;
+              return { displayUrl, storageUrl };
+            }
+          } else {
+            const errorText = await resp.text();
+            console.error('[Maquinas] Erro na resposta signed URL:', errorText);
+          }
+        } catch (err) {
+          console.error('[Maquinas] Erro ao obter signed URL:', err);
+        }
+      } else {
+        console.warn('[Maquinas] VITE_SIGNED_URL_SERVER_URL ou VITE_API_URL não configurado');
+      }
+
+      // Fallback: usa createSignedUrl do Supabase diretamente
+      console.log('[Maquinas] Tentando createSignedUrl do Supabase...');
+      try {
+        const { data: signedData, error: signedError } = await supabase.storage
+          .from(BUCKET_NAME)
+          .createSignedUrl(path, 3600);
+
+        if (!signedError && signedData?.signedUrl) {
+          console.log('[Maquinas] Signed URL do Supabase obtida:', signedData.signedUrl);
+          displayUrl = signedData.signedUrl;
+          storageUrl = signedData.signedUrl;
+          return { displayUrl, storageUrl };
+        } else {
+          console.error('[Maquinas] Erro ao criar signed URL do Supabase:', signedError);
+        }
+      } catch (err) {
+        console.error('[Maquinas] Exceção ao criar signed URL:', err);
+      }
+
+      // Download fallback (blob URL para display apenas)
+      console.log('[Maquinas] Fallback: baixando arquivo para criar blob URL...');
+      try {
+        const { data: blobData, error: dlErr } = await supabase.storage.from(BUCKET_NAME).download(path);
+        if (!dlErr && blobData) {
+          displayUrl = URL.createObjectURL(blobData);
+          console.log('[Maquinas] Blob URL criada para display:', displayUrl);
+          // storageUrl permanece null (não é compartilhável externamente)
+          return { displayUrl, storageUrl: null };
+        } else {
+          console.error('[Maquinas] Erro no download:', dlErr);
+        }
+      } catch (err) {
+        console.error('[Maquinas] Erro no download fallback:', err);
+      }
+
+      console.warn('[Maquinas] Nenhuma URL disponível para:', path);
+      return { displayUrl: null, storageUrl: null };
+    } catch (err) {
+      console.error('[Maquinas] Erro ao resolver URLs do attachment:', err);
+      return { displayUrl: null, storageUrl: null };
+    }
+  };
+
   const checkAttachments = async () => {
     try {
       setLoading(true);
@@ -80,7 +168,7 @@ export default function FileAttachmentModal({
         .from('maquinas_equipamentos_anexos')
         .select('url_primeiro_envio, url_segundo_envio')
         .eq('id_maquina', maquinaId)
-        .single();
+        .maybeSingle();
 
       if (error || !maquinaData) {
         console.log('ℹ️ [Maquinas] Nenhum anexo encontrado');
@@ -89,7 +177,6 @@ export default function FileAttachmentModal({
       }
 
       const files: AttachmentFile[] = [];
-      const BUCKET_NAME = 'maquinas_equipamentos';
 
       // Processar primeiro anexo
       if (maquinaData.url_primeiro_envio) {
@@ -99,25 +186,11 @@ export default function FileAttachmentModal({
 
         console.log('📎 [Maquinas] Primeiro anexo:', { storedPath, fileName, fileType });
 
-        // Tentar obter URL pública
-        const { data: publicData } = supabase.storage.from(BUCKET_NAME).getPublicUrl(storedPath);
-        const publicUrl = publicData?.publicUrl || null;
-
-        // Tentar obter URL assinada para preview
-        let displayUrl = publicUrl;
-        try {
-          const { data: signedData } = await supabase.storage.from(BUCKET_NAME).createSignedUrl(storedPath, 3600);
-          if (signedData?.signedUrl) {
-            displayUrl = signedData.signedUrl;
-          }
-        } catch (err) {
-          console.log('⚠️ [Maquinas] Erro ao criar signed URL, usando public URL');
-        }
-
-        if (displayUrl) {
+        const urls = await resolveUrls(storedPath);
+        if (urls.displayUrl) {
           files.push({
-            url: displayUrl,
-            publicUrl: publicUrl || displayUrl,
+            url: urls.displayUrl,
+            publicUrl: urls.storageUrl || undefined,
             type: fileType,
             name: fileName || 'primeiro_anexo',
             slotId: 'primeiro_envio'
@@ -133,25 +206,11 @@ export default function FileAttachmentModal({
 
         console.log('📎 [Maquinas] Segundo anexo:', { storedPath, fileName, fileType });
 
-        // Tentar obter URL pública
-        const { data: publicData } = supabase.storage.from(BUCKET_NAME).getPublicUrl(storedPath);
-        const publicUrl = publicData?.publicUrl || null;
-
-        // Tentar obter URL assinada para preview
-        let displayUrl = publicUrl;
-        try {
-          const { data: signedData } = await supabase.storage.from(BUCKET_NAME).createSignedUrl(storedPath, 3600);
-          if (signedData?.signedUrl) {
-            displayUrl = signedData.signedUrl;
-          }
-        } catch (err) {
-          console.log('⚠️ [Maquinas] Erro ao criar signed URL, usando public URL');
-        }
-
-        if (displayUrl) {
+        const urls = await resolveUrls(storedPath);
+        if (urls.displayUrl) {
           files.push({
-            url: displayUrl,
-            publicUrl: publicUrl || displayUrl,
+            url: urls.displayUrl,
+            publicUrl: urls.storageUrl || undefined,
             type: fileType,
             name: fileName || 'segundo_anexo',
             slotId: 'segundo_envio'
@@ -291,11 +350,13 @@ export default function FileAttachmentModal({
     setLoadingState(true);
 
     try {
+      // Usa publicUrl (storageUrl) se disponível, senão tenta url
       const urlToSend = attachment.publicUrl || attachment.url;
       console.log('[Maquinas] URL a ser enviada:', urlToSend);
 
+      // Validação: não envia se for blob URL
       if (!urlToSend || urlToSend.startsWith('blob:')) {
-        console.error('[Maquinas][WhatsApp] URL inválida ou local detectada!');
+        console.error('[Maquinas][WhatsApp] URL blob detectada! Não é possível enviar URL local via WhatsApp');
         setMessage({ type: 'error', text: 'Erro ao obter URL externa do anexo. Por favor, tente novamente.' });
         setLoadingState(false);
         return;
