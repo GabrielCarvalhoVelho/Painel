@@ -55,7 +55,8 @@ export default function ActivityAttachmentModal({
   const [fileKey, setFileKey] = useState<number>(Date.now());
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isSendingWhatsApp, setIsSendingWhatsApp] = useState(false);
+  const [isSendingImage, setIsSendingImage] = useState(false);
+  const [isSendingFile, setIsSendingFile] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -116,18 +117,19 @@ export default function ActivityAttachmentModal({
     }
   };
 
-  const handleEnviarWhatsApp = async (attachmentUrl: string, fileName: string) => {
-    setIsSendingWhatsApp(true);
+  const handleEnviarWhatsApp = async (attachmentUrl: string, fileName: string, type: 'image' | 'file') => {
+    const setLoading = type === 'image' ? setIsSendingImage : setIsSendingFile;
+    setLoading(true);
     try {
       const userId = AuthService.getInstance().getCurrentUser()?.user_id;
       if (!userId) {
-        setIsSendingWhatsApp(false);
+        setLoading(false);
         return;
       }
 
       const usuario = await UserService.getUserById(userId);
       if (!usuario?.telefone) {
-        setIsSendingWhatsApp(false);
+        setLoading(false);
         return;
       }
 
@@ -173,7 +175,7 @@ export default function ActivityAttachmentModal({
     } catch (error) {
       console.error('[ManejoAgricola][WhatsApp] Erro ao enviar:', error);
     } finally {
-      setIsSendingWhatsApp(false);
+      setLoading(false);
     }
   };
 
@@ -487,14 +489,14 @@ export default function ActivityAttachmentModal({
                   className="bg-[#25D366] hover:bg-[#128C7E] text-white px-2 py-1 rounded flex items-center gap-1 transition-colors disabled:opacity-50"
                   onClick={() => {
                     const imageUrl = attachments.find(a => a.type === 'image')?.url;
-                    if (imageUrl) handleEnviarWhatsApp(imageUrl, `${activityId}.jpg`);
+                    if (imageUrl) handleEnviarWhatsApp(imageUrl, `${activityId}.jpg`, 'image');
                   }}
-                  disabled={isSendingWhatsApp || loading}
+                  disabled={isSendingImage || loading}
                 >
-                  {isSendingWhatsApp ? (
+                  {isSendingImage ? (
                     <><Loader2 className="w-4 h-4 animate-spin" /> Enviando...</>
                   ) : (
-                    <><WhatsAppIcon /> Enviar WhatsApp</>
+                    <><WhatsAppIcon /> Enviar Imagem</>
                   )}
                 </button>
               </div>
@@ -552,14 +554,14 @@ export default function ActivityAttachmentModal({
                   className="bg-[#25D366] hover:bg-[#128C7E] text-white px-2 py-1 rounded flex items-center gap-1 transition-colors disabled:opacity-50"
                   onClick={() => {
                     const fileAtt = attachments.find(a => a.type === 'pdf' || a.type === 'xml' || a.type === 'file');
-                    if (fileAtt) handleEnviarWhatsApp(fileAtt.url, fileAtt.name);
+                    if (fileAtt) handleEnviarWhatsApp(fileAtt.url, fileAtt.name, 'file');
                   }}
-                  disabled={isSendingWhatsApp || loading}
+                  disabled={isSendingFile || loading}
                 >
-                  {isSendingWhatsApp ? (
+                  {isSendingFile ? (
                     <><Loader2 className="w-4 h-4 animate-spin" /> Enviando...</>
                   ) : (
-                    <><WhatsAppIcon /> Enviar WhatsApp</>
+                    <><WhatsAppIcon /> Enviar Arquivo</>
                   )}
                 </button>
               </div>
