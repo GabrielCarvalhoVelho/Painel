@@ -383,6 +383,10 @@ export default function ActivityAttachmentModal({
     return url.includes('?') ? `${url}&t=${key}` : `${url}?t=${key}`;
   };
 
+  // Pre-compute attachments to avoid multiple finds
+  const imageAttachment = attachments.find(a => a.type === 'image') || null;
+  const fileAttachment = attachments.find(a => a.type === 'pdf' || a.type === 'xml' || a.type === 'file') || null;
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
       {confirmState.type && (
@@ -488,8 +492,7 @@ export default function ActivityAttachmentModal({
                 <button
                   className="bg-[#25D366] hover:bg-[#128C7E] text-white px-2 py-1 rounded flex items-center gap-1 transition-colors disabled:opacity-50"
                   onClick={() => {
-                    const imageUrl = attachments.find(a => a.type === 'image')?.url;
-                    if (imageUrl) handleEnviarWhatsApp(imageUrl, `${activityId}.jpg`, 'image');
+                    if (imageAttachment) handleEnviarWhatsApp(imageAttachment.url, `${activityId}.jpg`, 'image');
                   }}
                   disabled={isSendingImage || loading}
                 >
@@ -553,8 +556,7 @@ export default function ActivityAttachmentModal({
                 <button
                   className="bg-[#25D366] hover:bg-[#128C7E] text-white px-2 py-1 rounded flex items-center gap-1 transition-colors disabled:opacity-50"
                   onClick={() => {
-                    const fileAtt = attachments.find(a => a.type === 'pdf' || a.type === 'xml' || a.type === 'file');
-                    if (fileAtt) handleEnviarWhatsApp(fileAtt.url, fileAtt.name, 'file');
+                    if (fileAttachment) handleEnviarWhatsApp(fileAttachment.url, fileAttachment.name, 'file');
                   }}
                   disabled={isSendingFile || loading}
                 >
