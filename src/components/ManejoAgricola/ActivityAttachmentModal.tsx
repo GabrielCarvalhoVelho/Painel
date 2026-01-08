@@ -92,8 +92,11 @@ export default function ActivityAttachmentModal({
       console.log('📄 URL do arquivo:', fileUrl);
 
       if (fileUrl) {
-        const fileType = fileUrl.includes('.pdf') ? 'pdf' : fileUrl.includes('.xml') ? 'xml' : 'file';
-        const extension = fileType === 'pdf' ? 'pdf' : fileType === 'xml' ? 'xml' : 'file';
+        // Extrair extensão do arquivo a partir da URL (antes dos query params)
+        const cleanUrl = fileUrl.split('?')[0];
+        const ext = cleanUrl.includes('.') ? cleanUrl.split('.').pop()?.toLowerCase() : undefined;
+        const fileType = ext === 'pdf' ? 'pdf' : ext === 'xml' ? 'xml' : 'file';
+        const extension = ext || 'file';
         files.push({
           url: fileUrl,
           type: fileType as 'pdf' | 'xml' | 'file',
@@ -146,8 +149,6 @@ export default function ActivityAttachmentModal({
         nome_arquivo: fileName
       };
 
-      console.log('[ManejoAgricola][WhatsApp] Enviando:', { telefone: payload.telefone, tipo: payload.tipo_arquivo, extension });
-
       const isDev = import.meta.env.MODE === 'development' ||
                     (typeof window !== 'undefined' &&
                      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'));
@@ -157,23 +158,17 @@ export default function ActivityAttachmentModal({
         : import.meta.env.VITE_WHATSAPP_WEBHOOK_URL;
 
       if (!webhookUrl) {
-        console.error('[ManejoAgricola][WhatsApp] Webhook URL não configurada');
+        console.error('[Anexo][WhatsApp] Webhook URL não configurada');
         return;
       }
 
-      const response = await fetch(webhookUrl, {
+      await fetch(webhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-
-      if (!response.ok) {
-        console.error('[ManejoAgricola][WhatsApp] Erro na resposta:', response.status);
-      } else {
-        console.log('[ManejoAgricola][WhatsApp] Enviado com sucesso');
-      }
     } catch (error) {
-      console.error('[ManejoAgricola][WhatsApp] Erro ao enviar:', error);
+      console.error('Erro ao enviar WhatsApp:', error);
     } finally {
       setLoading(false);
     }
