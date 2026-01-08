@@ -78,59 +78,87 @@ export class AttachmentProductService {
         let displayUrl: string | null = null;
         let storageUrl: string | null = null;
 
-        // Try public URL first
-        const { data } = supabaseServiceRole.storage.from(this.BUCKET_NAME).getPublicUrl(path);
-        if (data?.publicUrl) {
-          try {
-            const head = await fetch(data.publicUrl, { method: 'HEAD', cache: 'no-cache' });
-            if (head.ok) {
-              displayUrl = data.publicUrl;
-              storageUrl = data.publicUrl;
-              return { displayUrl, storageUrl };
-            }
-          } catch (err) {
-            // fallthrough to signed URL
-          }
-        }
+        console.log('[AttachmentProductService] Resolvendo URLs para:', path);
 
-        // Try signed URL from server
+        // SEMPRE usa signed URL (não tenta URL pública)
+        // Isso garante que funcione com serviços externos como n8n
         const server = import.meta.env.VITE_SIGNED_URL_SERVER_URL || import.meta.env.VITE_API_URL || '';
+        console.log('[AttachmentProductService] Servidor de signed URL:', server);
+
         if (server) {
           try {
+            const payload = { bucket: this.BUCKET_NAME, path, expires: 3600 };
+            console.log('[AttachmentProductService] Requisitando signed URL com payload:', payload);
+
             const resp = await fetch(`${server.replace(/\/$/, '')}/signed-url`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ bucket: this.BUCKET_NAME, path, expires: 3600 })
+              body: JSON.stringify(payload)
             });
+
+            console.log('[AttachmentProductService] Resposta signed URL:', { status: resp.status, ok: resp.ok });
+
             if (resp.ok) {
-              const payload = await resp.json();
-              if (payload?.signedUrl) {
-                displayUrl = payload.signedUrl;
-                storageUrl = payload.signedUrl;
+              const data = await resp.json();
+              console.log('[AttachmentProductService] Signed URL obtida:', data.signedUrl);
+
+              if (data?.signedUrl) {
+                displayUrl = data.signedUrl;
+                storageUrl = data.signedUrl;
                 return { displayUrl, storageUrl };
               }
+            } else {
+              const errorText = await resp.text();
+              console.error('[AttachmentProductService] Erro na resposta signed URL:', errorText);
             }
           } catch (err) {
-            console.error('Erro ao obter signed URL:', err);
+            console.error('[AttachmentProductService] Erro ao obter signed URL:', err);
           }
+        } else {
+          console.warn('[AttachmentProductService] VITE_SIGNED_URL_SERVER_URL ou VITE_API_URL não configurado');
         }
 
-        // Download fallback (blob URL for display, but try to get storage URL for external sharing)
+        // Fallback: usa createSignedUrl do Supabase diretamente
+        console.log('[AttachmentProductService] Tentando createSignedUrl do Supabase...');
+        try {
+          const { data: signedData, error: signedError } = await supabaseServiceRole.storage
+            .from(this.BUCKET_NAME)
+            .createSignedUrl(path, 3600);
+
+          if (!signedError && signedData?.signedUrl) {
+            console.log('[AttachmentProductService] Signed URL do Supabase obtida:', signedData.signedUrl);
+            displayUrl = signedData.signedUrl;
+            storageUrl = signedData.signedUrl;
+            return { displayUrl, storageUrl };
+          } else {
+            console.error('[AttachmentProductService] Erro ao criar signed URL do Supabase:', signedError);
+          }
+        } catch (err) {
+          console.error('[AttachmentProductService] Exceção ao criar signed URL:', err);
+        }
+
+        // Download fallback (blob URL para display apenas)
+        console.log('[AttachmentProductService] Fallback: baixando arquivo para criar blob URL...');
         try {
           const { data: blobData, error: dlErr } = await supabaseServiceRole.storage.from(this.BUCKET_NAME).download(path);
           if (!dlErr && blobData) {
             displayUrl = URL.createObjectURL(blobData);
-            // Ainda tenta obter storageUrl mesmo com fallback de blob
+            console.log('[AttachmentProductService] Blob URL criada para display:', displayUrl);
+            // Tenta ainda obter storageUrl (pode não ter)
             storageUrl = await this.getStorageUrlOnly(path);
+            console.log('[AttachmentProductService] storageUrl obtida:', storageUrl);
             return { displayUrl, storageUrl };
+          } else {
+            console.error('[AttachmentProductService] Erro no download:', dlErr);
           }
         } catch (err) {
-          console.error('Erro no download fallback:', err);
+          console.error('[AttachmentProductService] Erro no download fallback:', err);
         }
 
+        console.warn('[AttachmentProductService] Nenhuma URL disponível para:', path);
         return { displayUrl: null, storageUrl: null };
       } catch (err) {
-        console.error('Erro ao resolver URLs do attachment:', err);
+        console.error('[AttachmentProductService] Erro ao resolver URLs do attachment:', err);
         return { displayUrl: null, storageUrl: null };
       }
     };
@@ -167,7 +195,7 @@ export class AttachmentProductService {
    */
   private static async getStorageUrlOnly(path: string): Promise<string | null> {
     try {
-      // Tenta signed URL primeiro
+      // Tenta signed URL do servidor edge function primeiro
       const server = import.meta.env.VITE_SIGNED_URL_SERVER_URL || import.meta.env.VITE_API_URL || '';
       if (server) {
         try {
@@ -183,15 +211,26 @@ export class AttachmentProductService {
             }
           }
         } catch (err) {
-          console.error('Erro ao obter signed URL only:', err);
+          console.error('[getStorageUrlOnly] Erro ao obter signed URL do servidor:', err);
         }
       }
 
-      // Fallback: tenta URL pública
-      const { data } = supabaseServiceRole.storage.from(this.BUCKET_NAME).getPublicUrl(path);
-      return data?.publicUrl || null;
+      // Fallback: usa createSignedUrl do Supabase diretamente
+      try {
+        const { data: signedData, error: signedError } = await supabaseServiceRole.storage
+          .from(this.BUCKET_NAME)
+          .createSignedUrl(path, 3600);
+
+        if (!signedError && signedData?.signedUrl) {
+          return signedData.signedUrl;
+        }
+      } catch (err) {
+        console.error('[getStorageUrlOnly] Erro ao criar signed URL do Supabase:', err);
+      }
+
+      return null;
     } catch (err) {
-      console.error('Erro ao obter storage URL:', err);
+      console.error('[getStorageUrlOnly] Erro ao obter storage URL:', err);
       return null;
     }
   }
