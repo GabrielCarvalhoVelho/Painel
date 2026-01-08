@@ -51,6 +51,7 @@ export default function OcorrenciaDetailPanel({
 }: OcorrenciaDetailPanelProps) {
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
   const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const [imagePath, setImagePath] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -60,6 +61,7 @@ export default function OcorrenciaDetailPanel({
     const myUserId = currentUser?.user_id;
     if (!fp) {
       setImageSrc(null);
+      setImagePath(null);
       return;
     }
 
@@ -92,7 +94,10 @@ export default function OcorrenciaDetailPanel({
                     .from('pragas_e_doencas')
                     .createSignedUrl(candidate, 60);
                   if (!error && data?.signedUrl) {
-                    if (mounted) setImageSrc(data.signedUrl);
+                    if (mounted) {
+                      setImageSrc(data.signedUrl);
+                      setImagePath(candidate);
+                    }
                     return;
                   }
                 } catch (err) {
@@ -124,14 +129,20 @@ export default function OcorrenciaDetailPanel({
             .from('pragas_e_doencas')
             .createSignedUrl(candidate, 60);
           if (!error && data?.signedUrl) {
-            if (mounted) setImageSrc(data.signedUrl);
+            if (mounted) {
+              setImageSrc(data.signedUrl);
+              setImagePath(candidate);
+            }
             return;
           }
         } catch (err) {
           // continua para próxima candidate
         }
       }
-      if (mounted) setImageSrc(null);
+      if (mounted) {
+        setImageSrc(null);
+        setImagePath(null);
+      }
     })();
 
     return () => { mounted = false; };
@@ -300,6 +311,9 @@ export default function OcorrenciaDetailPanel({
         <ImageViewerModal
           isOpen={isImageViewerOpen}
           imageUrl={imageSrc}
+          imagePath={imagePath || undefined}
+          ocorrenciaId={ocorrencia.id}
+          ocorrenciaNome={ocorrencia.nomePraga}
           onClose={() => setIsImageViewerOpen(false)}
           altText={`Foto: ${ocorrencia.nomePraga || 'Ocorrência'}`}
         />
