@@ -474,9 +474,6 @@ export default function DocumentoDetailPanel({
                 <p className="text-lg font-semibold text-[#004417]">
                   {getFileTypeName(fileExtension)}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  Toque em "Baixar" para abrir
-                </p>
               </div>
             </div>
           )}
