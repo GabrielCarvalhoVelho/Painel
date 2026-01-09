@@ -2227,9 +2227,13 @@ export class AttachmentService {
       const server = import.meta.env.VITE_SIGNED_URL_SERVER_URL || import.meta.env.VITE_API_URL || '';
       if (server) {
         try {
+          const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+          if (anonKey) {
+            headers['Authorization'] = `Bearer ${anonKey}`;
+          }
           const resp = await fetch(`${server.replace(/\/$/, '')}/signed-url`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers,
             body: JSON.stringify({ bucket: this.bucketName, path, expires: 60 })
           });
           if (resp.ok) {

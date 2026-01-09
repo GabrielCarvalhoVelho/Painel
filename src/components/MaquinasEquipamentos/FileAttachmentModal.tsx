@@ -87,9 +87,15 @@ export default function FileAttachmentModal({
           const payload = { bucket: BUCKET_NAME, path, expires: 3600 };
           console.log('[Maquinas] Requisitando signed URL com payload:', payload);
 
+          const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+          const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+          if (anonKey) {
+            headers['Authorization'] = `Bearer ${anonKey}`;
+          }
+
           const resp = await fetch(`${server.replace(/\/$/, '')}/signed-url`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers,
             body: JSON.stringify(payload)
           });
 
