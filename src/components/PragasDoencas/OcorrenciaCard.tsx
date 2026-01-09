@@ -59,12 +59,34 @@ export default function OcorrenciaCard({
       return;
     }
 
+    // Função auxiliar para extrair path do storage a partir de uma URL
+    const extractPathFromUrl = (url: string): string | null => {
+      const bucketName = 'pragas_e_doencas';
+      // Tenta extrair de URL de storage (public ou signed)
+      const publicMarker = `/storage/v1/object/public/${bucketName}/`;
+      const objMarker = `/storage/v1/object/${bucketName}/`;
+      
+      if (url.includes(publicMarker)) {
+        const idx = url.indexOf(publicMarker) + publicMarker.length;
+        return url.slice(idx).split('?')[0]; // Remove query params
+      }
+      if (url.includes(objMarker)) {
+        const idx = url.indexOf(objMarker) + objMarker.length;
+        return url.slice(idx).split('?')[0]; // Remove query params
+      }
+      return null;
+    };
+
     if (typeof fp === 'string' && fp.startsWith('http')) {
       const publicMarker = '/storage/v1/object/public/';
       const objMarker = '/storage/v1/object/';
+      
       // If it's explicitly a public storage URL, use it as-is
       if (fp.includes(publicMarker)) {
+        const extractedPath = extractPathFromUrl(fp);
+        console.log('[OcorrenciaCard] URL pública detectada, path extraído:', extractedPath);
         setImageSrc(fp);
+        setImagePath(extractedPath);
         return;
       }
 
@@ -92,6 +114,7 @@ export default function OcorrenciaCard({
                     .createSignedUrl(candidate, 60);
                   if (!error && data?.signedUrl) {
                     if (mounted) {
+                      console.log('[OcorrenciaCard] Signed URL gerada, path:', candidate);
                       setImageSrc(data.signedUrl);
                       setImagePath(candidate);
                     }
@@ -101,16 +124,32 @@ export default function OcorrenciaCard({
                   // continue
                 }
               }
+              // Fallback: usa a URL como está, mas extrai o path
+              if (mounted) {
+                const fallbackPath = extractPathFromUrl(fp) || key;
+                console.log('[OcorrenciaCard] Fallback URL storage, path:', fallbackPath);
+                setImageSrc(fp);
+                setImagePath(fallbackPath);
+              }
             }
           } catch (e) {
             // fallthrough to use fp as last resort
+            const fallbackPath = extractPathFromUrl(fp);
+            if (mounted) {
+              console.log('[OcorrenciaCard] Erro, usando fallback path:', fallbackPath);
+              setImageSrc(fp);
+              setImagePath(fallbackPath);
+            }
           }
         })();
+        return;
       }
 
       // If it's an arbitrary HTTP URL (not public storage) we may not have access.
       // Use it as-is as a last resort so developer can see what's stored.
+      console.log('[OcorrenciaCard] URL HTTP arbitrária, sem path extraível');
       setImageSrc(fp);
+      setImagePath(null);
       return;
     }
 

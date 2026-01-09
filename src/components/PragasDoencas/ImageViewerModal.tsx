@@ -123,14 +123,25 @@ export default function ImageViewerModal({
   };
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    console.log('[ImageViewerModal] handleFileChange - arquivo selecionado');
+    console.log('[ImageViewerModal] handleFileChange - evento disparado');
+    console.log('[ImageViewerModal] event.target.files:', event.target.files);
+    console.log('[ImageViewerModal] event.target.files?.length:', event.target.files?.length);
+    
     const file = event.target.files?.[0];
-    console.log('[ImageViewerModal] file:', file?.name, 'size:', file?.size);
+    console.log('[ImageViewerModal] file:', file?.name, 'size:', file?.size, 'type:', file?.type);
     console.log('[ImageViewerModal] imagePath:', imagePath);
     console.log('[ImageViewerModal] ocorrenciaId:', ocorrenciaId);
     
-    if (!file || !imagePath || !ocorrenciaId) {
-      console.log('[ImageViewerModal] Saindo - falta file, imagePath ou ocorrenciaId');
+    if (!file) {
+      console.log('[ImageViewerModal] Saindo - usuário cancelou seleção ou file é undefined');
+      return;
+    }
+    if (!imagePath) {
+      console.log('[ImageViewerModal] Saindo - imagePath é undefined');
+      return;
+    }
+    if (!ocorrenciaId) {
+      console.log('[ImageViewerModal] Saindo - ocorrenciaId é undefined');
       return;
     }
     try {
