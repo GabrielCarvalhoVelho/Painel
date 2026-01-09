@@ -30,6 +30,19 @@ export class ActivityAttachmentService {
     try {
       console.log('🔍 Verificando anexo de imagem para atividade:', activityId);
 
+      // PRIORIDADE 1: Verificar no banco (igual ao financeiro)
+      const { data: activity } = await supabase
+        .from('lancamentos_agricolas')
+        .select('url_imagem')
+        .eq('atividade_id', activityId)
+        .maybeSingle();
+
+      if (activity?.url_imagem) {
+        console.log('✅ Imagem encontrada no banco:', activity.url_imagem);
+        return true;
+      }
+
+      // FALLBACK: Buscar no formato antigo (imagens/{activityId}.jpg)
       const fileName = `${activityId}.jpg`;
 
       let { data, error } = await supabaseServiceRole.storage
@@ -57,7 +70,7 @@ export class ActivityAttachmentService {
       }
 
       const hasFile = data && data.some(file => file.name === fileName);
-      console.log('📁 Resultado da busca:', { encontrado: hasFile, nomeProcurado: fileName, pasta: this.IMAGE_FOLDER });
+      console.log('📁 Resultado da busca (fallback):', { encontrado: hasFile, nomeProcurado: fileName, pasta: this.IMAGE_FOLDER });
 
       return hasFile || await this.checkFileExistsByUrl(activityId, false);
     } catch (error) {
@@ -70,6 +83,19 @@ export class ActivityAttachmentService {
     try {
       console.log('🔍 Verificando arquivo para atividade:', activityId);
 
+      // PRIORIDADE 1: Verificar no banco (igual ao financeiro)
+      const { data: activity } = await supabase
+        .from('lancamentos_agricolas')
+        .select('url_arquivo')
+        .eq('atividade_id', activityId)
+        .maybeSingle();
+
+      if (activity?.url_arquivo) {
+        console.log('✅ Arquivo encontrado no banco:', activity.url_arquivo);
+        return true;
+      }
+
+      // FALLBACK: Buscar no formato antigo (arquivos/{activityId}.ext)
       let { data, error } = await supabaseServiceRole.storage
         .from(this.BUCKET_NAME)
         .list(this.FILE_FOLDER, {
@@ -139,64 +165,67 @@ export class ActivityAttachmentService {
     try {
       console.log('🔗 Obtendo URL da imagem:', activityId, forceRefresh ? '(refresh forçado)' : '');
 
-      const fileName = `${this.IMAGE_FOLDER}/${activityId}.jpg`;
+      // PRIORIDADE 1: Buscar path do banco (igual ao financeiro)
+      const { data: activity } = await supabase
+        .from('lancamentos_agricolas')
+        .select('url_imagem')
+        .eq('atividade_id', activityId)
+        .maybeSingle();
 
-      let { data } = supabaseServiceRole.storage.from(this.BUCKET_NAME).getPublicUrl(fileName);
+      const storedPath = activity?.url_imagem;
+      console.log('📊 Path salvo no banco:', storedPath || 'N/A');
 
-      if (!data?.publicUrl) {
-        console.log('⚠️ Tentando URL pública com cliente normal...');
-        const result = supabase.storage.from(this.BUCKET_NAME).getPublicUrl(fileName);
-        data = result.data;
-      }
-
-      // Se houver URL pública, confirma com HEAD e retorna
-      if (data?.publicUrl) {
-        const cleanUrl = data.publicUrl.split('?')[0];
+      // Se tem path no banco, usar ele
+      if (storedPath) {
+        // Tentar signed URL via SDK (bucket privado)
         try {
-          const headResp = await fetch(cleanUrl, { method: 'HEAD', cache: 'no-cache' });
-          if (!headResp.ok) {
-            console.log('⚠️ HEAD retornou não-ok para imagem:', headResp.status, cleanUrl);
-            // cairá para tentativa de signed URL abaixo
-          } else {
-            const timestamp = Date.now();
-            const random = Math.random().toString(36).substring(7);
-            const urlWithTimestamp = `${cleanUrl}?v=${timestamp}&r=${random}`;
-            console.log('📎 URL gerada do storage (verificada):', urlWithTimestamp);
-            return { displayUrl: urlWithTimestamp, storageUrl: cleanUrl };
+          const { data: signedData, error: signedError } = await supabaseServiceRole.storage
+            .from(this.BUCKET_NAME)
+            .createSignedUrl(storedPath, 3600); // 1 hora
+
+          if (!signedError && signedData?.signedUrl) {
+            console.log('🔐 Signed URL gerada via SDK para imagem');
+            return { displayUrl: signedData.signedUrl, storageUrl: storedPath };
           }
         } catch (err) {
-          console.log('⚠️ Erro ao checar existência da imagem via HEAD:', err);
-          // tentar signed URL abaixo
+          console.warn('⚠️ Falha ao gerar signed URL via SDK:', err);
+        }
+
+        // Fallback: tentar baixar blob
+        try {
+          const { data: blobData, error: dlError } = await supabaseServiceRole.storage
+            .from(this.BUCKET_NAME)
+            .download(storedPath);
+
+          if (!dlError && blobData) {
+            const blobUrl = URL.createObjectURL(blobData);
+            console.log('📦 Blob URL criada para imagem');
+            return { displayUrl: blobUrl, storageUrl: storedPath };
+          }
+        } catch (err) {
+          console.warn('⚠️ Falha no download do blob:', err);
         }
       }
 
-      // Se não há public URL ou HEAD falhou, pedir signed URL ao backend
+      // FALLBACK: Buscar no formato antigo (imagens/{activityId}.jpg)
+      const fileName = `${this.IMAGE_FOLDER}/${activityId}.jpg`;
+      console.log('🔍 Tentando formato antigo:', fileName);
+
+      // Tentar signed URL para formato antigo
       try {
-        const server = import.meta.env.VITE_SIGNED_URL_SERVER_URL || import.meta.env.VITE_API_URL || '';
-        if (server) {
-          const resp = await fetch(`${server.replace(/\/$/, '')}/signed-url`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ bucket: this.BUCKET_NAME, path: fileName, expires: 60 })
-          });
-          if (resp.ok) {
-            const payload = await resp.json();
-            if (payload?.signedUrl) {
-              console.log('🔐 Obtido signedUrl do servidor para imagem');
-              return { displayUrl: payload.signedUrl, storageUrl: payload.signedUrl };
-            }
-          } else {
-            console.log('⚠️ Signed-url server retornou erro', resp.status);
-          }
-        } else {
-          console.log('⚠️ VITE_SIGNED_URL_SERVER_URL não configurado, não foi possível solicitar signed URL');
+        const { data: signedData, error: signedError } = await supabaseServiceRole.storage
+          .from(this.BUCKET_NAME)
+          .createSignedUrl(fileName, 3600);
+
+        if (!signedError && signedData?.signedUrl) {
+          console.log('🔐 Signed URL gerada para formato antigo');
+          return { displayUrl: signedData.signedUrl, storageUrl: fileName };
         }
       } catch (err) {
-        console.error('💥 Erro ao solicitar signed URL ao servidor:', err);
+        console.warn('⚠️ Falha ao gerar signed URL para formato antigo:', err);
       }
 
-      console.log('❌ Não foi possível obter URL pública nem signed URL para a imagem');
-      // Fallback: tentar baixar o blob diretamente com o cliente (se a policy permitir)
+      // Fallback: tentar baixar blob do formato antigo
       try {
         const { data: blobData, error: dlErr } = await supabase.storage
           .from(this.BUCKET_NAME)
@@ -225,78 +254,86 @@ export class ActivityAttachmentService {
     try {
       console.log('🔗 Obtendo URL do arquivo:', activityId, forceRefresh ? '(refresh forçado)' : '');
 
-  const extensions = ['pdf','xml','xls','xlsx','doc','docx','csv','txt'];
+      // PRIORIDADE 1: Buscar path do banco (igual ao financeiro)
+      const { data: activity } = await supabase
+        .from('lancamentos_agricolas')
+        .select('url_arquivo')
+        .eq('atividade_id', activityId)
+        .maybeSingle();
+
+      const storedPath = activity?.url_arquivo;
+      console.log('📊 Path do arquivo salvo no banco:', storedPath || 'N/A');
+
+      // Se tem path no banco, usar ele
+      if (storedPath) {
+        // Tentar signed URL via SDK (bucket privado)
+        try {
+          const { data: signedData, error: signedError } = await supabaseServiceRole.storage
+            .from(this.BUCKET_NAME)
+            .createSignedUrl(storedPath, 3600); // 1 hora
+
+          if (!signedError && signedData?.signedUrl) {
+            console.log('🔐 Signed URL gerada via SDK para arquivo');
+            return signedData.signedUrl;
+          }
+        } catch (err) {
+          console.warn('⚠️ Falha ao gerar signed URL para arquivo via SDK:', err);
+        }
+
+        // Fallback: tentar baixar blob
+        try {
+          const { data: blobData, error: dlError } = await supabaseServiceRole.storage
+            .from(this.BUCKET_NAME)
+            .download(storedPath);
+
+          if (!dlError && blobData) {
+            const blobUrl = URL.createObjectURL(blobData);
+            console.log('📦 Blob URL criada para arquivo');
+            return blobUrl;
+          }
+        } catch (err) {
+          console.warn('⚠️ Falha no download do blob do arquivo:', err);
+        }
+      }
+
+      // FALLBACK: Buscar no formato antigo (arquivos/{activityId}.ext)
+      const extensions = ['pdf','xml','xls','xlsx','doc','docx','csv','txt'];
+      console.log('🔍 Tentando formato antigo para arquivo...');
 
       for (const ext of extensions) {
         const fileName = `${this.FILE_FOLDER}/${activityId}.${ext}`;
 
-        let { data } = supabaseServiceRole.storage.from(this.BUCKET_NAME).getPublicUrl(fileName);
-
-        if (!data?.publicUrl) {
-          console.log('⚠️ Tentando URL pública com cliente normal...');
-          const result = supabase.storage.from(this.BUCKET_NAME).getPublicUrl(fileName);
-          data = result.data;
-        }
-
-        if (data?.publicUrl) {
-          try {
-            const response = await fetch(data.publicUrl, { method: 'HEAD', cache: 'no-cache' });
-            if (response.ok) {
-              const cleanUrl = data.publicUrl.split('?')[0];
-              const timestamp = Date.now();
-              const random = Math.random().toString(36).substring(7);
-              const urlWithTimestamp = `${cleanUrl}?v=${timestamp}&r=${random}`;
-              console.log('📎 URL gerada do storage:', urlWithTimestamp);
-              return urlWithTimestamp;
-            }
-            // se HEAD falhar, tentar signed URL abaixo
-          } catch (err) {
-            // continuar para tentativa de signed URL
-          }
-        }
-
-        // tentar signed URL pelo servidor
+        // Tentar signed URL
         try {
-          const server = import.meta.env.VITE_SIGNED_URL_SERVER_URL || import.meta.env.VITE_API_URL || '';
-          if (server) {
-            const resp = await fetch(`${server.replace(/\/$/, '')}/signed-url`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ bucket: this.BUCKET_NAME, path: fileName, expires: 60 })
-            });
-            if (resp.ok) {
-              const payload = await resp.json();
-              if (payload?.signedUrl) {
-                console.log('🔐 Obtido signedUrl do servidor para arquivo');
-                return payload.signedUrl;
-              }
-            } else {
-              console.log('⚠️ Signed-url server retornou erro', resp.status);
-            }
-          } else {
-            console.log('⚠️ VITE_SIGNED_URL_SERVER_URL não configurado, não foi possível solicitar signed URL');
+          const { data: signedData, error: signedError } = await supabaseServiceRole.storage
+            .from(this.BUCKET_NAME)
+            .createSignedUrl(fileName, 3600);
+
+          if (!signedError && signedData?.signedUrl) {
+            console.log('🔐 Signed URL gerada para formato antigo:', fileName);
+            return signedData.signedUrl;
           }
         } catch (err) {
-          console.error('💥 Erro ao solicitar signed URL ao servidor:', err);
+          // continuar para próxima extensão
         }
 
-        // Fallback: tentar baixar o blob diretamente com o cliente (se a policy permitir)
+        // Fallback: tentar baixar blob
         try {
-          const { data: blobData, error: dlErr } = await supabase.storage
+          const { data: blobData, error: dlErr } = await supabaseServiceRole.storage
             .from(this.BUCKET_NAME)
             .download(fileName);
 
           if (!dlErr && blobData) {
             const url = URL.createObjectURL(blobData);
-            console.log('📦 Obtido blob URL via download fallback para arquivo');
+            console.log('📦 Blob URL obtida para formato antigo:', fileName);
             return url;
           }
         } catch (err) {
-          console.log('⚠️ Falha no download fallback do arquivo:', err);
+          // continuar para próxima extensão
         }
       }
 
-      console.log('❌ Não foi possível obter URL pública do arquivo');
+      console.log('❌ Não foi possível obter URL do arquivo');
       return null;
     } catch (error) {
       console.error('💥 Erro ao obter URL do arquivo:', error);
@@ -783,30 +820,58 @@ export class ActivityAttachmentService {
     try {
       console.log('⬇️ Fazendo download da imagem:', activityId);
 
-      const fileName = `${this.IMAGE_FOLDER}/${activityId}.jpg`;
+      // PRIORIDADE 1: Buscar path do banco
+      const { data: activity } = await supabase
+        .from('lancamentos_agricolas')
+        .select('url_imagem')
+        .eq('atividade_id', activityId)
+        .maybeSingle();
 
-      let { data, error } = await supabaseServiceRole.storage
-        .from(this.BUCKET_NAME)
-        .download(fileName);
+      const pathsToTry: string[] = [];
+      
+      if (activity?.url_imagem) {
+        pathsToTry.push(activity.url_imagem);
+      }
+      // Fallback: formato antigo
+      pathsToTry.push(`${this.IMAGE_FOLDER}/${activityId}.jpg`);
 
-      if (error) {
-        console.log('⚠️ Tentando download com cliente normal...');
-        const result = await supabase.storage
+      let downloadedBlob: Blob | null = null;
+      let downloadFileName = `atividade_${activityId}.jpg`;
+
+      for (const filePath of pathsToTry) {
+        console.log('🔍 Tentando download de:', filePath);
+
+        let { data, error } = await supabaseServiceRole.storage
           .from(this.BUCKET_NAME)
-          .download(fileName);
-        data = result.data;
-        error = result.error;
+          .download(filePath);
+
+        if (error) {
+          const result = await supabase.storage
+            .from(this.BUCKET_NAME)
+            .download(filePath);
+          data = result.data;
+          error = result.error;
+        }
+
+        if (!error && data) {
+          downloadedBlob = data;
+          // Extrair nome do arquivo do path
+          const parts = filePath.split('/');
+          downloadFileName = parts[parts.length - 1] || downloadFileName;
+          console.log('✅ Arquivo encontrado:', filePath);
+          break;
+        }
       }
 
-      if (error || !data) {
-        console.error('❌ Erro no download:', error);
+      if (!downloadedBlob) {
+        console.error('❌ Imagem não encontrada em nenhum path');
         throw new Error('Erro ao fazer download da imagem');
       }
 
-      const url = URL.createObjectURL(data);
+      const url = URL.createObjectURL(downloadedBlob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `atividade_${activityId}.jpg`;
+      link.download = downloadFileName;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -823,44 +888,68 @@ export class ActivityAttachmentService {
     try {
       console.log('⬇️ Fazendo download do arquivo:', activityId);
 
-  const extensions = ['pdf','xml','xls','xlsx','doc','docx','csv','txt'];
-      let downloaded = false;
+      // PRIORIDADE 1: Buscar path do banco
+      const { data: activity } = await supabase
+        .from('lancamentos_agricolas')
+        .select('url_arquivo')
+        .eq('atividade_id', activityId)
+        .maybeSingle();
 
+      const pathsToTry: string[] = [];
+      
+      if (activity?.url_arquivo) {
+        pathsToTry.push(activity.url_arquivo);
+      }
+
+      // Fallback: formato antigo
+      const extensions = ['pdf','xml','xls','xlsx','doc','docx','csv','txt'];
       for (const ext of extensions) {
-        const fileName = `${this.FILE_FOLDER}/${activityId}.${ext}`;
+        pathsToTry.push(`${this.FILE_FOLDER}/${activityId}.${ext}`);
+      }
+
+      let downloadedBlob: Blob | null = null;
+      let downloadFileName = `atividade_${activityId}`;
+
+      for (const filePath of pathsToTry) {
+        console.log('🔍 Tentando download de:', filePath);
 
         let { data, error } = await supabaseServiceRole.storage
           .from(this.BUCKET_NAME)
-          .download(fileName);
+          .download(filePath);
 
         if (error) {
-          console.log(`⚠️ Tentando download de ${ext} com cliente normal...`);
           const result = await supabase.storage
             .from(this.BUCKET_NAME)
-            .download(fileName);
+            .download(filePath);
           data = result.data;
           error = result.error;
         }
 
         if (!error && data) {
-          const url = URL.createObjectURL(data);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = `atividade_${activityId}.${ext}`;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(url);
-
-          console.log('✅ Download concluído');
-          downloaded = true;
+          downloadedBlob = data;
+          // Extrair nome do arquivo do path
+          const parts = filePath.split('/');
+          downloadFileName = parts[parts.length - 1] || downloadFileName;
+          console.log('✅ Arquivo encontrado:', filePath);
           break;
         }
       }
 
-      if (!downloaded) {
+      if (!downloadedBlob) {
+        console.error('❌ Arquivo não encontrado em nenhum path');
         throw new Error('Arquivo não encontrado');
       }
+
+      const url = URL.createObjectURL(downloadedBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = downloadFileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      console.log('✅ Download concluído');
     } catch (error) {
       console.error('💥 Erro no download:', error);
       throw error;
@@ -1039,20 +1128,36 @@ export class ActivityAttachmentService {
    */
   static async getSignedImageUrl(activityId: string, expiresIn: number = 3600): Promise<string | null> {
     try {
-      const filePath = `${this.IMAGE_FOLDER}/${activityId}.jpg`;
-      console.log('🔐 Gerando signed URL para imagem:', filePath);
+      // PRIORIDADE 1: Buscar path do banco
+      const { data: activity } = await supabase
+        .from('lancamentos_agricolas')
+        .select('url_imagem')
+        .eq('atividade_id', activityId)
+        .maybeSingle();
 
-      const { data, error } = await supabase.storage
-        .from(this.BUCKET_NAME)
-        .createSignedUrl(filePath, expiresIn);
+      const pathsToTry: string[] = [];
+      
+      if (activity?.url_imagem) {
+        pathsToTry.push(activity.url_imagem);
+      }
+      // Fallback: formato antigo
+      pathsToTry.push(`${this.IMAGE_FOLDER}/${activityId}.jpg`);
 
-      if (error) {
-        console.error('❌ Erro ao gerar signed URL:', error);
-        return null;
+      for (const filePath of pathsToTry) {
+        console.log('🔐 Tentando signed URL para:', filePath);
+
+        const { data, error } = await supabaseServiceRole.storage
+          .from(this.BUCKET_NAME)
+          .createSignedUrl(filePath, expiresIn);
+
+        if (!error && data?.signedUrl) {
+          console.log('✅ Signed URL gerada com sucesso');
+          return data.signedUrl;
+        }
       }
 
-      console.log('✅ Signed URL gerada com sucesso');
-      return data.signedUrl;
+      console.error('❌ Não foi possível gerar signed URL para imagem');
+      return null;
     } catch (err) {
       console.error('💥 Erro ao gerar signed URL:', err);
       return null;
@@ -1067,12 +1172,29 @@ export class ActivityAttachmentService {
    */
   static async getSignedFileUrl(activityId: string, expiresIn: number = 3600): Promise<string | null> {
     try {
+      // PRIORIDADE 1: Buscar path do banco
+      const { data: activity } = await supabase
+        .from('lancamentos_agricolas')
+        .select('url_arquivo')
+        .eq('atividade_id', activityId)
+        .maybeSingle();
+
+      const pathsToTry: string[] = [];
+      
+      if (activity?.url_arquivo) {
+        pathsToTry.push(activity.url_arquivo);
+      }
+
+      // Fallback: formato antigo
       const extensions = ['pdf','xml','xls','xlsx','doc','docx','csv','txt'];
-
       for (const ext of extensions) {
-        const filePath = `${this.FILE_FOLDER}/${activityId}.${ext}`;
+        pathsToTry.push(`${this.FILE_FOLDER}/${activityId}.${ext}`);
+      }
 
-        const { data, error } = await supabase.storage
+      for (const filePath of pathsToTry) {
+        console.log('🔐 Tentando signed URL para arquivo:', filePath);
+
+        const { data, error } = await supabaseServiceRole.storage
           .from(this.BUCKET_NAME)
           .createSignedUrl(filePath, expiresIn);
 
@@ -1082,7 +1204,7 @@ export class ActivityAttachmentService {
         }
       }
 
-      console.error('❌ Não foi possível gerar signed URL para nenhuma extensão');
+      console.error('❌ Não foi possível gerar signed URL para arquivo');
       return null;
     } catch (err) {
       console.error('💥 Erro ao gerar signed URL:', err);
