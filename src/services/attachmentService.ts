@@ -666,9 +666,11 @@ export class AttachmentService {
                   pathsToTry.unshift(`${user.user_id}/${objectPath}`);
                 }
 
+                const { data: { session } } = await supabase.auth.getSession();
+                const accessToken = session?.access_token || anonKey;
                 const headers: HeadersInit = { 'Content-Type': 'application/json' };
-                if (anonKey) {
-                  headers['Authorization'] = `Bearer ${anonKey}`;
+                if (accessToken) {
+                  headers['Authorization'] = `Bearer ${accessToken}`;
                 }
 
                 for (const tryPath of pathsToTry) {
@@ -2230,9 +2232,11 @@ export class AttachmentService {
       const server = import.meta.env.VITE_SIGNED_URL_SERVER_URL || import.meta.env.VITE_API_URL || '';
       if (server) {
         try {
+          const { data: { session } } = await supabase.auth.getSession();
+          const accessToken = session?.access_token || anonKey;
           const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-          if (anonKey) {
-            headers['Authorization'] = `Bearer ${anonKey}`;
+          if (accessToken) {
+            headers['Authorization'] = `Bearer ${accessToken}`;
           }
           const resp = await fetch(`${server.replace(/\/$/, '')}/signed-url`, {
             method: 'POST',

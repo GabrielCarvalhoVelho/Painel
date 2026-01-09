@@ -87,10 +87,13 @@ export default function FileAttachmentModal({
           const payload = { bucket: BUCKET_NAME, path, expires: 3600 };
           console.log('[Maquinas] Requisitando signed URL com payload:', payload);
 
-          const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+          // Get user session token for authentication
+          const { data: { session } } = await supabase.auth.getSession();
+          const accessToken = session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY;
+
           const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-          if (anonKey) {
-            headers['Authorization'] = `Bearer ${anonKey}`;
+          if (accessToken) {
+            headers['Authorization'] = `Bearer ${accessToken}`;
           }
 
           const resp = await fetch(`${server.replace(/\/$/, '')}/signed-url`, {
