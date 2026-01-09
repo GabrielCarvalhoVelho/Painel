@@ -117,46 +117,70 @@ export default function ImageViewerModal({
   };
 
   const handleReplaceImage = () => {
+    console.log('[ImageViewerModal] handleReplaceImage - clicou no botão substituir');
+    console.log('[ImageViewerModal] fileInputRef.current:', fileInputRef.current);
     fileInputRef.current?.click();
   };
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('[ImageViewerModal] handleFileChange - arquivo selecionado');
     const file = event.target.files?.[0];
-    if (!file || !imagePath || !ocorrenciaId) return;
+    console.log('[ImageViewerModal] file:', file?.name, 'size:', file?.size);
+    console.log('[ImageViewerModal] imagePath:', imagePath);
+    console.log('[ImageViewerModal] ocorrenciaId:', ocorrenciaId);
+    
+    if (!file || !imagePath || !ocorrenciaId) {
+      console.log('[ImageViewerModal] Saindo - falta file, imagePath ou ocorrenciaId');
+      return;
+    }
     try {
       const userId = AuthService.getInstance().getCurrentUser()?.user_id;
+      console.log('[ImageViewerModal] userId:', userId);
       if (!userId) {
-        console.error('Usuário não autenticado');
+        console.error('[ImageViewerModal] Usuário não autenticado');
         return;
       }
+      console.log('[ImageViewerModal] Chamando PragasDoencasService.replaceImage...');
       const newPath = await PragasDoencasService.replaceImage(file, imagePath, ocorrenciaId, userId);
+      console.log('[ImageViewerModal] replaceImage retornou:', newPath);
       if (!newPath) {
-        console.error('Erro ao substituir imagem');
+        console.error('[ImageViewerModal] Erro ao substituir imagem - newPath é null');
         return;
       }
+      console.log('[ImageViewerModal] Sucesso! Chamando callbacks...');
       onImageReplaced?.();
       onClose();
       window.location.reload();
     } catch (error) {
-      console.error('Erro ao substituir:', error);
+      console.error('[ImageViewerModal] Erro ao substituir:', error);
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
   const handleDeleteImage = async () => {
-    if (!imagePath || !ocorrenciaId) return;
+    console.log('[ImageViewerModal] handleDeleteImage - clicou no botão excluir');
+    console.log('[ImageViewerModal] imagePath:', imagePath);
+    console.log('[ImageViewerModal] ocorrenciaId:', ocorrenciaId);
+    
+    if (!imagePath || !ocorrenciaId) {
+      console.log('[ImageViewerModal] Saindo - falta imagePath ou ocorrenciaId');
+      return;
+    }
     try {
+      console.log('[ImageViewerModal] Chamando PragasDoencasService.deleteImage...');
       const deleted = await PragasDoencasService.deleteImage(imagePath, ocorrenciaId);
+      console.log('[ImageViewerModal] deleteImage retornou:', deleted);
       if (!deleted) {
-        console.error('Erro ao excluir imagem');
+        console.error('[ImageViewerModal] Erro ao excluir imagem - deleted é false');
         return;
       }
+      console.log('[ImageViewerModal] Sucesso! Chamando callbacks...');
       onImageDeleted?.();
       onClose();
       window.location.reload();
     } catch (error) {
-      console.error('Erro ao excluir:', error);
+      console.error('[ImageViewerModal] Erro ao excluir:', error);
     }
   };
 
