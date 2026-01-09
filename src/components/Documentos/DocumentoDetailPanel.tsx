@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Documento } from "./mockDocumentos";
-import { X, Download, Edit2, Trash2, Loader2, ImageIcon, ZoomIn, FileText, RefreshCw } from "lucide-react";
+import { X, Download, Edit2, Trash2, Loader2, ImageIcon, ZoomIn, FileText, RefreshCw, AlertCircle } from "lucide-react";
 import { DocumentosService } from "../../services/documentosService";
 import { AuthService } from "../../services/authService";
 import { UserService } from "../../services/userService";
@@ -112,6 +112,8 @@ export default function DocumentoDetailPanel({
   const [pendingDownloadUrl, setPendingDownloadUrl] = useState<string | null>(null);
   const [isSendingWhatsApp, setIsSendingWhatsApp] = useState(false);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
+  const [isRemovingFile, setIsRemovingFile] = useState(false);
 
   const fileExtension = documento ? getFileExtension(documento.arquivo_url) : 'FILE';
   const isImage = isImageFile(fileExtension);
@@ -302,6 +304,61 @@ export default function DocumentoDetailPanel({
       }
     }
   };
+
+  // Remover arquivo do documento
+  const handleRemoveFile = async () => {
+    if (!documento) return;
+    setIsRemovingFile(true);
+    try {
+      const updated = await DocumentosService.update(documento.id, { arquivo_url: '' });
+      if (updated && onFileUpdated) {
+        onFileUpdated(updated);
+        setImagePreviewUrl(null);
+      }
+    } catch (err) {
+      console.error('Erro ao remover anexo:', err);
+    } finally {
+      setIsRemovingFile(false);
+      setShowRemoveConfirm(false);
+    }
+  };
+
+  // Modal de confirmação de remoção de anexo
+  if (showRemoveConfirm) {
+    return (
+      <>
+        <div className="fixed inset-0 bg-black bg-opacity-30 z-[60]" onClick={() => setShowRemoveConfirm(false)} />
+        <div className="fixed inset-0 flex items-center justify-center z-[70] p-4">
+          <div className="bg-white rounded-xl shadow-lg max-w-sm w-full p-6 flex flex-col items-center">
+            <AlertCircle className="w-8 h-8 text-[#F7941F] mb-3" />
+            <h3 className="text-lg font-bold text-[#004417] mb-2 text-center">
+              Remover anexo?
+            </h3>
+            <p className="text-sm text-center mb-4 text-[#004417]/70">
+              O arquivo será removido deste documento. Esta ação não pode ser desfeita.
+            </p>
+            <div className="flex gap-3 mt-2 w-full">
+              <button
+                className="flex-1 px-4 py-2 rounded-lg bg-white text-[#004417] hover:bg-[rgba(0,68,23,0.03)] font-medium transition-colors border border-gray-200"
+                onClick={() => setShowRemoveConfirm(false)}
+                disabled={isRemovingFile}
+              >
+                Cancelar
+              </button>
+              <button
+                className="flex-1 px-4 py-2 rounded-lg bg-[#F7941F]/10 text-[#F7941F] hover:bg-[#F7941F]/20 font-medium transition-colors flex items-center justify-center gap-2"
+                onClick={handleRemoveFile}
+                disabled={isRemovingFile}
+              >
+                {isRemovingFile ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                Remover
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   // Modal de aviso para abrir no navegador
   if (showBrowserWarning && pendingDownloadUrl) {
@@ -532,17 +589,7 @@ export default function DocumentoDetailPanel({
                 </label>
                 <button
                   type="button"
-                  onClick={async () => {
-                    if (!confirm('Remover anexo deste documento?')) return;
-                    try {
-                      const updated = await DocumentosService.update(documento.id, { arquivo_url: '' });
-                      if (updated && onFileUpdated) {
-                        onFileUpdated(updated);
-                      }
-                    } catch (err) {
-                      console.error('Erro ao remover anexo:', err);
-                    }
-                  }}
+                  onClick={() => setShowRemoveConfirm(true)}
                   className="flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -570,17 +617,7 @@ export default function DocumentoDetailPanel({
                 </label>
                 <button
                   type="button"
-                  onClick={async () => {
-                    if (!confirm('Remover anexo deste documento?')) return;
-                    try {
-                      const updated = await DocumentosService.update(documento.id, { arquivo_url: '' });
-                      if (updated && onFileUpdated) {
-                        onFileUpdated(updated);
-                      }
-                    } catch (err) {
-                      console.error('Erro ao remover anexo:', err);
-                    }
-                  }}
+                  onClick={() => setShowRemoveConfirm(true)}
                   className="flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                 >
                   <Trash2 className="w-4 h-4" />
