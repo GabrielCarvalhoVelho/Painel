@@ -3,18 +3,24 @@ import { createClient } from '@supabase/supabase-js';
 import { AuthService } from './authService';
 
 // Cliente com service role para operações de storage (contorna RLS)
-// Em produção, usa anon key (requer políticas RLS corretas no Storage)
+// Em produção, usa o cliente principal com sessão do usuário
 const url = import.meta.env.VITE_SUPABASE_URL;
 const serviceRole = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
-const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-const storageKey = serviceRole || anonKey;
-
-if (!url || !storageKey) {
-  throw new Error('Supabase configuration missing for activityAttachmentService');
+// Criar cliente service role apenas se a chave existir
+let supabaseServiceRole: ReturnType<typeof createClient> | null = null;
+if (serviceRole && url) {
+  supabaseServiceRole = createClient(url, serviceRole);
 }
 
-const supabaseServiceRole = createClient(url, storageKey);
+/**
+ * Retorna o cliente de storage apropriado:
+ * - Se houver service role key, usa cliente com bypass de RLS
+ * - Caso contrário, usa cliente principal com sessão do usuário (JWT injetado)
+ */
+function getStorageClient() {
+  return supabaseServiceRole || supabase;
+}
 
 /**
  * Service de anexos agora trabalha somente com Supabase Storage.
@@ -45,7 +51,7 @@ export class ActivityAttachmentService {
       // FALLBACK: Buscar no formato antigo (imagens/{activityId}.jpg)
       const fileName = `${activityId}.jpg`;
 
-      let { data, error } = await supabaseServiceRole.storage
+      let { data, error } = await getStorageClient().storage
         .from(this.BUCKET_NAME)
         .list(this.IMAGE_FOLDER, {
           limit: 1000,
@@ -96,7 +102,7 @@ export class ActivityAttachmentService {
       }
 
       // FALLBACK: Buscar no formato antigo (arquivos/{activityId}.ext)
-      let { data, error } = await supabaseServiceRole.storage
+      let { data, error } = await getStorageClient().storage
         .from(this.BUCKET_NAME)
         .list(this.FILE_FOLDER, {
           limit: 1000,
@@ -140,7 +146,7 @@ export class ActivityAttachmentService {
         const folder = isFile ? this.FILE_FOLDER : this.IMAGE_FOLDER;
         const fileName = `${folder}/${activityId}.${ext}`;
 
-        const { data } = supabaseServiceRole.storage
+        const { data } = getStorageClient().storage
           .from(this.BUCKET_NAME)
           .getPublicUrl(fileName);
 
@@ -179,7 +185,7 @@ export class ActivityAttachmentService {
       if (storedPath) {
         // Tentar signed URL via SDK (bucket privado)
         try {
-          const { data: signedData, error: signedError } = await supabaseServiceRole.storage
+          const { data: signedData, error: signedError } = await getStorageClient().storage
             .from(this.BUCKET_NAME)
             .createSignedUrl(storedPath, 3600); // 1 hora
 
@@ -193,7 +199,7 @@ export class ActivityAttachmentService {
 
         // Fallback: tentar baixar blob
         try {
-          const { data: blobData, error: dlError } = await supabaseServiceRole.storage
+          const { data: blobData, error: dlError } = await getStorageClient().storage
             .from(this.BUCKET_NAME)
             .download(storedPath);
 
@@ -213,7 +219,7 @@ export class ActivityAttachmentService {
 
       // Tentar signed URL para formato antigo
       try {
-        const { data: signedData, error: signedError } = await supabaseServiceRole.storage
+        const { data: signedData, error: signedError } = await getStorageClient().storage
           .from(this.BUCKET_NAME)
           .createSignedUrl(fileName, 3600);
 
@@ -268,7 +274,7 @@ export class ActivityAttachmentService {
       if (storedPath) {
         // Tentar signed URL via SDK (bucket privado)
         try {
-          const { data: signedData, error: signedError } = await supabaseServiceRole.storage
+          const { data: signedData, error: signedError } = await getStorageClient().storage
             .from(this.BUCKET_NAME)
             .createSignedUrl(storedPath, 3600); // 1 hora
 
@@ -282,7 +288,7 @@ export class ActivityAttachmentService {
 
         // Fallback: tentar baixar blob
         try {
-          const { data: blobData, error: dlError } = await supabaseServiceRole.storage
+          const { data: blobData, error: dlError } = await getStorageClient().storage
             .from(this.BUCKET_NAME)
             .download(storedPath);
 
@@ -305,7 +311,7 @@ export class ActivityAttachmentService {
 
         // Tentar signed URL
         try {
-          const { data: signedData, error: signedError } = await supabaseServiceRole.storage
+          const { data: signedData, error: signedError } = await getStorageClient().storage
             .from(this.BUCKET_NAME)
             .createSignedUrl(fileName, 3600);
 
@@ -319,7 +325,7 @@ export class ActivityAttachmentService {
 
         // Fallback: tentar baixar blob
         try {
-          const { data: blobData, error: dlErr } = await supabaseServiceRole.storage
+          const { data: blobData, error: dlErr } = await getStorageClient().storage
             .from(this.BUCKET_NAME)
             .download(fileName);
 
@@ -385,14 +391,14 @@ export class ActivityAttachmentService {
       if (existing?.url_imagem) {
         console.log('🔄 [Manejo] Imagem existente encontrada, deletando:', existing.url_imagem);
         try {
-          await supabaseServiceRole.storage.from(this.BUCKET_NAME).remove([existing.url_imagem]);
+          await getStorageClient().storage.from(this.BUCKET_NAME).remove([existing.url_imagem]);
         } catch (err) {
           console.warn('⚠️ [Manejo] Falha ao deletar imagem antiga:', err);
         }
       }
 
       // Upload com upsert
-      let { data, error } = await supabaseServiceRole.storage
+      let { data, error } = await getStorageClient().storage
         .from(this.BUCKET_NAME)
         .upload(filePath, processedFile, {
           cacheControl: '3600',
@@ -401,7 +407,8 @@ export class ActivityAttachmentService {
         });
 
       if (error) {
-        console.log('⚠️ [Manejo] Tentativa com service role falhou, tentando com cliente normal...');
+        console.error('⚠️ [Manejo] Erro com service role:', error.message, error);
+        console.log('⚠️ [Manejo] Tentando com cliente normal...');
         const result = await supabase.storage.from(this.BUCKET_NAME).upload(filePath, processedFile, {
           cacheControl: '3600',
           upsert: true,
@@ -409,6 +416,9 @@ export class ActivityAttachmentService {
         });
         data = result.data;
         error = result.error;
+        if (error) {
+          console.error('⚠️ [Manejo] Erro com cliente normal também:', error.message, error);
+        }
       }
 
       if (error) {
@@ -430,7 +440,7 @@ export class ActivityAttachmentService {
       if (dbError) {
         console.error('❌ [Manejo] Erro ao atualizar banco:', dbError);
         // Rollback: deletar arquivo
-        await supabaseServiceRole.storage.from(this.BUCKET_NAME).remove([filePath]);
+        await getStorageClient().storage.from(this.BUCKET_NAME).remove([filePath]);
         throw new Error(`Erro na base de dados: ${dbError.message}`);
       }
 
@@ -501,7 +511,7 @@ export class ActivityAttachmentService {
       for (const path of pathsToTry) {
         console.log(`🗑️ [Manejo] Tentando excluir: ${path}`);
 
-        let { data, error } = await supabaseServiceRole.storage
+        let { data, error } = await getStorageClient().storage
           .from(this.BUCKET_NAME)
           .remove([path]);
 
@@ -634,14 +644,14 @@ export class ActivityAttachmentService {
       if (existing?.url_arquivo) {
         console.log('🔄 [Manejo] Arquivo existente encontrado, deletando:', existing.url_arquivo);
         try {
-          await supabaseServiceRole.storage.from(this.BUCKET_NAME).remove([existing.url_arquivo]);
+          await getStorageClient().storage.from(this.BUCKET_NAME).remove([existing.url_arquivo]);
         } catch (err) {
           console.warn('⚠️ [Manejo] Falha ao deletar arquivo antigo:', err);
         }
       }
 
       // Upload com upsert
-      let { data, error } = await supabaseServiceRole.storage
+      let { data, error } = await getStorageClient().storage
         .from(this.BUCKET_NAME)
         .upload(filePath, file, {
           cacheControl: '3600',
@@ -679,7 +689,7 @@ export class ActivityAttachmentService {
       if (dbError) {
         console.error('❌ [Manejo] Erro ao atualizar banco:', dbError);
         // Rollback: deletar arquivo
-        await supabaseServiceRole.storage.from(this.BUCKET_NAME).remove([filePath]);
+        await getStorageClient().storage.from(this.BUCKET_NAME).remove([filePath]);
         throw new Error(`Erro na base de dados: ${dbError.message}`);
       }
 
@@ -777,7 +787,7 @@ export class ActivityAttachmentService {
 
       // Tentar excluir cada path
       for (const path of pathsToTry) {
-        let { data, error } = await supabaseServiceRole.storage
+        let { data, error } = await getStorageClient().storage
           .from(this.BUCKET_NAME)
           .remove([path]);
 
@@ -841,7 +851,7 @@ export class ActivityAttachmentService {
       for (const filePath of pathsToTry) {
         console.log('🔍 Tentando download de:', filePath);
 
-        let { data, error } = await supabaseServiceRole.storage
+        let { data, error } = await getStorageClient().storage
           .from(this.BUCKET_NAME)
           .download(filePath);
 
@@ -913,7 +923,7 @@ export class ActivityAttachmentService {
       for (const filePath of pathsToTry) {
         console.log('🔍 Tentando download de:', filePath);
 
-        let { data, error } = await supabaseServiceRole.storage
+        let { data, error } = await getStorageClient().storage
           .from(this.BUCKET_NAME)
           .download(filePath);
 
@@ -1146,7 +1156,7 @@ export class ActivityAttachmentService {
       for (const filePath of pathsToTry) {
         console.log('🔐 Tentando signed URL para:', filePath);
 
-        const { data, error } = await supabaseServiceRole.storage
+        const { data, error } = await getStorageClient().storage
           .from(this.BUCKET_NAME)
           .createSignedUrl(filePath, expiresIn);
 
@@ -1194,7 +1204,7 @@ export class ActivityAttachmentService {
       for (const filePath of pathsToTry) {
         console.log('🔐 Tentando signed URL para arquivo:', filePath);
 
-        const { data, error } = await supabaseServiceRole.storage
+        const { data, error } = await getStorageClient().storage
           .from(this.BUCKET_NAME)
           .createSignedUrl(filePath, expiresIn);
 
