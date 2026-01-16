@@ -32,6 +32,7 @@ interface MovementItem {
   categoria?: string | null;
   valor?: number | null;
   unidade_valor_original?: string | null;
+  numero_nota_fiscal?: string | null;
   valor_total?: number | null;
   valor_medio?: number | null;
   lote?: string | null;
@@ -48,6 +49,8 @@ interface MovementItem {
   quantidade_val?: number;
   quantidade_un?: string;
   custo_calculado?: number | null;
+  nota_fiscal?: boolean | null;
+  unidade_nota_fiscal?: string | null;
 }
 
 // ============================================================================
@@ -223,6 +226,9 @@ export default function HistoryMovementsModal({ isOpen, product, onClose }: Prop
           categoria: p.categoria,
           valor: p.valor,
           unidade_valor_original: p.unidade_valor_original,
+          numero_nota_fiscal: p.numero_nota_fiscal ?? null,
+          nota_fiscal: p.nota_fiscal ?? null,
+          unidade_nota_fiscal: p.unidade_nota_fiscal ?? null,
           valor_total: p.valor_total,
           valor_medio: p.valor_medio,
           lote: p.lote,
@@ -646,7 +652,9 @@ function EntradaDetails({ movement: m }: { movement: MovementItem }) {
   const valorUnitario = m.valor || m.valor_medio;
   const valorUnitarioValido = valorUnitario != null && !isNaN(valorUnitario) && isFinite(valorUnitario) && valorUnitario > 0;
   const valorTotalValido = m.valor_total != null && !isNaN(m.valor_total) && isFinite(m.valor_total) && m.valor_total > 0;
-  const unidadeValorOriginal = m.unidade_valor_original || m.unidade;
+  const unidadeValorOriginal = m.nota_fiscal
+    ? (m.unidade_nota_fiscal || m.unidade_valor_original || m.unidade)
+    : (m.unidade_valor_original || m.unidade);
 
   return (
     <div className="bg-white rounded-lg p-4 mt-3 border border-[rgba(0,68,23,0.08)]">
@@ -658,6 +666,11 @@ function EntradaDetails({ movement: m }: { movement: MovementItem }) {
         <div><strong className="font-semibold text-[#004417]">Validade:</strong> {formatValidity(m.validade)}</div>
         <div><strong className="font-semibold text-[#004417]">Registro MAPA:</strong> {m.registro_mapa || '—'}</div>
       </div>
+      {m.nota_fiscal && m.numero_nota_fiscal && (
+        <div className="mt-2 text-[13px] text-[rgba(0,68,23,0.85)]">
+          <strong className="font-semibold text-[#004417]">NF:</strong> {m.numero_nota_fiscal}
+        </div>
+      )}
       {valorUnitarioValido && (
         <div className="mt-4 pt-3 border-t border-[rgba(0,68,23,0.08)]">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 text-[13px]">
@@ -693,7 +706,9 @@ function SaidaDetails({ movement: m }: { movement: MovementItem }) {
   const valorUnitario = m.valor || m.valor_medio;
   const valorUnitarioValido = valorUnitario != null && !isNaN(valorUnitario) && isFinite(valorUnitario) && valorUnitario > 0;
 
-  const unidadeValorOriginal = m.unidade_valor_original || m.unidade;
+  const unidadeValorOriginal = m.nota_fiscal
+    ? (m.unidade_nota_fiscal || m.unidade_valor_original || m.unidade)
+    : (m.unidade_valor_original || m.unidade);
 
   return (
     <div className="bg-white rounded-lg p-4 mt-3 border border-[rgba(0,68,23,0.08)]">
@@ -710,6 +725,12 @@ function SaidaDetails({ movement: m }: { movement: MovementItem }) {
           </div>
         </div>
       )}
+      {m.nota_fiscal && m.numero_nota_fiscal && (
+        <div className="mt-2 text-[13px] text-[rgba(0,68,23,0.85)]">
+          <strong className="font-semibold text-[#004417]">NF:</strong> {m.numero_nota_fiscal}
+        </div>
+      )}
+
       {valorUnitarioValido && !isNaN(valorTotal) && isFinite(valorTotal) && valorTotal > 0 && (
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
           <div className="text-[13px] text-[rgba(0,68,23,0.85)]">

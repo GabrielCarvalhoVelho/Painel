@@ -14,7 +14,6 @@ export interface ProdutoEstoque {
   quantidade: number; // mapeado de quantidade_em_estoque
   valor: number | null; // mapeado de valor_unitario
   status?: string | null; // possível coluna adicional
-  nota_fiscal?: boolean | null;
   numero_nota_fiscal?: string | null;
   lote: string | null;
   validade: string | null;
@@ -23,6 +22,8 @@ export interface ProdutoEstoque {
   registro_mapa?: string | null;
   unidade_valor_original?: string | null; // unidade que o valor foi originalmente inserido
   quantidade_inicial: number; // quantidade original informada no cadastro
+  nota_fiscal?: boolean | null;
+  unidade_nota_fiscal?: string | null;
   valor_total?: number | null; // valor total do produto (valor_unitario × quantidade_inicial)
   valor_medio?: number | null; // valor médio calculado pela function do banco
   tipo_de_movimentacao?: 'entrada' | 'saida' | 'aplicacao' | null; // tipo da movimentação
@@ -172,6 +173,7 @@ export class EstoqueService {
           fornecedor,
           registro_mapa,
           unidade_valor_original,
+          unidade_nota_fiscal,
           quantidade_inicial,
           valor_total,
           valor_medio,
@@ -209,6 +211,7 @@ export class EstoqueService {
             fornecedor,
             registro_mapa,
             unidade_valor_original,
+            unidade_nota_fiscal,
             quantidade_inicial,
             valor_total,
             valor_medio,
@@ -246,6 +249,7 @@ export class EstoqueService {
       status: produto.status ?? null,
       nota_fiscal: produto.nota_fiscal ?? null,
       numero_nota_fiscal: produto.numero_nota_fiscal ?? null,
+      unidade_nota_fiscal: produto.unidade_nota_fiscal ?? null,
       lote: produto.lote,
       validade: produto.validade,
       created_at: produto.created_at,
