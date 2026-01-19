@@ -42,12 +42,10 @@ const CustosTable: React.FC<{ userId: string; areaCultivada: number; produtivida
         console.error('DEBUG CustosTable erro ao calcular insumos:', err);
       }
       const processados = updateCustosWithFinancialData(estatisticas, areaCultivada, produtividade);
-      // Debug: verificar se os 3 destinos receberam valor após distribuição
+      // Debug: verificar valor em 'Insumos'
       try {
-        const f = processados.find(p => p.categoria === 'Fertilizantes');
-        const d = processados.find(p => p.categoria === 'Defensivos Agrícolas');
-        const s = processados.find(p => p.categoria === 'Sementes e mudas');
-        console.log(`DEBUG CustosTable processed: Fertilizantes=${(f?.valor||0).toFixed(2)} Defensivos=${(d?.valor||0).toFixed(2)} Sementes=${(s?.valor||0).toFixed(2)}`);
+        const ins = processados.find(p => p.categoria === 'Insumos');
+        console.log(`DEBUG CustosTable processed: Insumos=${(ins?.valor||0).toFixed(2)}`);
       } catch (err) {
         console.error('DEBUG CustosTable erro ao logar processados:', err);
       }
@@ -102,23 +100,20 @@ const CustosTable: React.FC<{ userId: string; areaCultivada: number; produtivida
   // 1. Agrupa valores reais do usuário, excluindo categoria "Receita".
   //    Se a categoria financeira for 'Insumos', divide igualmente entre
   //    Fertilizantes, Defensivos Agrícolas e Sementes e mudas.
-  const grouped = estatisticas.reduce((acc, est) => {
+  const ignoredOld = ['fertilizantes','defensivos agrícolas','defensivos agricolas','sementes e mudas','sementes e muda'];
+  const grouped = (Array.isArray(estatisticas) ? estatisticas : []).reduce((acc, est) => {
     const rawCat = est.categoria || "Sem categoria";
     const categoria = String(rawCat).trim();
-    // Ignora categoria "Receita"
-    if (categoria.toLowerCase() === "receita") {
+    // Ignora categoria "Receita" e as três categorias antigas (serão substituídas por 'Insumos')
+    const catLower = categoria.toLowerCase();
+    if (catLower === "receita" || ignoredOld.includes(catLower)) {
       return acc;
     }
 
     const valorCategoria = Math.abs(est.valor ?? est.total ?? 0);
 
-    // Se categorizado como 'insumos' (qualquer capitalização), distribuir
-    // igualmente entre as três discriminações da CONAB.
-    if (categoria.toLowerCase() === 'insumos') {
-      const part = valorCategoria / 3;
-      acc['Fertilizantes'] = (acc['Fertilizantes'] || 0) + part;
-      acc['Defensivos Agrícolas'] = (acc['Defensivos Agrícolas'] || 0) + part;
-      acc['Sementes e mudas'] = (acc['Sementes e mudas'] || 0) + part;
+    if (catLower === 'insumos') {
+      acc['Insumos'] = (acc['Insumos'] || 0) + valorCategoria;
       return acc;
     }
 
@@ -129,8 +124,27 @@ const CustosTable: React.FC<{ userId: string; areaCultivada: number; produtivida
   // 2. Pega todas as categorias da CONAB como base (já sem "Receita")
   const todasCategorias = CustoConabService.getAllCustos();
 
-  // 3. Monta array final, mesmo que valor real = 0
-  const base = todasCategorias.map((item) => {
+  // Vamos remover as 3 categorias antigas e criar uma única entrada 'Insumos'
+  const oldCats = ['Fertilizantes', 'Defensivos Agrícolas', 'Sementes e mudas'];
+  const filteredCategorias = todasCategorias.filter(c => !oldCats.includes(c.discriminacao));
+
+  // Soma os estimados das 3 antigas para usar como estimado de 'Insumos'
+  const estimadoInsumos = todasCategorias.reduce((s, it) => {
+    if (oldCats.includes(it.discriminacao)) {
+      return { ha: s.ha + (it.custoPorHa || 0), sc: s.sc + (it.custoPorSaca || 0) };
+    }
+    return s;
+  }, { ha: 0, sc: 0 });
+
+  // Se já existir uma categoria 'Insumos' em CONAB (geralmente não), não duplicar
+  const hasInsumos = filteredCategorias.some(c => c.discriminacao === 'Insumos');
+  const finalCategorias = hasInsumos ? filteredCategorias : [
+    ...filteredCategorias,
+    { discriminacao: 'Insumos', custoPorHa: estimadoInsumos.ha, custoPorSaca: estimadoInsumos.sc }
+  ];
+
+  // 3. Monta array final, mesmo que valor real = 0 (usando finalCategorias)
+  const base = finalCategorias.map((item) => {
     const valor = grouped[item.discriminacao] ?? 0;
     const realHectare = areaCultivada > 0 ? valor / areaCultivada : 0;
     const realSaca = produtividade > 0 ? realHectare / produtividade : 0;
