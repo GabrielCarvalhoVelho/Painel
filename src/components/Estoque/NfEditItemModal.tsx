@@ -220,9 +220,7 @@ export default function NfEditItemModal({ isOpen, item, onClose, onSave }: Props
               <option>Aluguel de Máquinas</option>
               <option>Mão de obra</option>
               <option>Gestão/Administração</option>
-              <option>Sementes e mudas</option>
-              <option>Fertilizantes</option>
-              <option>Defensivos Agrícolas</option>
+              <option>Insumos</option>
               <option>Venda</option>
               <option>Embalagens</option>
               <option>Análise de Solo</option>
