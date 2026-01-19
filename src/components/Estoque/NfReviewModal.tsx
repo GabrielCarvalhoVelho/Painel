@@ -61,13 +61,13 @@ export default function NfReviewModal({ isOpen, meta, items, onClose, onEditItem
             {items.map((it) => (
               <div key={it.id} className="bg-white rounded-lg shadow-sm border border-[rgba(0,0,0,0.04)] p-4">
                 <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
+                    <div className="min-w-0">
                     <div className="text-sm font-semibold text-[#004417] truncate">{it.nome_produto}</div>
-                    <div className="mt-1 text-xs text-[#092f20]">{it.categoria} • {it.unidade_valor_original ?? it.unidade}</div>
+                    <div className="mt-1 text-xs text-[#092f20]">{it.categoria}</div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm font-medium text-[#092f20] whitespace-nowrap">{formatQuantity(it.quantidade, it.unidade, it.unidade_valor_original)}</div>
-                    <div className="text-xs text-[#092f20] mt-1">{it.valor_unitario != null ? `R$ ${Number(it.valor_unitario).toFixed(2)}` : '-'}</div>
+                    <div className="text-sm font-medium text-[#092f20] whitespace-nowrap">{`${formatQuantity(it.quantidade, it.unidade, it.unidade_valor_original)} ${it.unidade_valor_original ?? it.unidade}`}</div>
+                    <div className="text-xs text-[#092f20] mt-1 whitespace-nowrap">{it.valor_unitario != null ? `R$\u00A0${Number(it.valor_unitario).toFixed(2)}` : '-'}</div>
                   </div>
                 </div>
 
